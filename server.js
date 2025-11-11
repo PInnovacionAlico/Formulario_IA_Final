@@ -1,0 +1,761 @@
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const axios = require('axios');
+const multer = require('multer');
+const FormData = require('form-data');
+const fs = require('fs');
+const path = require('path');
+const { createClient } = require('@supabase/supabase-js');
+const bcrypt = require('bcryptjs');
+const { v4: uuidv4 } = require('uuid');
+const jwt = require('jsonwebtoken');
+const sharp = require('sharp');
+
+const app = express();
+const upload = multer({ dest: path.join(__dirname, 'uploads') });
+
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Supabase client (use service role key on server only)
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+// helper: sanitize filename to avoid bad chars and path traversal
+function sanitizeFilename(name) {
+  if (!name) return '';
+  // replace anything not alphanumeric, dot, underscore or dash
+  return name.replace(/[^a-zA-Z0-9. _-]/g, '_').replace(/\s+/g, '_').slice(0, 200);
+}
+
+// Authentication middleware: verify JWT and add userId to req
+function authenticate(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Unauthorized: No token provided' });
+  }
+  const token = authHeader.substring(7);
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.userId = decoded.userId;
+    next();
+  } catch (err) {
+    return res.status(401).json({ error: 'Unauthorized: Invalid token' });
+  }
+}
+
+function getWebhookUrlFromReq(req) {
+  // Allow global disable via env var for easy testing/rollback
+  if (process.env.DISABLE_WEBHOOK && process.env.DISABLE_WEBHOOK.toLowerCase() === 'true') return null;
+  // Header takes precedence, otherwise use env
+  return req.headers['x-webhook-url'] || process.env.WEBHOOK_URL;
+}
+
+async function postToWebhook(webhookUrl, payload, headers = {}) {
+  if (!webhookUrl) throw new Error('No webhook URL configured');
+  const res = await axios.post(webhookUrl, payload, { headers });
+  return res.data;
+}
+
+// Login endpoint: validate credentials and return JWT
+app.post('/api/login', async (req, res) => {
+  const { email, password } = req.body || {};
+  if (!email || !password) return res.status(400).json({ error: 'email and password are required' });
+
+  try {
+    const { data: user, error } = await supabase.from('users').select('*').eq('email', email).maybeSingle();
+    if (error) throw error;
+    if (!user) return res.status(401).json({ error: 'Invalid credentials' });
+
+    const match = bcrypt.compareSync(password, user.password_hash);
+    if (!match) return res.status(401).json({ error: 'Invalid credentials' });
+
+    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    res.json({ ok: true, token, user: { id: user.id, name: user.name, email: user.email } });
+  } catch (err) {
+    console.error('login error', err.message || err);
+    res.status(500).json({ error: err.message || String(err) });
+  }
+});
+
+app.post('/api/register', async (req, res) => {
+  const { name, email, password } = req.body || {};
+  if (!name || !email || !password) return res.status(400).json({ error: 'name, email and password are required' });
+
+  if (password.length < 8) return res.status(400).json({ error: 'password must be at least 8 characters' });
+
+  try {
+    const password_hash = bcrypt.hashSync(password, 10);
+    const { data, error } = await supabase
+      .from('users')
+      .insert([{ name, email, password_hash }])
+      .select('*')
+      .single();
+
+    if (error) {
+      // unique violation handling
+      if (error.code === '23505' || (error.message && error.message.toLowerCase().includes('duplicate'))) {
+        return res.status(400).json({ error: 'email already exists' });
+      }
+      throw error;
+    }
+
+    const webhookUrl = getWebhookUrlFromReq(req);
+    const payload = { action: 'register', data: { id: data.id, name: data.name, email: data.email, created_at: data.created_at } };
+    if (webhookUrl) {
+      try {
+        await postToWebhook(webhookUrl, payload, { 'Content-Type': 'application/json' });
+      } catch (err) {
+        console.error('webhook error', err.message);
+        // do not fail registration because webhook failed
+      }
+    }
+
+    res.json({ ok: true, id: data.id });
+  } catch (err) {
+    console.error('register error', err.message || err);
+    res.status(500).json({ error: err.message || String(err) });
+  }
+});
+
+app.post('/api/change-password', async (req, res) => {
+  const { email, oldPassword, newPassword } = req.body || {};
+  if (!email || !oldPassword || !newPassword) return res.status(400).json({ error: 'email, oldPassword and newPassword are required' });
+
+  if (newPassword.length < 8) return res.status(400).json({ error: 'newPassword must be at least 8 characters' });
+
+  try {
+    const { data: user, error: fetchErr } = await supabase.from('users').select('*').eq('email', email).maybeSingle();
+    if (fetchErr) throw fetchErr;
+    if (!user) return res.status(404).json({ error: 'user not found' });
+
+    const ok = bcrypt.compareSync(oldPassword, user.password_hash);
+    if (!ok) return res.status(401).json({ error: 'old password incorrect' });
+
+    const newHash = bcrypt.hashSync(newPassword, 10);
+    const { data, error: upErr } = await supabase.from('users').update({ password_hash: newHash }).eq('id', user.id).select('*').single();
+    if (upErr) throw upErr;
+
+    const webhookUrl = getWebhookUrlFromReq(req);
+    const payload = { action: 'change-password', data: { id: data.id, email: data.email, updated_at: data.updated_at || new Date().toISOString() } };
+    if (webhookUrl) {
+      try {
+        await postToWebhook(webhookUrl, payload, { 'Content-Type': 'application/json' });
+      } catch (err) {
+        console.error('webhook error', err.message);
+      }
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('change-password error', err.message || err);
+    res.status(500).json({ error: err.message || String(err) });
+  }
+});
+
+// Upload endpoint: accepts single file field 'file' (protected)
+app.post('/api/upload', authenticate, upload.single('file'), async (req, res) => {
+  const file = req.file;
+  if (!file) return res.status(400).json({ error: 'file is required' });
+
+  try {
+    // upload to Supabase storage
+    const safeName = sanitizeFilename(file.originalname);
+    const unique = uuidv4();
+    const prefix = String(req.userId); // use authenticated userId
+    const pathInBucket = `uploads/${prefix}/${unique}-${safeName}`;
+    const thumbnailPath = `uploads/${prefix}/thumb-${unique}-${safeName}`;
+    
+    // Read and optimize original image
+    const fileBuffer = fs.readFileSync(file.path);
+
+    // Upload original image
+    const { data: uploadData, error: uploadErr } = await supabase.storage.from('uploads').upload(pathInBucket, fileBuffer, {
+      contentType: file.mimetype,
+      upsert: false
+    });
+    if (uploadErr) throw uploadErr;
+
+    // Generate and upload thumbnail (max 400px width, quality 70%)
+    const thumbnailBuffer = await sharp(fileBuffer)
+      .resize(400, null, { withoutEnlargement: true, fit: 'inside' })
+      .jpeg({ quality: 70 })
+      .toBuffer();
+
+    const { error: thumbErr } = await supabase.storage.from('uploads').upload(thumbnailPath, thumbnailBuffer, {
+      contentType: 'image/jpeg',
+      upsert: false
+    });
+    if (thumbErr) console.warn('thumbnail upload warning', thumbErr.message);
+
+    // create signed URL (24 hours for dashboard usage)
+    const { data: urlData, error: urlErr } = await supabase.storage.from('uploads').createSignedUrl(pathInBucket, 24 * 60 * 60);
+    if (urlErr) console.warn('signed url warning', urlErr.message || urlErr);
+
+    // save metadata in uploads table with authenticated owner_id
+    const folder = req.body.folder || 'Sin carpeta';
+    const { data: dbUpload, error: dbErr } = await supabase.from('uploads').insert([{
+      owner_id: req.userId,
+      owner_email: req.body.ownerEmail || null,
+      filename: file.originalname,
+      path: pathInBucket,
+      thumbnail_path: thumbnailPath,
+      mimetype: file.mimetype,
+      size: file.size,
+      custom_name: null,
+      folder: folder
+    }]).select('*').single();
+    if (dbErr) throw dbErr;
+
+    // remove temporary file
+    fs.unlink(file.path, () => {});
+
+    const payload = { action: 'upload', data: { id: dbUpload.id, filename: dbUpload.filename, size: dbUpload.size, mimetype: dbUpload.mimetype, url: urlData?.signedUrl || null } };
+    const webhookUrl = getWebhookUrlFromReq(req);
+    if (webhookUrl) {
+      try {
+        await postToWebhook(webhookUrl, payload, { 'Content-Type': 'application/json' });
+      } catch (err) {
+        console.error('webhook error', err.message);
+      }
+    }
+
+    res.json({ ok: true, upload: dbUpload, signedUrl: urlData?.signedUrl });
+  } catch (err) {
+    console.error('upload error FULL:', err);
+    console.error('upload error message:', err.message);
+    console.error('upload error stack:', err.stack);
+    if (file && file.path) {
+      fs.unlink(file.path, () => {});
+    }
+    res.status(500).json({ error: err.message || String(err) });
+  }
+});
+
+// List user uploads (protected)
+app.get('/api/uploads', authenticate, async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('uploads').select('*').eq('owner_id', req.userId).order('created_at', { ascending: false });
+    if (error) throw error;
+
+    // generate signed URLs for each upload (both original and thumbnail)
+    const uploadsWithUrls = await Promise.all(data.map(async (upload) => {
+      const { data: urlData } = await supabase.storage.from('uploads').createSignedUrl(upload.path, 24 * 60 * 60);
+      let thumbnailUrl = null;
+      
+      // Get thumbnail URL if exists
+      if (upload.thumbnail_path) {
+        const { data: thumbData } = await supabase.storage.from('uploads').createSignedUrl(upload.thumbnail_path, 24 * 60 * 60);
+        thumbnailUrl = thumbData?.signedUrl || null;
+      }
+      
+      return { 
+        ...upload, 
+        signedUrl: urlData?.signedUrl || null,
+        thumbnailUrl: thumbnailUrl 
+      };
+    }));
+
+    res.json({ ok: true, uploads: uploadsWithUrls });
+  } catch (err) {
+    console.error('list uploads error', err.message || err);
+    res.status(500).json({ error: err.message || String(err) });
+  }
+});
+
+// Update upload metadata (rename/folder) (protected)
+app.patch('/api/uploads/:id', authenticate, async (req, res) => {
+  const { id } = req.params;
+  const { customName, folder } = req.body || {};
+
+  try {
+    // verify ownership
+    const { data: upload, error: fetchErr } = await supabase.from('uploads').select('*').eq('id', id).maybeSingle();
+    if (fetchErr) throw fetchErr;
+    if (!upload) return res.status(404).json({ error: 'Upload not found' });
+    if (upload.owner_id !== req.userId) return res.status(403).json({ error: 'Forbidden: not owner' });
+
+    // update fields
+    const updates = {};
+    if (customName !== undefined) updates.custom_name = customName;
+    if (folder !== undefined) updates.folder = folder || 'Sin carpeta';
+
+    const { data, error: upErr } = await supabase.from('uploads').update(updates).eq('id', id).select('*').single();
+    if (upErr) throw upErr;
+
+    res.json({ ok: true, upload: data });
+  } catch (err) {
+    console.error('update upload error', err.message || err);
+    res.status(500).json({ error: err.message || String(err) });
+  }
+});
+
+// Delete upload (protected)
+app.delete('/api/uploads/:id', authenticate, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // verify ownership
+    const { data: upload, error: fetchErr } = await supabase.from('uploads').select('*').eq('id', id).maybeSingle();
+    if (fetchErr) throw fetchErr;
+    if (!upload) return res.status(404).json({ error: 'Upload not found' });
+    if (upload.owner_id !== req.userId) return res.status(403).json({ error: 'Forbidden: not owner' });
+
+    // delete from storage (both original and thumbnail)
+    const filesToDelete = [upload.path];
+    if (upload.thumbnail_path) {
+      filesToDelete.push(upload.thumbnail_path);
+    }
+    
+    const { error: delErr } = await supabase.storage.from('uploads').remove(filesToDelete);
+    if (delErr) console.warn('storage delete warning', delErr.message || delErr);
+
+    // delete from DB
+    const { error: dbDelErr } = await supabase.from('uploads').delete().eq('id', id);
+    if (dbDelErr) throw dbDelErr;
+
+    res.json({ ok: true, message: 'Upload deleted' });
+  } catch (err) {
+    console.error('delete upload error', err.message || err);
+    res.status(500).json({ error: err.message || String(err) });
+  }
+});
+
+// Get user credits
+app.get('/api/credits', authenticate, async (req, res) => {
+  try {
+    const { data: userCredits, error } = await supabase
+      .from('users')
+      .select('credits, credits_last_reset')
+      .eq('id', req.userId)
+      .single();
+    
+    if (error) throw error;
+
+    // Check if credits need to be reset
+    const lastReset = new Date(userCredits.credits_last_reset);
+    const now = new Date();
+    const monthsSinceReset = (now.getFullYear() - lastReset.getFullYear()) * 12 + 
+                              (now.getMonth() - lastReset.getMonth());
+    
+    let credits = userCredits.credits;
+    let resetDate = lastReset;
+    
+    if (monthsSinceReset >= 1) {
+      // Reset credits
+      const { error: resetErr } = await supabase
+        .from('users')
+        .update({ 
+          credits: 3, 
+          credits_last_reset: now.toISOString() 
+        })
+        .eq('id', req.userId);
+      
+      if (!resetErr) {
+        credits = 3;
+        resetDate = now;
+      }
+    }
+
+    // Calculate next reset date (first day of next month)
+    const nextReset = new Date(resetDate.getFullYear(), resetDate.getMonth() + 1, 1);
+
+    res.json({ 
+      ok: true, 
+      credits,
+      nextReset: nextReset.toISOString(),
+      lastReset: resetDate.toISOString()
+    });
+  } catch (err) {
+    console.error('get credits error', err.message || err);
+    res.status(500).json({ error: err.message || String(err) });
+  }
+});
+
+// Submit form endpoint: generates temporary URL and sends to webhook
+// ⚠️ IMPORTANT: URL expires in 5 minutes to minimize Supabase bandwidth usage
+// The webhook receiver MUST download the image immediately upon receiving this payload
+app.post('/api/submit-form', authenticate, async (req, res) => {
+  const { photo_id, form_type, product_id, ...formData } = req.body || {};
+  
+  if (!photo_id) {
+    return res.status(400).json({ error: 'photo_id is required' });
+  }
+
+  // Validate form_type if provided
+  const validFormTypes = ['termoformado', 'doypack', 'flowpack'];
+  if (form_type && !validFormTypes.includes(form_type)) {
+    return res.status(400).json({ error: 'Invalid form_type' });
+  }
+
+  try {
+    // === CHECK AND RESET CREDITS ===
+    const { data: userCredits, error: creditsErr } = await supabase
+      .from('users')
+      .select('credits, credits_last_reset')
+      .eq('id', req.userId)
+      .single();
+    
+    if (creditsErr) throw creditsErr;
+
+    // Check if credits need to be reset (monthly)
+    const lastReset = new Date(userCredits.credits_last_reset);
+    const now = new Date();
+    const monthsSinceReset = (now.getFullYear() - lastReset.getFullYear()) * 12 + 
+                              (now.getMonth() - lastReset.getMonth());
+    
+    let currentCredits = userCredits.credits;
+    
+    if (monthsSinceReset >= 1) {
+      // Reset credits to 3
+      const { error: resetErr } = await supabase
+        .from('users')
+        .update({ 
+          credits: 3, 
+          credits_last_reset: now.toISOString() 
+        })
+        .eq('id', req.userId);
+      
+      if (resetErr) console.error('Error resetting credits:', resetErr);
+      currentCredits = 3;
+    }
+
+    // Check if user has credits
+    if (currentCredits <= 0) {
+      return res.status(403).json({ 
+        error: 'No tienes créditos disponibles',
+        credits: 0,
+        nextReset: new Date(lastReset.getFullYear(), lastReset.getMonth() + 1, 1).toISOString()
+      });
+    }
+
+    // Deduct one credit
+    const { error: deductErr } = await supabase
+      .from('users')
+      .update({ credits: currentCredits - 1 })
+      .eq('id', req.userId);
+    
+    if (deductErr) throw deductErr;
+    // Verify ownership and get photo details
+    const { data: upload, error: fetchErr } = await supabase
+      .from('uploads')
+      .select('*')
+      .eq('id', photo_id)
+      .maybeSingle();
+    
+    if (fetchErr) throw fetchErr;
+    if (!upload) return res.status(404).json({ error: 'Photo not found' });
+    if (upload.owner_id !== req.userId) {
+      return res.status(403).json({ error: 'Forbidden: not owner of this photo' });
+    }
+
+    // Generate temporary URL with 5 minutes expiration
+    const fiveMinutesInSeconds = 5 * 60; // 300 seconds
+    const { data: urlData, error: urlErr } = await supabase.storage
+      .from('uploads')
+      .createSignedUrl(upload.path, fiveMinutesInSeconds);
+    
+    if (urlErr) throw urlErr;
+    if (!urlData?.signedUrl) {
+      throw new Error('Failed to generate public URL');
+    }
+
+    // Get user info
+    const { data: user, error: userErr } = await supabase
+      .from('users')
+      .select('id, name, email')
+      .eq('id', req.userId)
+      .single();
+    
+    if (userErr) console.warn('User fetch warning:', userErr.message);
+
+    // Get product info and public image URL if product_id is provided
+    let productInfo = null;
+    if (product_id) {
+      const { data: product, error: productErr } = await supabase
+        .from('products')
+        .select('id, name, category, image_path, description')
+        .eq('id', product_id)
+        .single();
+      
+      if (!productErr && product) {
+        // Get public URL for product image (5 minutes validity)
+        const { data: productUrlData } = await supabase.storage
+          .from('products')
+          .createSignedUrl(product.image_path, fiveMinutesInSeconds);
+        
+        productInfo = {
+          id: product.id,
+          name: product.name,
+          category: product.category,
+          description: product.description,
+          image_url: productUrlData?.signedUrl || null
+        };
+      }
+    }
+
+    // Prepare webhook payload
+    const webhookPayload = {
+      action: 'form_submitted',
+      timestamp: new Date().toISOString(),
+      form_type: form_type || null,
+      user: user ? {
+        id: user.id,
+        name: user.name,
+        email: user.email
+      } : null,
+      product: productInfo,
+      user_photo: {
+        id: upload.id,
+        url: urlData.signedUrl, // 5-minute temporary URL to user's uploaded image
+        filename: upload.filename,
+        custom_name: upload.custom_name,
+        folder: upload.folder,
+        mimetype: upload.mimetype,
+        size: upload.size,
+        created_at: upload.created_at
+      },
+      form_data: formData // Additional form fields
+    };
+
+    // Send to Alico webhook
+    const webhookUrl = 'https://apps.alico-sa.com/webhook/ai-form';
+    let webhookSent = false;
+    let webhookStatus = null;
+    let errorMessage = null;
+    
+    try {
+      const webhookResponse = await axios.post(webhookUrl, webhookPayload, {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 10000 // 10 seconds timeout
+      });
+      
+      console.log('Webhook sent successfully:', webhookResponse.status);
+      webhookSent = true;
+      webhookStatus = webhookResponse.status;
+      
+      // Save successful submission to database
+      const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes from now
+      await supabase.from('form_submissions').insert([{
+        user_id: req.userId,
+        photo_id: photo_id,
+        form_type: form_type || null,
+        product_id: product_id || null,
+        success: true,
+        webhook_sent: true,
+        webhook_url: webhookUrl,
+        webhook_response_status: webhookResponse.status,
+        temp_image_url: urlData.signedUrl,
+        temp_url_expires_at: expiresAt.toISOString(),
+        form_data: formData,
+        completed_at: new Date().toISOString()
+      }]);
+      
+      res.json({ 
+        ok: true, 
+        message: 'Form submitted successfully',
+        webhook_sent: true,
+        webhook_status: webhookResponse.status,
+        public_url: urlData.signedUrl
+      });
+    } catch (webhookErr) {
+      console.error('Webhook error:', webhookErr.message);
+      errorMessage = webhookErr.message;
+      
+      // Save failed webhook submission to database
+      const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+      await supabase.from('form_submissions').insert([{
+        user_id: req.userId,
+        photo_id: photo_id,
+        form_type: form_type || null,
+        product_id: product_id || null,
+        success: true, // Form was processed successfully
+        error_message: `Webhook failed: ${webhookErr.message}`,
+        webhook_sent: false,
+        webhook_url: webhookUrl,
+        temp_image_url: urlData.signedUrl,
+        temp_url_expires_at: expiresAt.toISOString(),
+        form_data: formData,
+        completed_at: new Date().toISOString()
+      }]);
+      
+      // Still return success but indicate webhook failed
+      res.json({ 
+        ok: true, 
+        message: 'Form submitted but webhook failed',
+        webhook_sent: false,
+        webhook_error: webhookErr.message,
+        public_url: urlData.signedUrl
+      });
+    }
+  } catch (err) {
+    console.error('submit-form error', err.message || err);
+    
+    // Save failed submission to database
+    try {
+      await supabase.from('form_submissions').insert([{
+        user_id: req.userId,
+        photo_id: req.body.photo_id || null,
+        form_type: req.body.form_type || null,
+        product_id: req.body.product_id || null,
+        success: false,
+        error_message: err.message || String(err),
+        webhook_sent: false,
+        form_data: req.body || {},
+        completed_at: new Date().toISOString()
+      }]);
+    } catch (dbErr) {
+      console.error('Failed to save error submission:', dbErr.message);
+    }
+    
+    res.status(500).json({ error: err.message || String(err) });
+  }
+});
+
+// Get all form submissions for authenticated user
+app.get('/api/form-submissions', authenticate, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('form_submissions')
+      .select(`
+        *,
+        uploads(filename, custom_name, folder),
+        products(name, category)
+      `)
+      .eq('user_id', req.userId)
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+
+    // Add photo filename and product info to each submission
+    const submissionsWithPhotos = data.map(sub => ({
+      ...sub,
+      photo_filename: sub.uploads?.custom_name || sub.uploads?.filename || 'Foto eliminada',
+      product_name: sub.products?.name || null,
+      product_category: sub.products?.category || null
+    }));
+
+    res.json({ ok: true, submissions: submissionsWithPhotos });
+  } catch (err) {
+    console.error('list form-submissions error', err.message || err);
+    res.status(500).json({ error: err.message || String(err) });
+  }
+});
+
+// Get single form submission details
+app.get('/api/form-submissions/:id', authenticate, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const { data, error } = await supabase
+      .from('form_submissions')
+      .select(`
+        *,
+        uploads(filename, custom_name, folder),
+        products(name, category)
+      `)
+      .eq('id', id)
+      .eq('user_id', req.userId)
+      .maybeSingle();
+    
+    if (error) throw error;
+    if (!data) return res.status(404).json({ error: 'Submission not found' });
+
+    // Add photo filename and product info
+    const submission = {
+      ...data,
+      photo_filename: data.uploads?.custom_name || data.uploads?.filename || 'Foto eliminada',
+      product_name: data.products?.name || null,
+      product_category: data.products?.category || null
+    };
+
+    res.json({ ok: true, submission });
+  } catch (err) {
+    console.error('get form-submission error', err.message || err);
+    res.status(500).json({ error: err.message || String(err) });
+  }
+});
+
+// Get products by form type
+app.get('/api/products/:formType', authenticate, async (req, res) => {
+  try {
+    const { formType } = req.params;
+    
+    // Validate form type
+    const validFormTypes = ['termoformado', 'doypack', 'flowpack'];
+    if (!validFormTypes.includes(formType)) {
+      return res.status(400).json({ ok: false, error: 'Tipo de formulario inválido' });
+    }
+
+    // Get products from database
+    const { data: products, error } = await supabase
+      .from('products')
+      .select('*')
+      .eq('form_type', formType)
+      .eq('active', true)
+      .order('category')
+      .order('display_order');
+
+    if (error) throw error;
+
+    // Generate signed URLs for each product image
+    const productsWithUrls = await Promise.all(
+      products.map(async (product) => {
+        try {
+          // Generate signed URL valid for 24 hours
+          const { data: urlData, error: urlError } = await supabase.storage
+            .from('products')
+            .createSignedUrl(product.image_path, 24 * 60 * 60);
+
+          if (urlError) {
+            console.error(`Error generating URL for ${product.image_path}:`, urlError);
+            return {
+              ...product,
+              imageUrl: null,
+              imageError: true
+            };
+          }
+
+          return {
+            ...product,
+            imageUrl: urlData?.signedUrl || null
+          };
+        } catch (err) {
+          console.error(`Exception for product ${product.id}:`, err);
+          return {
+            ...product,
+            imageUrl: null,
+            imageError: true
+          };
+        }
+      })
+    );
+
+    // Group products by category
+    const groupedProducts = productsWithUrls.reduce((acc, product) => {
+      if (!acc[product.category]) {
+        acc[product.category] = [];
+      }
+      acc[product.category].push(product);
+      return acc;
+    }, {});
+
+    res.json({
+      ok: true,
+      products: productsWithUrls,
+      groupedProducts
+    });
+  } catch (err) {
+    console.error('Error fetching products:', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.get('/health', (req, res) => res.json({ status: 'ok' }));
+
+const port = process.env.PORT || 3000;
+app.listen(port, () => console.log(`Server running on http://localhost:${port}`));

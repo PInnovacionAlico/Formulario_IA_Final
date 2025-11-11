@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Registro - Formulario IA</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="card">
+        <h1>Registro</h1>
+        <form id="registerForm">
+          <label>Nombre<input type="text" name="name" required /></label>
+          <label>Email<input type="email" name="email" required /></label>
+          <label>Contraseña<input type="password" name="password" required /></label>
+          <button type="submit">Registrar</button>
+          <div id="registerResult" class="result"></div>
+        </form>
+        <div class="links">
+          <a href="/login.html">¿Ya tienes cuenta? Inicia sesión</a>
+        </div>
+      </div>
+    </div>
+    <script>
+      // Check if user is already logged in
+      const existingToken = localStorage.getItem('token');
+      if (existingToken) {
+        // Verify token is still valid
+        fetch('/api/uploads', {
+          headers: { 'Authorization': 'Bearer ' + existingToken }
+        })
+        .then(res => {
+          if (res.ok) {
+            // Token is valid, redirect to dashboard
+            window.location.href = '/dashboard.html';
+          } else {
+            // Token is invalid, clear it
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+          }
+        })
+        .catch(() => {
+          // Network error, clear token
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+        });
+      }
+
+      document.getElementById('registerForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const fd = new FormData(e.target);
+        const body = { name: fd.get('name'), email: fd.get('email'), password: fd.get('password') };
+        const resEl = document.getElementById('registerResult');
+        resEl.textContent = 'Registrando...';
+        try {
+          const res = await fetch('/api/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+          });
+          const data = await res.json();
+          if (data.ok) {
+            resEl.textContent = 'Registro exitoso! Redirigiendo...';
+            setTimeout(() => window.location.href = '/login.html', 1000);
+          } else {
+            resEl.textContent = data.error || 'Error al registrar';
+          }
+        } catch (err) {
+          resEl.textContent = String(err);
+        }
+      });
+    </script>
+  </body>
+</html>

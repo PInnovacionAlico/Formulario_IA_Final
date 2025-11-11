@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Formulario Doypack - Formulario IA</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <div class="dashboard-container">
+      <header class="dashboard-header">
+        <h1>📦 Formulario Doypack</h1>
+        <div class="user-info">
+          <span id="userName"></span>
+          <button type="button" onclick="location.href='/dashboard.html'" class="btn-secondary">Dashboard</button>
+          <button id="logoutBtn" class="btn-secondary">Cerrar sesión</button>
+        </div>
+      </header>
+
+      <div class="dashboard-content">
+        <div class="gallery-section">
+          <div class="form-page-header">
+            <h2>📦 Formulario Doypack</h2>
+            <p class="form-page-description">Empaque flexible vertical con cierre resellable - Ideal para líquidos y semilíquidos</p>
+          </div>
+
+          <!-- Breadcrumb -->
+          <div class="breadcrumb-container">
+            <nav aria-label="breadcrumb">
+              <ol class="breadcrumb">
+                <li class="breadcrumb-item">
+                  <a href="/dashboard.html">🏠 Dashboard</a>
+                </li>
+                <li class="breadcrumb-separator">›</li>
+                <li class="breadcrumb-item">
+                  <a href="/forms.html">📋 Formularios</a>
+                </li>
+                <li class="breadcrumb-separator">›</li>
+                <li class="breadcrumb-item active" aria-current="page">
+                  📦 Doypack
+                </li>
+              </ol>
+            </nav>
+          </div>
+          
+          <form id="mainForm">
+            <!-- Sección 1: Seleccionar foto -->
+            <div class="form-section">
+              <h3>📷 1. Selecciona una foto</h3>
+              
+              <div class="form-section-content">
+                <div class="photo-selector-layout">
+                <!-- Menú lateral de carpetas -->
+                <div class="folder-menu">
+                  <div class="folder-menu-header">
+                    <h4>📁 Filtrar por carpeta</h4>
+                  </div>
+                  <div id="folderFilters" class="folder-filters">
+                    <p style="color: #999; font-size: 14px; padding: 12px;">Cargando carpetas...</p>
+                  </div>
+                </div>
+
+                <!-- Contenedor principal -->
+                <div class="photo-selector-container">
+                  <!-- Dropdown selector -->
+                  <label>
+                    Foto
+                    <select id="photoSelect" name="photo_id" required>
+                      <option value="">Cargando fotos...</option>
+                    </select>
+                  </label>
+                  
+                  <!-- Preview de la foto seleccionada -->
+                  <div id="photoPreview" class="photo-preview-container" style="display: none;">
+                    <div class="preview-header">
+                      <span class="preview-title">🖼️ Vista previa</span>
+                      <span class="preview-hint">(Click para ampliar)</span>
+                    </div>
+                    <div class="preview-image-wrapper">
+                      <img 
+                        id="previewImage" 
+                        src="" 
+                        alt="Vista previa" 
+                        class="preview-image"
+                      />
+                    </div>
+                    <p id="previewInfo" class="preview-info"></p>
+                  </div>
+                </div>
+              </div>
+              </div>
+            </div>
+
+            <!-- Más secciones se agregarán aquí -->
+
+            <div class="form-actions">
+              <button type="submit" class="btn-submit">Enviar formulario</button>
+              <button type="button" onclick="location.href='/dashboard.html'" class="btn-secondary">Cancelar</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal for full image view -->
+    <div id="formImageViewModal" class="modal">
+      <div class="modal-content modal-image">
+        <span class="modal-close">&times;</span>
+        <h2 id="formImageViewTitle">Imagen completa</h2>
+        <img id="formFullImageView" src="" alt="" style="max-width: 100%; height: auto; border-radius: 8px;" />
+      </div>
+    </div>
+
+    <script>
+      const token = localStorage.getItem('token');
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      let allPhotos = [];
+      let allFolders = [];
+      let selectedFolders = new Set();
+      
+      if (!token) {
+        window.location.href = '/login.html';
+      }
+
+      document.getElementById('userName').textContent = user.name || user.email || 'Usuario';
+
+      document.getElementById('logoutBtn').addEventListener('click', () => {
+        if (confirm('¿Estás seguro que deseas cerrar sesión?')) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          window.location.href = '/login.html';
+        }
+      });
+
+      // Cargar fotos del usuario
+      async function loadPhotos() {
+        try {
+          const res = await fetch('/api/uploads', {
+            headers: { 'Authorization': 'Bearer ' + token }
+          });
+          const data = await res.json();
+          
+          if (data.ok && data.uploads) {
+            allPhotos = data.uploads;
+            
+            // Extract folders
+            const folders = new Set();
+            data.uploads.forEach(photo => {
+              folders.add(photo.folder || 'Sin carpeta');
+            });
+            allFolders = Array.from(folders).sort();
+            
+            // Initialize all folders as selected
+            allFolders.forEach(folder => selectedFolders.add(folder));
+            
+            populateFolderFilters();
+            populatePhotoSelect(data.uploads);
+          } else {
+            document.getElementById('photoSelect').innerHTML = '<option value="">Error al cargar fotos</option>';
+          }
+        } catch (err) {
+          console.error('Error loading photos:', err);
+          document.getElementById('photoSelect').innerHTML = '<option value="">Error al cargar fotos</option>';
+        }
+      }
+
+      function populateFolderFilters() {
+        const container = document.getElementById('folderFilters');
+        container.innerHTML = '';
+
+        allFolders.forEach(folder => {
+          const label = document.createElement('label');
+          label.className = 'folder-checkbox-label';
+          
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.value = folder;
+          checkbox.checked = selectedFolders.has(folder);
+          checkbox.addEventListener('change', handleFolderFilter);
+          
+          const icon = document.createElement('span');
+          icon.textContent = '📁 ';
+          
+          const text = document.createElement('span');
+          text.textContent = folder;
+          
+          label.appendChild(checkbox);
+          label.appendChild(icon);
+          label.appendChild(text);
+          
+          container.appendChild(label);
+        });
+      }
+
+      function handleFolderFilter(e) {
+        const folder = e.target.value;
+        
+        if (e.target.checked) {
+          selectedFolders.add(folder);
+        } else {
+          selectedFolders.delete(folder);
+        }
+        
+        // Filter photos and repopulate select
+        const filteredPhotos = allPhotos.filter(photo => 
+          selectedFolders.has(photo.folder || 'Sin carpeta')
+        );
+        
+        populatePhotoSelect(filteredPhotos);
+      }
+
+      function populatePhotoSelect(photos) {
+        const select = document.getElementById('photoSelect');
+        const currentValue = select.value;
+        
+        if (photos.length === 0) {
+          select.innerHTML = '<option value="">No hay fotos en las carpetas seleccionadas</option>';
+          document.getElementById('photoPreview').style.display = 'none';
+          return;
+        }
+
+        select.innerHTML = '<option value="">-- Selecciona una foto --</option>';
+        
+        // Agrupar por carpeta
+        const byFolder = {};
+        photos.forEach(photo => {
+          const folder = photo.folder || 'Sin carpeta';
+          if (!byFolder[folder]) byFolder[folder] = [];
+          byFolder[folder].push(photo);
+        });
+
+        // Crear opciones agrupadas solo para carpetas seleccionadas
+        Object.keys(byFolder).sort().forEach(folder => {
+          if (!selectedFolders.has(folder)) return;
+          
+          const optgroup = document.createElement('optgroup');
+          optgroup.label = `📁 ${folder}`;
+          
+          byFolder[folder].forEach(photo => {
+            const option = document.createElement('option');
+            option.value = photo.id;
+            option.textContent = photo.custom_name || photo.filename;
+            option.dataset.url = photo.thumbnailUrl || photo.signedUrl;
+            option.dataset.filename = photo.filename;
+            option.dataset.folder = photo.folder;
+            optgroup.appendChild(option);
+          });
+          
+          select.appendChild(optgroup);
+        });
+
+        // Restore selection if still available
+        if (currentValue) {
+          const option = Array.from(select.options).find(opt => opt.value === currentValue);
+          if (option) {
+            select.value = currentValue;
+          } else {
+            document.getElementById('photoPreview').style.display = 'none';
+          }
+        }
+      }
+
+      // Modal for full image view
+      const formImageViewModal = document.getElementById('formImageViewModal');
+      let currentFullImageUrl = '';
+
+      document.querySelectorAll('.modal-close').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.target.closest('.modal').style.display = 'none';
+        });
+      });
+
+      window.addEventListener('click', (e) => {
+        if (e.target.classList.contains('modal')) {
+          e.target.style.display = 'none';
+        }
+      });
+
+      function viewFormFullImage(url, title) {
+        document.getElementById('formFullImageView').src = url;
+        document.getElementById('formImageViewTitle').textContent = title;
+        formImageViewModal.style.display = 'flex';
+      }
+
+      // Preview de la foto seleccionada
+      document.getElementById('photoSelect').addEventListener('change', (e) => {
+        const selectedOption = e.target.options[e.target.selectedIndex];
+        const photoId = e.target.value;
+        
+        if (!photoId) {
+          document.getElementById('photoPreview').style.display = 'none';
+          return;
+        }
+
+        const photoUrl = selectedOption.dataset.url; // This is thumbnail
+        const photoName = selectedOption.textContent;
+        const photoFolder = selectedOption.dataset.folder;
+        
+        // Find the full photo object to get the full image URL
+        const selectedPhoto = allPhotos.find(p => p.id === photoId);
+        currentFullImageUrl = selectedPhoto ? selectedPhoto.signedUrl : photoUrl;
+        
+        document.getElementById('previewImage').src = photoUrl; // Show thumbnail
+        document.getElementById('previewImage').onclick = () => viewFormFullImage(currentFullImageUrl, photoName);
+        document.getElementById('previewInfo').textContent = `Carpeta: ${photoFolder}`;
+        document.getElementById('photoPreview').style.display = 'block';
+      });
+
+      // Enviar formulario
+      document.getElementById('mainForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const photoId = document.getElementById('photoSelect').value;
+        
+        if (!photoId) {
+          alert('Por favor selecciona una foto');
+          return;
+        }
+
+        const submitButton = e.target.querySelector('.btn-submit');
+        const originalButtonText = submitButton.textContent;
+        
+        try {
+          // Disable button and show loading state
+          submitButton.disabled = true;
+          submitButton.textContent = 'Enviando...';
+          submitButton.style.opacity = '0.6';
+          
+          const formData = {
+            photo_id: photoId,
+            // Aquí se agregarán más campos cuando se añadan más secciones
+          };
+
+          const response = await fetch('/api/submit-form', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify(formData)
+          });
+
+          const result = await response.json();
+
+          if (response.ok && result.ok) {
+            console.log('Formulario enviado exitosamente:', result);
+            
+            let message = '✅ ¡Formulario enviado correctamente!\n\n';
+            
+            if (result.webhook_sent) {
+              message += '🎯 Webhook enviado a Alico exitosamente';
+            } else {
+              message += '⚠️ Advertencia: El webhook no pudo ser enviado\n';
+              message += `Error: ${result.webhook_error || 'Desconocido'}`;
+            }
+            
+            alert(message);
+            
+            // Redirect to dashboard after success
+            setTimeout(() => {
+              window.location.href = '/dashboard.html';
+            }, 2000);
+          } else {
+            throw new Error(result.error || 'Error al enviar formulario');
+          }
+        } catch (error) {
+          console.error('Error al enviar formulario:', error);
+          alert('❌ Error al enviar el formulario:\n' + error.message);
+          
+          // Re-enable button
+          submitButton.disabled = false;
+          submitButton.textContent = originalButtonText;
+          submitButton.style.opacity = '1';
+        }
+      });
+
+      // Cargar fotos al iniciar
+      loadPhotos();
+    </script>
+  </body>
+</html>

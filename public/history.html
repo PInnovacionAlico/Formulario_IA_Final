@@ -1,0 +1,747 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Historial de Envíos - Formulario IA</title>
+    <link rel="stylesheet" href="/style.css" />
+    <style>
+      .history-table {
+        width: 100%;
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      thead {
+        background: linear-gradient(135deg, var(--alico-gold) 0%, var(--alico-gold-80) 100%);
+        color: white;
+      }
+
+      th {
+        padding: 16px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 14px;
+      }
+
+      td {
+        padding: 16px;
+        border-bottom: 1px solid #e0e0e0;
+        font-size: 14px;
+      }
+
+      tbody tr:hover {
+        background: var(--alico-gold-10);
+      }
+
+      tbody tr:last-child td {
+        border-bottom: none;
+      }
+
+      .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      .status-success {
+        background: #d4edda;
+        color: #155724;
+      }
+
+      .status-error {
+        background: #f8d7da;
+        color: #721c24;
+      }
+
+      .webhook-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: 16px;
+        font-size: 11px;
+        font-weight: 600;
+      }
+
+      .webhook-sent {
+        background: var(--alico-blue-10);
+        color: var(--alico-blue);
+      }
+
+      .webhook-failed {
+        background: var(--alico-gold-20);
+        color: var(--alico-gold-80);
+      }
+
+      .form-type-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      .form-termoformado {
+        background: #e3f2fd;
+        color: #1565c0;
+      }
+
+      .form-doypack {
+        background: #fff3e0;
+        color: #e65100;
+      }
+
+      .form-flowpack {
+        background: #f3e5f5;
+        color: #6a1b9a;
+      }
+
+      .form-unknown {
+        background: #f5f5f5;
+        color: #757575;
+      }
+
+      .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #999;
+      }
+
+      .empty-state-icon {
+        font-size: 64px;
+        margin-bottom: 16px;
+        opacity: 0.5;
+      }
+
+      .empty-state-text {
+        font-size: 18px;
+        margin-bottom: 24px;
+      }
+
+      .btn-view-photo {
+        padding: 6px 12px;
+        background: linear-gradient(135deg, var(--alico-blue) 0%, var(--alico-blue-80) 100%);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+      }
+
+      .btn-view-photo:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 10px rgba(0, 15, 159, 0.3);
+      }
+
+      .stats-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin-bottom: 32px;
+      }
+
+      .stat-card {
+        background: white;
+        padding: 24px;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        text-align: center;
+        border: 2px solid var(--alico-gold-20);
+      }
+
+      .stat-number {
+        font-size: 36px;
+        font-weight: 700;
+        color: var(--alico-gold);
+        margin-bottom: 8px;
+      }
+
+      .stat-label {
+        font-size: 14px;
+        color: #666;
+        font-weight: 500;
+      }
+
+      .error-message {
+        max-width: 300px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: #721c24;
+        font-size: 12px;
+      }
+
+      .date-filter-container {
+        position: relative;
+        margin-bottom: 20px;
+        display: inline-block;
+      }
+
+      .date-filter-toggle {
+        background: linear-gradient(135deg, var(--alico-blue) 0%, var(--alico-blue-80) 100%);
+        color: white;
+        border: none;
+        padding: 12px 20px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        box-shadow: 0 2px 6px rgba(0, 15, 159, 0.3);
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .date-filter-toggle:hover {
+        background: linear-gradient(135deg, var(--alico-blue-80) 0%, var(--alico-blue) 100%);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 10px rgba(0, 15, 159, 0.4);
+      }
+
+      .date-filter-dropdown {
+        position: absolute;
+        top: calc(100% + 8px);
+        left: 0;
+        background: #1a1a2e;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        padding: 8px;
+        min-width: 200px;
+        z-index: 1000;
+      }
+
+      .date-filter-option {
+        background: transparent;
+        color: white;
+        border: none;
+        padding: 12px 16px;
+        width: 100%;
+        text-align: left;
+        cursor: pointer;
+        font-size: 14px;
+        border-radius: 6px;
+        transition: all 0.2s;
+        display: block;
+      }
+
+      .date-filter-option:hover {
+        background: rgba(219, 149, 0, 0.2);
+        transform: translateX(4px);
+      }
+
+      .date-filter-option.active {
+        background: linear-gradient(135deg, var(--alico-gold) 0%, var(--alico-gold-80) 100%);
+        font-weight: 600;
+      }
+
+      @media (max-width: 768px) {
+        .history-table {
+          overflow-x: auto;
+        }
+
+        table {
+          min-width: 800px;
+        }
+
+        th, td {
+          padding: 12px 8px;
+          font-size: 12px;
+        }
+
+        .stats-container {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="dashboard-container">
+      <header class="dashboard-header">
+        <h1>📊 Historial de Envíos</h1>
+        
+        <!-- Desktop menu -->
+        <div class="user-info">
+          <span id="userName"></span>
+          <div id="creditsDisplay" style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; background: linear-gradient(135deg, var(--alico-gold-20) 0%, var(--alico-gold-30) 100%); border-radius: 8px; margin-right: 12px; border: 2px solid var(--alico-gold);">
+            <span style="font-size: 20px;">💳</span>
+            <span style="font-weight: 700; color: var(--alico-gold); font-size: 18px;" id="creditsCount">...</span>
+            <span style="font-size: 13px; color: var(--alico-gold-80);">créditos</span>
+          </div>
+          <button onclick="location.href='/dashboard.html'" class="btn-secondary">Volver al Dashboard</button>
+          <button id="logoutBtn" class="btn-secondary">Cerrar sesión</button>
+        </div>
+
+        <!-- Mobile hamburger button -->
+        <button class="mobile-menu-toggle" id="mobileMenuToggle">
+          ☰
+        </button>
+      </header>
+
+      <!-- Mobile menu overlay and sidebar -->
+      <div class="mobile-menu-overlay" id="mobileMenuOverlay"></div>
+      <div class="mobile-menu" id="mobileMenu">
+        <div class="mobile-menu-header">
+          <h2>Menú</h2>
+          <button class="mobile-menu-close" id="mobileMenuClose">×</button>
+        </div>
+        <div class="mobile-menu-content">
+          <div class="mobile-menu-user">
+            <span id="mobileUserName"></span>
+            <div class="mobile-menu-credits">
+              <span class="mobile-menu-credits-icon">💳</span>
+              <span class="mobile-menu-credits-count" id="mobileCreditsCount">...</span>
+              <span class="mobile-menu-credits-label">créditos</span>
+            </div>
+          </div>
+          <div class="mobile-menu-buttons">
+            <button type="button" onclick="location.href='/dashboard.html'" class="btn-secondary">🏠 Dashboard</button>
+            <button type="button" onclick="location.href='/forms.html'" class="btn-secondary">📋 Formularios</button>
+            <button id="mobileLogoutBtn" class="btn-secondary">🚪 Cerrar sesión</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="dashboard-content">
+        <!-- Estadísticas -->
+        <div class="stats-container">
+          <div class="stat-card">
+            <div class="stat-number" id="totalSubmissions">0</div>
+            <div class="stat-label">Total de envíos</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number" id="successfulSubmissions">0</div>
+            <div class="stat-label">Exitosos</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number" id="failedSubmissions">0</div>
+            <div class="stat-label">Fallidos</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number" id="webhookSuccessRate">0%</div>
+            <div class="stat-label">Tasa de éxito webhook</div>
+          </div>
+        </div>
+
+        <!-- Tabla de historial -->
+        <div class="gallery-section">
+          <h2>Registro de Envíos</h2>
+          
+          <!-- Filtro de fechas -->
+          <div class="date-filter-container">
+            <button class="date-filter-toggle" id="dateFilterToggle">
+              📅 Filtrar por fecha
+            </button>
+            <div class="date-filter-dropdown" id="dateFilterDropdown" style="display: none;">
+              <button class="date-filter-option" data-filter="today">Hoy</button>
+              <button class="date-filter-option" data-filter="7days">Últimos 7 días</button>
+              <button class="date-filter-option" data-filter="30days">Últimos 30 días</button>
+              <button class="date-filter-option" data-filter="3months">Últimos 3 meses</button>
+              <button class="date-filter-option" data-filter="all">Todos los registros</button>
+            </div>
+          </div>
+
+          <div id="loadingMsg">Cargando historial...</div>
+          
+          <div id="historyContainer" style="display: none;">
+            <div class="history-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Fecha y Hora</th>
+                    <th>Formulario</th>
+                    <th>Estado</th>
+                    <th>Webhook</th>
+                    <th>Error</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="historyTableBody">
+                  <!-- Populated by JavaScript -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div id="emptyState" style="display: none;">
+            <div class="empty-state">
+              <div class="empty-state-icon">📭</div>
+              <div class="empty-state-text">No hay envíos registrados todavía</div>
+              <button onclick="location.href='/form.html'" class="btn-action btn-form">📝 Crear primer formulario</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal for photo details -->
+    <div id="photoModal" class="modal">
+      <div class="modal-content">
+        <span class="modal-close">&times;</span>
+        <h2 id="photoModalTitle">Detalles del Envío</h2>
+        <div id="photoModalContent"></div>
+      </div>
+    </div>
+
+    <script>
+      const token = localStorage.getItem('token');
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      
+      if (!token) {
+        window.location.href = '/login.html';
+      }
+
+      const userName = user.name || user.email || 'Usuario';
+      document.getElementById('userName').textContent = userName;
+      document.getElementById('mobileUserName').textContent = userName;
+
+      // Mobile menu handlers
+      const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+      const mobileMenu = document.getElementById('mobileMenu');
+      const mobileMenuOverlay = document.getElementById('mobileMenuOverlay');
+      const mobileMenuClose = document.getElementById('mobileMenuClose');
+
+      function openMobileMenu() {
+        mobileMenu.classList.add('active');
+        mobileMenuOverlay.classList.add('active');
+        document.body.style.overflow = 'hidden';
+      }
+
+      function closeMobileMenu() {
+        mobileMenu.classList.remove('active');
+        mobileMenuOverlay.classList.remove('active');
+        document.body.style.overflow = '';
+      }
+
+      mobileMenuToggle.addEventListener('click', openMobileMenu);
+      mobileMenuClose.addEventListener('click', closeMobileMenu);
+      mobileMenuOverlay.addEventListener('click', closeMobileMenu);
+
+      document.getElementById('mobileLogoutBtn').addEventListener('click', () => {
+        if (confirm('¿Estás seguro que deseas cerrar sesión?')) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          window.location.href = '/login.html';
+        }
+      });
+
+      // Load user credits
+      async function loadCredits() {
+        try {
+          const res = await fetch('/api/credits', {
+            headers: { 'Authorization': 'Bearer ' + token }
+          });
+          const data = await res.json();
+          
+          if (data.ok) {
+            // Update desktop credits
+            const creditsCount = document.getElementById('creditsCount');
+            creditsCount.textContent = data.credits;
+            
+            // Update mobile credits
+            const mobileCreditsCount = document.getElementById('mobileCreditsCount');
+            mobileCreditsCount.textContent = data.credits;
+            
+            const creditsDisplay = document.getElementById('creditsDisplay');
+            if (data.credits === 0) {
+              creditsDisplay.style.background = 'linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%)';
+              creditsDisplay.style.borderColor = '#dc3545';
+              creditsCount.style.color = '#dc3545';
+              const nextReset = new Date(data.nextReset);
+              creditsDisplay.title = `Se recargarán el ${nextReset.toLocaleDateString('es-ES')}`;
+            } else if (data.credits === 1) {
+              creditsDisplay.style.background = 'linear-gradient(135deg, #fff3cd 0%, #ffe69c 100%)';
+              creditsDisplay.style.borderColor = '#ffc107';
+              creditsCount.style.color = '#856404';
+            }
+          }
+        } catch (err) {
+          console.error('Error loading credits:', err);
+        }
+      }
+
+      loadCredits();
+
+      document.getElementById('logoutBtn').addEventListener('click', () => {
+        if (confirm('¿Estás seguro que deseas cerrar sesión?')) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          window.location.href = '/login.html';
+        }
+      });
+
+      // Store all submissions for filtering
+      let allSubmissions = [];
+      let currentFilter = 'all';
+
+      // Load submission history
+      async function loadHistory() {
+        try {
+          const res = await fetch('/api/form-submissions', {
+            headers: { 'Authorization': 'Bearer ' + token }
+          });
+          
+          const data = await res.json();
+          
+          if (data.ok && data.submissions) {
+            allSubmissions = data.submissions;
+            
+            if (data.submissions.length === 0) {
+              document.getElementById('loadingMsg').style.display = 'none';
+              document.getElementById('emptyState').style.display = 'block';
+            } else {
+              applyDateFilter(currentFilter);
+              document.getElementById('loadingMsg').style.display = 'none';
+              document.getElementById('historyContainer').style.display = 'block';
+            }
+          } else {
+            throw new Error(data.error || 'Error al cargar historial');
+          }
+        } catch (err) {
+          console.error('Error loading history:', err);
+          document.getElementById('loadingMsg').innerHTML = `
+            <div style="color: #721c24; padding: 20px; text-align: center;">
+              ❌ Error al cargar el historial: ${err.message}
+            </div>
+          `;
+        }
+      }
+
+      function renderHistory(submissions) {
+        const tbody = document.getElementById('historyTableBody');
+        tbody.innerHTML = '';
+
+        submissions.forEach(sub => {
+          const row = document.createElement('tr');
+          
+          const date = new Date(sub.completed_at);
+          const formattedDate = date.toLocaleString('es-ES', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+
+          const statusBadge = sub.success 
+            ? '<span class="status-badge status-success">✅ Exitoso</span>'
+            : '<span class="status-badge status-error">❌ Fallido</span>';
+
+          const webhookBadge = sub.webhook_sent
+            ? '<span class="webhook-badge webhook-sent">🎯 Enviado</span>'
+            : '<span class="webhook-badge webhook-failed">⚠️ No enviado</span>';
+
+          const errorCell = sub.error_message 
+            ? `<span class="error-message" title="${sub.error_message}">${sub.error_message}</span>`
+            : '-';
+
+          // Form type badge
+          const formTypeIcons = {
+            'termoformado': '🔲',
+            'doypack': '📦',
+            'flowpack': '📄'
+          };
+          const formTypeName = sub.form_type || 'No especificado';
+          const formTypeIcon = formTypeIcons[sub.form_type] || '❓';
+          const formTypeClass = sub.form_type ? `form-${sub.form_type}` : 'form-unknown';
+          const formTypeBadge = `<span class="form-type-badge ${formTypeClass}">${formTypeIcon} ${formTypeName.charAt(0).toUpperCase() + formTypeName.slice(1)}</span>`;
+
+          row.innerHTML = `
+            <td>${formattedDate}</td>
+            <td>${formTypeBadge}</td>
+            <td>${statusBadge}</td>
+            <td>${webhookBadge}</td>
+            <td>${errorCell}</td>
+            <td>
+              <button class="btn-view-photo" onclick="viewDetails('${sub.id}')">
+                Ver detalles
+              </button>
+            </td>
+          `;
+
+          tbody.appendChild(row);
+        });
+      }
+
+      function updateStats(submissions) {
+        const total = submissions.length;
+        const successful = submissions.filter(s => s.success).length;
+        const failed = total - successful;
+        const webhookSent = submissions.filter(s => s.webhook_sent).length;
+        const webhookRate = total > 0 ? Math.round((webhookSent / total) * 100) : 0;
+
+        document.getElementById('totalSubmissions').textContent = total;
+        document.getElementById('successfulSubmissions').textContent = successful;
+        document.getElementById('failedSubmissions').textContent = failed;
+        document.getElementById('webhookSuccessRate').textContent = webhookRate + '%';
+      }
+
+      async function viewDetails(submissionId) {
+        try {
+          const res = await fetch(`/api/form-submissions/${submissionId}`, {
+            headers: { 'Authorization': 'Bearer ' + token }
+          });
+          
+          const data = await res.json();
+          
+          if (data.ok && data.submission) {
+            showDetailsModal(data.submission);
+          } else {
+            alert('Error al cargar detalles');
+          }
+        } catch (err) {
+          console.error('Error loading details:', err);
+          alert('Error al cargar detalles: ' + err.message);
+        }
+      }
+
+      function showDetailsModal(sub) {
+        const modal = document.getElementById('photoModal');
+        const content = document.getElementById('photoModalContent');
+        
+        const date = new Date(sub.completed_at);
+        const formattedDate = date.toLocaleString('es-ES', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit'
+        });
+
+        const formTypeIcons = {
+          'termoformado': '🔲',
+          'doypack': '📦',
+          'flowpack': '📄'
+        };
+        const formTypeDisplay = sub.form_type 
+          ? `${formTypeIcons[sub.form_type] || '❓'} ${sub.form_type.charAt(0).toUpperCase() + sub.form_type.slice(1)}`
+          : 'No especificado';
+
+        const productInfo = sub.product_name 
+          ? `<div><strong>Producto:</strong> ${sub.product_name} <span style="color: #666;">(${sub.product_category})</span></div>`
+          : '';
+
+        content.innerHTML = `
+          <div style="display: flex; flex-direction: column; gap: 16px;">
+            <div><strong>ID:</strong> ${sub.id}</div>
+            <div><strong>Fecha:</strong> ${formattedDate}</div>
+            <div><strong>Formulario:</strong> ${formTypeDisplay}</div>
+            ${productInfo}
+            <div><strong>Foto:</strong> ${sub.photo_filename || 'N/A'}</div>
+            <div><strong>Estado:</strong> ${sub.success ? '✅ Exitoso' : '❌ Fallido'}</div>
+            <div><strong>Webhook enviado:</strong> ${sub.webhook_sent ? '✅ Sí' : '❌ No'}</div>
+            ${sub.webhook_response_status ? `<div><strong>Código respuesta webhook:</strong> ${sub.webhook_response_status}</div>` : ''}
+            ${sub.error_message ? `<div><strong>Error:</strong> <span style="color: #721c24;">${sub.error_message}</span></div>` : ''}
+            ${sub.form_data && Object.keys(sub.form_data).length > 0 ? `<div><strong>Datos del formulario:</strong> <pre style="background: #f5f5f5; padding: 12px; border-radius: 6px; overflow-x: auto;">${JSON.stringify(sub.form_data, null, 2)}</pre></div>` : ''}
+          </div>
+        `;
+
+        modal.style.display = 'flex';
+      }
+
+      // Modal close handlers
+      document.querySelectorAll('.modal-close').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.target.closest('.modal').style.display = 'none';
+        });
+      });
+
+      window.addEventListener('click', (e) => {
+        if (e.target.classList.contains('modal')) {
+          e.target.style.display = 'none';
+        }
+      });
+
+      // Date filter functionality
+      const dateFilterToggle = document.getElementById('dateFilterToggle');
+      const dateFilterDropdown = document.getElementById('dateFilterDropdown');
+
+      dateFilterToggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        dateFilterDropdown.style.display = dateFilterDropdown.style.display === 'none' ? 'block' : 'none';
+      });
+
+      // Close dropdown when clicking outside
+      document.addEventListener('click', (e) => {
+        if (!dateFilterToggle.contains(e.target) && !dateFilterDropdown.contains(e.target)) {
+          dateFilterDropdown.style.display = 'none';
+        }
+      });
+
+      document.querySelectorAll('.date-filter-option').forEach(option => {
+        option.addEventListener('click', () => {
+          const filter = option.dataset.filter;
+          currentFilter = filter;
+          
+          // Update active state
+          document.querySelectorAll('.date-filter-option').forEach(opt => opt.classList.remove('active'));
+          option.classList.add('active');
+          
+          // Update button text
+          dateFilterToggle.textContent = '📅 ' + option.textContent;
+          
+          // Apply filter
+          applyDateFilter(filter);
+          
+          // Close dropdown
+          dateFilterDropdown.style.display = 'none';
+        });
+      });
+
+      function applyDateFilter(filter) {
+        if (allSubmissions.length === 0) return;
+
+        const now = new Date();
+        let filteredSubmissions = allSubmissions;
+
+        if (filter !== 'all') {
+          filteredSubmissions = allSubmissions.filter(sub => {
+            const submissionDate = new Date(sub.completed_at);
+            const diffTime = now - submissionDate;
+            const diffDays = diffTime / (1000 * 60 * 60 * 24);
+
+            switch (filter) {
+              case 'today':
+                return diffDays < 1;
+              case '7days':
+                return diffDays <= 7;
+              case '30days':
+                return diffDays <= 30;
+              case '3months':
+                return diffDays <= 90;
+              default:
+                return true;
+            }
+          });
+        }
+
+        renderHistory(filteredSubmissions);
+        updateStats(filteredSubmissions);
+      }
+
+      // Initialize default filter as active
+      document.querySelector('.date-filter-option[data-filter="all"]').classList.add('active');
+
+      // Load history on page load
+      loadHistory();
+    </script>
+  </body>
+</html>

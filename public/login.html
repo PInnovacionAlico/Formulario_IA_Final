@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Iniciar Sesión - Formulario IA</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="card">
+        <h1>Iniciar Sesión</h1>
+        <form id="loginForm">
+          <label>Email<input type="email" name="email" required /></label>
+          <label>Contraseña<input type="password" name="password" required /></label>
+          <button type="submit">Ingresar</button>
+          <div id="loginResult" class="result"></div>
+        </form>
+        <div class="links">
+          <a href="/register.html">¿No tienes cuenta? Regístrate</a>
+          <a href="/change-password.html">Cambiar contraseña</a>
+        </div>
+      </div>
+    </div>
+    <script>
+      // Check if user is already logged in
+      const existingToken = localStorage.getItem('token');
+      if (existingToken) {
+        // Verify token is still valid by making a quick API call
+        fetch('/api/uploads', {
+          headers: { 'Authorization': 'Bearer ' + existingToken }
+        })
+        .then(res => {
+          if (res.ok) {
+            // Token is valid, redirect to dashboard
+            window.location.href = '/dashboard.html';
+          } else {
+            // Token is invalid, clear it
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+          }
+        })
+        .catch(() => {
+          // Network error, clear token
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+        });
+      }
+
+      document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const fd = new FormData(e.target);
+        const body = { email: fd.get('email'), password: fd.get('password') };
+        const resEl = document.getElementById('loginResult');
+        resEl.textContent = 'Iniciando sesión...';
+        try {
+          const res = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+          });
+          const data = await res.json();
+          if (data.ok && data.token) {
+            localStorage.setItem('token', data.token);
+            localStorage.setItem('user', JSON.stringify(data.user));
+            resEl.textContent = 'Éxito! Redirigiendo...';
+            setTimeout(() => window.location.href = '/dashboard.html', 500);
+          } else {
+            resEl.textContent = data.error || 'Error al iniciar sesión';
+          }
+        } catch (err) {
+          resEl.textContent = String(err);
+        }
+      });
+    </script>
+  </body>
+</html>

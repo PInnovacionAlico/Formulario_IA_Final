@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Formularios - Formulario IA</title>
+    <link rel="stylesheet" href="/style.css" />
+    <style>
+      .forms-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 32px;
+        margin-top: 32px;
+      }
+
+      .form-card {
+        background: white;
+        border-radius: 16px;
+        border: 3px solid var(--alico-gold);
+        overflow: hidden;
+        box-shadow: 0 6px 20px rgba(219, 149, 0, 0.2);
+        transition: all 0.3s ease;
+        cursor: pointer;
+      }
+
+      .form-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 12px 32px rgba(219, 149, 0, 0.35);
+        border-color: var(--alico-blue);
+      }
+
+      .form-card-header {
+        padding: 32px 24px;
+        background: linear-gradient(135deg, var(--alico-gold) 0%, var(--alico-gold-80) 100%);
+        text-align: center;
+        position: relative;
+      }
+
+      .form-card:hover .form-card-header {
+        background: linear-gradient(135deg, var(--alico-blue) 0%, var(--alico-blue-80) 100%);
+      }
+
+      .form-card-icon {
+        font-size: 64px;
+        margin-bottom: 16px;
+        display: block;
+        filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
+      }
+
+      .form-card-title {
+        margin: 0;
+        color: white;
+        font-size: 24px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+
+      .form-card-body {
+        padding: 24px;
+      }
+
+      .form-card-description {
+        color: #666;
+        font-size: 15px;
+        line-height: 1.6;
+        margin-bottom: 20px;
+      }
+
+      .form-card-features {
+        list-style: none;
+        padding: 0;
+        margin: 0 0 24px 0;
+      }
+
+      .form-card-features li {
+        padding: 8px 0;
+        color: #333;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .form-card-features li::before {
+        content: '✓';
+        color: var(--alico-gold);
+        font-weight: bold;
+        font-size: 18px;
+      }
+
+      .form-card-button {
+        width: 100%;
+        padding: 14px 24px;
+        background: linear-gradient(135deg, var(--alico-blue) 0%, var(--alico-blue-80) 100%);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-size: 16px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(0, 15, 159, 0.3);
+      }
+
+      .form-card-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 18px rgba(0, 15, 159, 0.5);
+        background: linear-gradient(135deg, var(--alico-blue-80) 0%, var(--alico-blue) 100%);
+      }
+
+      .forms-header {
+        text-align: center;
+        margin-bottom: 48px;
+        padding: 40px;
+        background: linear-gradient(135deg, var(--alico-blue-10) 0%, var(--alico-gold-10) 100%);
+        border-radius: 16px;
+        border: 3px solid var(--alico-gold-30);
+      }
+
+      .forms-header h2 {
+        margin: 0 0 16px 0;
+        font-size: 36px;
+        background: linear-gradient(135deg, var(--alico-blue) 0%, var(--alico-gold) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        font-weight: 900;
+      }
+
+      .forms-header p {
+        margin: 0;
+        color: #666;
+        font-size: 18px;
+        font-weight: 500;
+      }
+
+      @media (max-width: 768px) {
+        .forms-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .forms-header h2 {
+          font-size: 28px;
+        }
+
+        .forms-header p {
+          font-size: 16px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="dashboard-container">
+      <header class="dashboard-header">
+        <h1>📋 Formularios</h1>
+        
+        <!-- Desktop menu -->
+        <div class="user-info">
+          <span id="userName"></span>
+          <div id="creditsDisplay" style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; background: linear-gradient(135deg, var(--alico-gold-20) 0%, var(--alico-gold-30) 100%); border-radius: 8px; margin-right: 12px; border: 2px solid var(--alico-gold);">
+            <span style="font-size: 20px;">💳</span>
+            <span style="font-weight: 700; color: var(--alico-gold); font-size: 18px;" id="creditsCount">...</span>
+            <span style="font-size: 13px; color: var(--alico-gold-80);">créditos</span>
+          </div>
+          <button type="button" onclick="location.href='/dashboard.html'" class="btn-secondary">Volver al Dashboard</button>
+          <button id="logoutBtn" class="btn-secondary">Cerrar sesión</button>
+        </div>
+
+        <!-- Mobile hamburger button -->
+        <button class="mobile-menu-toggle" id="mobileMenuToggle">
+          ☰
+        </button>
+      </header>
+
+      <!-- Mobile menu overlay and sidebar -->
+      <div class="mobile-menu-overlay" id="mobileMenuOverlay"></div>
+      <div class="mobile-menu" id="mobileMenu">
+        <div class="mobile-menu-header">
+          <h2>Menú</h2>
+          <button class="mobile-menu-close" id="mobileMenuClose">×</button>
+        </div>
+        <div class="mobile-menu-content">
+          <div class="mobile-menu-user">
+            <span id="mobileUserName"></span>
+            <div class="mobile-menu-credits">
+              <span class="mobile-menu-credits-icon">💳</span>
+              <span class="mobile-menu-credits-count" id="mobileCreditsCount">...</span>
+              <span class="mobile-menu-credits-label">créditos</span>
+            </div>
+          </div>
+          <div class="mobile-menu-buttons">
+            <button type="button" onclick="location.href='/dashboard.html'" class="btn-secondary">🏠 Dashboard</button>
+            <button type="button" onclick="location.href='/history.html'" class="btn-secondary">📊 Historial</button>
+            <button id="mobileLogoutBtn" class="btn-secondary">🚪 Cerrar sesión</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="dashboard-content">
+        <div class="gallery-section">
+          <div class="forms-header">
+            <h2>🎯 Selecciona un Tipo de Formulario</h2>
+            <p>Elige el formulario que corresponda al tipo de empaque que deseas procesar</p>
+          </div>
+
+          <div class="forms-grid">
+            <!-- Doypack -->
+            <div class="form-card" onclick="location.href='/form-doypack.html'">
+              <div class="form-card-header">
+                <span class="form-card-icon">📦</span>
+                <h3 class="form-card-title">Doypack</h3>
+              </div>
+              <div class="form-card-body">
+                <p class="form-card-description">
+                  Formulario para empaques tipo Doypack, ideales para productos líquidos y semilíquidos con presentación vertical.
+                </p>
+                <ul class="form-card-features">
+                  <li>Empaque flexible vertical</li>
+                  <li>Con cierre resellable</li>
+                  <li>Ideal para líquidos</li>
+                </ul>
+                <button class="form-card-button">
+                  Ir al formulario →
+                </button>
+              </div>
+            </div>
+
+            <!-- Termoformado -->
+            <div class="form-card" onclick="location.href='/form-termoformado.html'">
+              <div class="form-card-header">
+                <span class="form-card-icon">🔲</span>
+                <h3 class="form-card-title">Termoformado</h3>
+              </div>
+              <div class="form-card-body">
+                <p class="form-card-description">
+                  Formulario para empaques termoformados, perfectos para productos sólidos con presentación en bandeja rígida.
+                </p>
+                <ul class="form-card-features">
+                  <li>Bandeja rígida formada</li>
+                  <li>Protección superior</li>
+                  <li>Ideal para sólidos</li>
+                </ul>
+                <button class="form-card-button">
+                  Ir al formulario →
+                </button>
+              </div>
+            </div>
+
+            <!-- Flow-Pack -->
+            <div class="form-card" onclick="location.href='/form-flowpack.html'">
+              <div class="form-card-header">
+                <span class="form-card-icon">📄</span>
+                <h3 class="form-card-title">Flow-Pack</h3>
+              </div>
+              <div class="form-card-body">
+                <p class="form-card-description">
+                  Formulario para empaques Flow-Pack, óptimos para productos individuales con sellado horizontal continuo.
+                </p>
+                <ul class="form-card-features">
+                  <li>Empaque horizontal</li>
+                  <li>Sellado continuo</li>
+                  <li>Alta velocidad</li>
+                </ul>
+                <button class="form-card-button">
+                  Ir al formulario →
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const token = localStorage.getItem('token');
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      
+      if (!token) {
+        window.location.href = '/login.html';
+      }
+
+      const userName = user.name || user.email || 'Usuario';
+      document.getElementById('userName').textContent = userName;
+      document.getElementById('mobileUserName').textContent = userName;
+
+      // Mobile menu handlers
+      const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+      const mobileMenu = document.getElementById('mobileMenu');
+      const mobileMenuOverlay = document.getElementById('mobileMenuOverlay');
+      const mobileMenuClose = document.getElementById('mobileMenuClose');
+
+      function openMobileMenu() {
+        mobileMenu.classList.add('active');
+        mobileMenuOverlay.classList.add('active');
+        document.body.style.overflow = 'hidden';
+      }
+
+      function closeMobileMenu() {
+        mobileMenu.classList.remove('active');
+        mobileMenuOverlay.classList.remove('active');
+        document.body.style.overflow = '';
+      }
+
+      mobileMenuToggle.addEventListener('click', openMobileMenu);
+      mobileMenuClose.addEventListener('click', closeMobileMenu);
+      mobileMenuOverlay.addEventListener('click', closeMobileMenu);
+
+      document.getElementById('mobileLogoutBtn').addEventListener('click', () => {
+        if (confirm('¿Estás seguro que deseas cerrar sesión?')) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          window.location.href = '/login.html';
+        }
+      });
+
+      // Load user credits
+      async function loadCredits() {
+        try {
+          const res = await fetch('/api/credits', {
+            headers: { 'Authorization': 'Bearer ' + token }
+          });
+          const data = await res.json();
+          
+          if (data.ok) {
+            // Update desktop credits
+            const creditsCount = document.getElementById('creditsCount');
+            creditsCount.textContent = data.credits;
+            
+            // Update mobile credits
+            const mobileCreditsCount = document.getElementById('mobileCreditsCount');
+            mobileCreditsCount.textContent = data.credits;
+            
+            const creditsDisplay = document.getElementById('creditsDisplay');
+            if (data.credits === 0) {
+              creditsDisplay.style.background = 'linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%)';
+              creditsDisplay.style.borderColor = '#dc3545';
+              creditsCount.style.color = '#dc3545';
+              const nextReset = new Date(data.nextReset);
+              creditsDisplay.title = `Se recargarán el ${nextReset.toLocaleDateString('es-ES')}`;
+            } else if (data.credits === 1) {
+              creditsDisplay.style.background = 'linear-gradient(135deg, #fff3cd 0%, #ffe69c 100%)';
+              creditsDisplay.style.borderColor = '#ffc107';
+              creditsCount.style.color = '#856404';
+            }
+          }
+        } catch (err) {
+          console.error('Error loading credits:', err);
+        }
+      }
+
+      loadCredits();
+
+      document.getElementById('logoutBtn').addEventListener('click', () => {
+        if (confirm('¿Estás seguro que deseas cerrar sesión?')) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          window.location.href = '/login.html';
+        }
+      });
+    </script>
+  </body>
+</html>

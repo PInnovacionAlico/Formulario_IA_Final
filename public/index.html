@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Formulario IA - Gestión inteligente de tus fotos</title>
+    <link rel="stylesheet" href="/style.css" />
+    <style>
+      /* Alico color variables */
+      :root {
+        --alico-gold: #DB9500;
+        --alico-gold-80: #E2AA33;
+        --alico-gold-70: #E6B54D;
+        --alico-gold-20: #F8EACC;
+        --alico-gold-10: #FBF4E5;
+        --alico-blue: #000F9F;
+        --alico-blue-80: #333FB2;
+        --alico-blue-70: #4D58BC;
+      }
+
+      /* Landing page specific styles */
+      body {
+        padding: 0;
+        margin: 0;
+      }
+
+      .landing-nav {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        padding: 16px 40px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        z-index: 100;
+      }
+
+      .landing-nav-logo {
+        font-size: 24px;
+        font-weight: 700;
+        background: linear-gradient(135deg, var(--alico-gold) 0%, var(--alico-blue) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      .landing-nav-buttons {
+        display: flex;
+        gap: 12px;
+      }
+
+      .btn-nav {
+        padding: 10px 24px;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+        text-decoration: none;
+        font-size: 14px;
+      }
+
+      .btn-nav-login {
+        background: transparent;
+        color: var(--alico-blue);
+        border: 2px solid var(--alico-blue);
+      }
+
+      .btn-nav-login:hover {
+        background: var(--alico-blue);
+        color: white;
+      }
+
+      .btn-nav-register {
+        background: linear-gradient(135deg, var(--alico-gold) 0%, var(--alico-gold-80) 100%);
+        color: white;
+        border: none;
+        box-shadow: 0 2px 8px rgba(219, 149, 0, 0.3);
+      }
+
+      .btn-nav-register:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(219, 149, 0, 0.4);
+      }
+
+      .hero-section {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, var(--alico-blue) 0%, var(--alico-blue-70) 50%, var(--alico-gold-70) 100%);
+        padding: 100px 20px 60px;
+        text-align: center;
+        color: white;
+      }
+
+      .hero-content {
+        max-width: 800px;
+      }
+
+      .hero-title {
+        font-size: 56px;
+        font-weight: 700;
+        margin-bottom: 24px;
+        line-height: 1.2;
+      }
+
+      .hero-subtitle {
+        font-size: 20px;
+        margin-bottom: 40px;
+        opacity: 0.95;
+        line-height: 1.6;
+      }
+
+      .hero-buttons {
+        display: flex;
+        gap: 16px;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+
+      .btn-hero {
+        padding: 16px 40px;
+        border-radius: 8px;
+        font-size: 18px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+        text-decoration: none;
+        display: inline-block;
+      }
+
+      .btn-hero-primary {
+        background: white;
+        color: var(--alico-gold);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        font-weight: 700;
+      }
+
+      .btn-hero-primary:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 25px rgba(219, 149, 0, 0.3);
+        background: var(--alico-gold-10);
+      }
+
+      .btn-hero-secondary {
+        background: rgba(255,255,255,0.2);
+        color: white;
+        border: 2px solid white;
+      }
+
+      .btn-hero-secondary:hover {
+        background: rgba(255,255,255,0.3);
+      }
+
+      .features-section {
+        padding: 80px 20px;
+        background: white;
+      }
+
+      .features-container {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
+      .features-title {
+        text-align: center;
+        font-size: 42px;
+        font-weight: 700;
+        margin-bottom: 60px;
+        background: linear-gradient(135deg, var(--alico-gold) 0%, var(--alico-blue) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      .features-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 40px;
+      }
+
+      .feature-card {
+        text-align: center;
+        padding: 30px;
+        border-radius: 12px;
+        background: var(--alico-gold-10);
+        border: 2px solid var(--alico-gold-20);
+        transition: transform 0.3s, box-shadow 0.3s, border-color 0.3s;
+      }
+
+      .feature-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(219, 149, 0, 0.2);
+        border-color: var(--alico-gold);
+      }
+
+      .feature-icon {
+        font-size: 60px;
+        margin-bottom: 20px;
+      }
+
+      .feature-title {
+        font-size: 24px;
+        font-weight: 600;
+        margin-bottom: 12px;
+        color: var(--alico-blue);
+      }
+
+      .feature-description {
+        font-size: 16px;
+        color: #666;
+        line-height: 1.6;
+      }
+
+      .cta-section {
+        padding: 80px 20px;
+        background: linear-gradient(135deg, var(--alico-gold) 0%, var(--alico-gold-80) 50%, var(--alico-blue) 100%);
+        text-align: center;
+        color: white;
+      }
+
+      .cta-title {
+        font-size: 42px;
+        font-weight: 700;
+        margin-bottom: 20px;
+      }
+
+      .cta-subtitle {
+        font-size: 20px;
+        margin-bottom: 40px;
+        opacity: 0.95;
+      }
+
+      @media (max-width: 768px) {
+        .landing-nav {
+          padding: 12px 20px;
+        }
+
+        .landing-nav-logo {
+          font-size: 20px;
+        }
+
+        .btn-nav {
+          padding: 8px 16px;
+          font-size: 13px;
+        }
+
+        .hero-section {
+          padding: 80px 20px 40px;
+        }
+
+        .hero-title {
+          font-size: 36px;
+        }
+
+        .hero-subtitle {
+          font-size: 16px;
+        }
+
+        .btn-hero {
+          padding: 14px 30px;
+          font-size: 16px;
+        }
+
+        .features-title,
+        .cta-title {
+          font-size: 32px;
+        }
+
+        .features-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <script>
+      // Check if user is already logged in and update button destinations
+      const existingToken = localStorage.getItem('token');
+      
+      function updateNavButtons() {
+        if (existingToken) {
+          // User is logged in, change destination to dashboard (keep text unchanged)
+          document.querySelectorAll('.btn-nav-login, .btn-login-link').forEach(btn => {
+            btn.href = '/dashboard.html';
+          });
+          
+          document.querySelectorAll('.btn-nav-register, .btn-register-link').forEach(btn => {
+            btn.href = '/dashboard.html';
+          });
+        }
+      }
+
+      // Update buttons when DOM is ready
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', updateNavButtons);
+      } else {
+        updateNavButtons();
+      }
+    </script>
+
+    <!-- Navigation -->
+    <nav class="landing-nav">
+      <div class="landing-nav-logo">📷 Formulario IA</div>
+      <div class="landing-nav-buttons">
+        <a href="/login.html" class="btn-nav btn-nav-login">Iniciar sesión</a>
+        <a href="/register.html" class="btn-nav btn-nav-register">Registrarse</a>
+      </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero-section">
+      <div class="hero-content">
+        <h1 class="hero-title">Gestiona tus fotos de forma inteligente</h1>
+        <p class="hero-subtitle">
+          Sube, organiza y gestiona todas tus imágenes en un solo lugar. 
+          Con carpetas personalizadas, renombrado intuitivo y carga ultrarrápida con thumbnails optimizados.
+        </p>
+        <div class="hero-buttons">
+          <a href="/register.html" class="btn-hero btn-hero-primary btn-register-link">Comenzar gratis</a>
+          <a href="/login.html" class="btn-hero btn-hero-secondary btn-login-link">Ya tengo cuenta</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features-section">
+      <div class="features-container">
+        <h2 class="features-title">¿Por qué elegir Formulario IA?</h2>
+        <div class="features-grid">
+          <div class="feature-card">
+            <div class="feature-icon">📁</div>
+            <h3 class="feature-title">Organización por carpetas</h3>
+            <p class="feature-description">
+              Crea carpetas personalizadas y organiza tus fotos de la manera que prefieras. 
+              Todo al alcance de un clic.
+            </p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon">⚡</div>
+            <h3 class="feature-title">Carga ultrarrápida</h3>
+            <p class="feature-description">
+              Thumbnails optimizados automáticamente para una experiencia de navegación instantánea. 
+              LCP < 1 segundo.
+            </p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon">🔒</div>
+            <h3 class="feature-title">Seguro y privado</h3>
+            <p class="feature-description">
+              Autenticación JWT, contraseñas encriptadas con bcrypt y tus archivos protegidos en Supabase Storage.
+            </p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon">✏️</div>
+            <h3 class="feature-title">Renombrado fácil</h3>
+            <p class="feature-description">
+              Dale nombres personalizados a tus fotos y muévelas entre carpetas con un simple clic.
+            </p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon">📱</div>
+            <h3 class="feature-title">100% Responsive</h3>
+            <p class="feature-description">
+              Diseñado para funcionar perfectamente en cualquier dispositivo: desktop, tablet o móvil.
+            </p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon">📝</div>
+            <h3 class="feature-title">Formularios inteligentes</h3>
+            <p class="feature-description">
+              Crea formularios vinculados a tus fotos con filtros avanzados y previsualización instantánea.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+      <h2 class="cta-title">¿Listo para empezar?</h2>
+      <p class="cta-subtitle">Únete hoy y comienza a gestionar tus fotos de manera profesional</p>
+      <div class="hero-buttons">
+        <a href="/register.html" class="btn-hero btn-hero-primary btn-register-link">Crear cuenta gratis</a>
+        <a href="/login.html" class="btn-hero btn-hero-secondary btn-login-link">Iniciar sesión</a>
+      </div>
+    </section>
+    <script src="/app.js"></script>
+  </body>
+</html>

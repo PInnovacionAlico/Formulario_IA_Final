@@ -1,0 +1,636 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dashboard - Formulario IA</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <div class="dashboard-container">
+      <header class="dashboard-header">
+        <h1>Mi Dashboard</h1>
+        <div class="user-info">
+          <span id="userName"></span>
+          <div id="creditsDisplay" style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; background: linear-gradient(135deg, var(--alico-gold-20) 0%, var(--alico-gold-30) 100%); border-radius: 8px; margin-right: 12px; border: 2px solid var(--alico-gold);">
+            <span style="font-size: 20px;">💳</span>
+            <span style="font-weight: 700; color: var(--alico-gold); font-size: 18px;" id="creditsCount">...</span>
+            <span style="font-size: 13px; color: var(--alico-gold-80);">créditos</span>
+          </div>
+          <button onclick="location.href='/forms.html'" class="btn-action btn-form">📝 Formularios</button>
+          <button onclick="location.href='/history.html'" class="btn-secondary">📊 Historial</button>
+          <button id="logoutBtn" class="btn-secondary">Cerrar sesión</button>
+        </div>
+        <button class="mobile-menu-toggle" id="mobileMenuToggle">☰</button>
+      </header>
+
+      <div class="mobile-menu-overlay" id="mobileMenuOverlay"></div>
+      <div class="mobile-menu" id="mobileMenu">
+        <div class="mobile-menu-header">
+          <h2>Menú</h2>
+          <button class="mobile-menu-close" id="mobileMenuClose">×</button>
+        </div>
+        <div class="mobile-menu-content">
+          <div class="mobile-menu-user">
+            <span id="mobileUserName"></span>
+            <div class="mobile-menu-credits">
+              <span class="mobile-menu-credits-icon">💳</span>
+              <span class="mobile-menu-credits-count" id="mobileCreditsCount">...</span>
+              <span class="mobile-menu-credits-label">créditos</span>
+            </div>
+          </div>
+          <div class="mobile-menu-buttons">
+            <button onclick="location.href='/forms.html'" class="btn-action btn-form">📝 Formularios</button>
+            <button onclick="location.href='/history.html'" class="btn-secondary">📊 Historial</button>
+            <button id="mobileLogoutBtn" class="btn-secondary">🚪 Cerrar sesión</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="dashboard-content">
+        <div class="gallery-section">
+            <div class="action-buttons">
+              <button id="uploadBtn" class="btn-action btn-upload">📷 Subir foto</button>
+              <button id="createFolderBtn" class="btn-action btn-folder">📁 Nueva carpeta</button>
+              <span id="cacheBadge" style="display: none; margin-left: 12px; padding: 6px 12px; background: var(--alico-gold-20); color: var(--alico-gold); border-radius: 6px; font-size: 12px; font-weight: 600;">📦 Cargado desde caché</span>
+            </div>
+            <h2>Mis Fotos</h2>
+            <div id="loadingMsg">Cargando...</div>
+            <div id="gallery"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal for upload -->
+    <div id="uploadModal" class="modal">
+      <div class="modal-content">
+        <span class="modal-close">&times;</span>
+        <h2>Subir nueva foto</h2>
+        <form id="uploadForm" enctype="multipart/form-data">
+          <label>Selecciona una imagen
+            <input type="file" name="file" accept="image/*" required />
+          </label>
+          <label>Carpeta de destino
+            <select id="uploadFolderSelect" name="folder">
+              <option value="Sin carpeta">Sin carpeta</option>
+            </select>
+          </label>
+          <button type="submit">Subir</button>
+          <div id="uploadResult" class="result"></div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal for folder creation -->
+    <div id="folderModal" class="modal">
+      <div class="modal-content">
+        <span class="modal-close">&times;</span>
+        <h2>Seleccionar o crear carpeta</h2>
+        <div id="existingFoldersList"></div>
+        <button id="newFolderBtn" class="btn-new-folder">+ Nueva carpeta</button>
+        <div id="newFolderSection" style="display: none; margin-top: 16px;">
+          <input type="text" id="newFolderName" placeholder="Nombre de la carpeta" />
+          <button id="confirmFolderBtn" class="btn-primary">Crear</button>
+        </div>
+        <div id="folderResult" class="result"></div>
+      </div>
+    </div>
+
+    <!-- Modal for folder selection -->
+    <div id="selectFolderModal" class="modal">
+      <div class="modal-content">
+        <span class="modal-close">&times;</span>
+        <h2>Seleccionar carpeta</h2>
+        <div id="folderList"></div>
+      </div>
+    </div>
+
+    <!-- Modal for full image view -->
+    <div id="imageViewModal" class="modal">
+      <div class="modal-content modal-image">
+        <span class="modal-close">&times;</span>
+        <h2 id="imageViewTitle">Imagen</h2>
+        <img id="fullImageView" src="" alt="" style="max-width: 100%; height: auto; border-radius: 8px;" />
+      </div>
+    </div>
+
+    <script>
+      const token = localStorage.getItem('token');
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      let allFolders = ['Sin carpeta'];
+      let currentPhotoId = null;
+      let allUploads = [];
+      
+      if (!token) {
+        window.location.href = '/login.html';
+      }
+
+      const userName = user.name || user.email || 'Usuario';
+      document.getElementById('userName').textContent = userName;
+      document.getElementById('mobileUserName').textContent = userName;
+
+      // Mobile menu handlers
+      const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+      const mobileMenu = document.getElementById('mobileMenu');
+      const mobileMenuOverlay = document.getElementById('mobileMenuOverlay');
+      const mobileMenuClose = document.getElementById('mobileMenuClose');
+
+      function openMobileMenu() {
+        mobileMenu.classList.add('active');
+        mobileMenuOverlay.classList.add('active');
+        document.body.style.overflow = 'hidden';
+      }
+
+      function closeMobileMenu() {
+        mobileMenu.classList.remove('active');
+        mobileMenuOverlay.classList.remove('active');
+        document.body.style.overflow = '';
+      }
+
+      mobileMenuToggle.addEventListener('click', openMobileMenu);
+      mobileMenuClose.addEventListener('click', closeMobileMenu);
+      mobileMenuOverlay.addEventListener('click', closeMobileMenu);
+
+      document.getElementById('mobileLogoutBtn').addEventListener('click', () => {
+        if (confirm('¿Estás seguro que deseas cerrar sesión?')) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          window.location.href = '/login.html';
+        }
+      });
+
+      // Load user credits
+      async function loadCredits() {
+        try {
+          const res = await fetch('/api/credits', {
+            headers: { 'Authorization': 'Bearer ' + token }
+          });
+          const data = await res.json();
+          
+          if (data.ok) {
+            const creditsCount = document.getElementById('creditsCount');
+            creditsCount.textContent = data.credits;
+            document.getElementById('mobileCreditsCount').textContent = data.credits;
+            
+            // Change color based on credits remaining
+            const creditsDisplay = document.getElementById('creditsDisplay');
+            if (data.credits === 0) {
+              creditsDisplay.style.background = 'linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%)';
+              creditsDisplay.style.borderColor = '#dc3545';
+              creditsCount.style.color = '#dc3545';
+              
+              // Show next reset date
+              const nextReset = new Date(data.nextReset);
+              creditsDisplay.title = `Se recargarán el ${nextReset.toLocaleDateString('es-ES')}`;
+            } else if (data.credits === 1) {
+              creditsDisplay.style.background = 'linear-gradient(135deg, #fff3cd 0%, #ffe69c 100%)';
+              creditsDisplay.style.borderColor = '#ffc107';
+              creditsCount.style.color = '#856404';
+            }
+          }
+        } catch (err) {
+          console.error('Error loading credits:', err);
+        }
+      }
+
+      loadCredits();
+
+      document.getElementById('logoutBtn').addEventListener('click', () => {
+        if (confirm('¿Estás seguro que deseas cerrar sesión?')) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          window.location.href = '/login.html';
+        }
+      });
+
+      // Modal controls
+      const uploadModal = document.getElementById('uploadModal');
+      const folderModal = document.getElementById('folderModal');
+      const selectFolderModal = document.getElementById('selectFolderModal');
+      const imageViewModal = document.getElementById('imageViewModal');
+
+      function viewFullImage(url, title) {
+        document.getElementById('fullImageView').src = url;
+        document.getElementById('imageViewTitle').textContent = title;
+        imageViewModal.style.display = 'flex';
+      }
+
+      document.getElementById('uploadBtn').addEventListener('click', () => {
+        updateFolderSelect();
+        uploadModal.style.display = 'flex';
+      });
+
+      document.getElementById('createFolderBtn').addEventListener('click', () => {
+        showFolderManager();
+      });
+
+      document.getElementById('newFolderBtn').addEventListener('click', () => {
+        document.getElementById('newFolderSection').style.display = 'block';
+        document.getElementById('newFolderName').focus();
+      });
+
+      document.querySelectorAll('.modal-close').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.target.closest('.modal').style.display = 'none';
+        });
+      });
+
+      window.addEventListener('click', (e) => {
+        if (e.target.classList.contains('modal')) {
+          e.target.style.display = 'none';
+        }
+      });
+
+      document.getElementById('confirmFolderBtn').addEventListener('click', () => {
+        const folderName = document.getElementById('newFolderName').value.trim();
+        if (!folderName) {
+          document.getElementById('folderResult').textContent = 'Ingresa un nombre';
+          return;
+        }
+        if (allFolders.includes(folderName)) {
+          document.getElementById('folderResult').textContent = 'La carpeta ya existe';
+          return;
+        }
+        allFolders.push(folderName);
+        document.getElementById('folderResult').textContent = 'Carpeta creada!';
+        setTimeout(() => {
+          folderModal.style.display = 'none';
+          document.getElementById('newFolderSection').style.display = 'none';
+        }, 800);
+      });
+
+      async function loadUploads(forceRefresh = false) {
+        try {
+          const cacheKey = `dashboard_uploads_${user.id}`;
+          const cacheTimestampKey = `dashboard_uploads_timestamp_${user.id}`;
+          const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+          
+          // Try to load from cache first (if not forcing refresh)
+          if (!forceRefresh) {
+            const cachedData = localStorage.getItem(cacheKey);
+            const cacheTimestamp = localStorage.getItem(cacheTimestampKey);
+            
+            if (cachedData && cacheTimestamp) {
+              const age = Date.now() - parseInt(cacheTimestamp);
+              
+              // If cache is less than 5 minutes old, use it
+              if (age < CACHE_DURATION) {
+                console.log('📦 Loading from cache (age: ' + Math.round(age / 1000) + 's)');
+                const uploads = JSON.parse(cachedData);
+                document.getElementById('loadingMsg').style.display = 'none';
+                
+                // Show cache badge
+                const cacheBadge = document.getElementById('cacheBadge');
+                if (cacheBadge) {
+                  cacheBadge.style.display = 'inline-block';
+                  setTimeout(() => { cacheBadge.style.display = 'none'; }, 3000);
+                }
+                
+                // Store all uploads
+                allUploads = uploads;
+                
+                // extract unique folders
+                const folders = new Set();
+                uploads.forEach(u => {
+                  folders.add(u.folder || 'Sin carpeta');
+                });
+                allFolders = Array.from(folders).sort();
+                if (!allFolders.includes('Sin carpeta')) allFolders.unshift('Sin carpeta');
+                
+                renderGallery(uploads);
+                
+                // Still check for updates in background
+                checkForUpdates();
+                return;
+              }
+            }
+          }
+          
+          // Fetch fresh data from server
+          console.log('🌐 Fetching from server...');
+          const res = await fetch('/api/uploads', {
+            headers: { 'Authorization': 'Bearer ' + token }
+          });
+          const data = await res.json();
+          document.getElementById('loadingMsg').style.display = 'none';
+          
+          if (data.ok && data.uploads) {
+            // Save to cache
+            localStorage.setItem(cacheKey, JSON.stringify(data.uploads));
+            localStorage.setItem(cacheTimestampKey, Date.now().toString());
+            
+            // Store all uploads
+            allUploads = data.uploads;
+            
+            // extract unique folders
+            const folders = new Set();
+            data.uploads.forEach(u => {
+              folders.add(u.folder || 'Sin carpeta');
+            });
+            allFolders = Array.from(folders).sort();
+            if (!allFolders.includes('Sin carpeta')) allFolders.unshift('Sin carpeta');
+            
+            renderGallery(data.uploads);
+          } else {
+            document.getElementById('gallery').innerHTML = '<p>Error al cargar fotos</p>';
+          }
+        } catch (err) {
+          document.getElementById('loadingMsg').style.display = 'none';
+          document.getElementById('gallery').innerHTML = '<p>Error: ' + err + '</p>';
+        }
+      }
+
+      // Check for updates in background
+      async function checkForUpdates() {
+        try {
+          const res = await fetch('/api/uploads', {
+            headers: { 'Authorization': 'Bearer ' + token }
+          });
+          const data = await res.json();
+          
+          if (data.ok && data.uploads) {
+            const cacheKey = `dashboard_uploads_${user.id}`;
+            const cachedData = localStorage.getItem(cacheKey);
+            
+            // Compare with cache
+            if (cachedData) {
+              const cached = JSON.parse(cachedData);
+              
+              // Simple comparison: check if count or last modified differs
+              if (cached.length !== data.uploads.length || 
+                  JSON.stringify(cached) !== JSON.stringify(data.uploads)) {
+                console.log('🔄 Updates detected, refreshing...');
+                loadUploads(true);
+              } else {
+                console.log('✅ No updates');
+              }
+            }
+          }
+        } catch (err) {
+          console.log('Background update check failed:', err);
+        }
+      }
+
+      // Invalidate cache when changes are made
+      function invalidateCache() {
+        const cacheKey = `dashboard_uploads_${user.id}`;
+        const cacheTimestampKey = `dashboard_uploads_timestamp_${user.id}`;
+        localStorage.removeItem(cacheKey);
+        localStorage.removeItem(cacheTimestampKey);
+        console.log('🗑️ Cache invalidated');
+      }
+
+      function renderGallery(uploads) {
+        const gallery = document.getElementById('gallery');
+        if (uploads.length === 0) {
+          gallery.innerHTML = '<p class="empty">No has subido ninguna foto aún.</p>';
+          return;
+        }
+
+        // group by folder
+        const byFolder = {};
+        uploads.forEach(u => {
+          const folder = u.folder || 'Sin carpeta';
+          if (!byFolder[folder]) byFolder[folder] = [];
+          byFolder[folder].push(u);
+        });
+
+        gallery.innerHTML = '';
+        Object.keys(byFolder).sort().forEach(folder => {
+          // Create accordion structure
+          const accordion = document.createElement('div');
+          accordion.className = 'gallery-accordion';
+
+          const header = document.createElement('button');
+          header.className = 'gallery-accordion-header';
+          header.type = 'button';
+          header.innerHTML = `
+            <span style="font-size: 20px; font-weight: 700;">${folder}</span>
+            <span style="display: flex; align-items: center; gap: 12px;">
+              <span style="font-size: 14px; color: rgba(255,255,255,0.9);">${byFolder[folder].length} foto${byFolder[folder].length !== 1 ? 's' : ''}</span>
+              <span class="accordion-icon">▼</span>
+            </span>
+          `;
+
+          const content = document.createElement('div');
+          content.className = 'gallery-accordion-content';
+          content.style.display = 'block'; // Open by default
+
+          const itemsDiv = document.createElement('div');
+          itemsDiv.className = 'folder-items';
+
+          byFolder[folder].forEach(upload => {
+            const card = document.createElement('div');
+            card.className = 'photo-card';
+            const imgSrc = upload.thumbnailUrl || upload.signedUrl;
+            card.innerHTML = `
+              <img 
+                src="${imgSrc}" 
+                data-full="${upload.signedUrl}"
+                alt="${upload.custom_name || upload.filename}" 
+                loading="lazy"
+                class="photo-thumbnail"
+                onclick="viewFullImage('${upload.signedUrl}', '${upload.custom_name || upload.filename}')"
+                style="cursor: pointer;"
+              />
+              <div class="photo-info">
+                <div class="photo-title-row">
+                  <input class="photo-name" data-id="${upload.id}" value="${upload.custom_name || upload.filename}" placeholder="Nombre" disabled />
+                  <button class="btn-folder-icon" data-id="${upload.id}" title="Cambiar carpeta">📁</button>
+                </div>
+                <div class="photo-actions">
+                  <button class="btn-update" data-id="${upload.id}">Cambiar nombre</button>
+                  <button class="btn-delete" data-id="${upload.id}">Eliminar</button>
+                </div>
+              </div>
+            `;
+            itemsDiv.appendChild(card);
+          });
+
+          content.appendChild(itemsDiv);
+
+          // Toggle accordion
+          header.addEventListener('click', () => {
+            const isOpen = content.style.display === 'block';
+            content.style.display = isOpen ? 'none' : 'block';
+            header.querySelector('.accordion-icon').textContent = isOpen ? '▶' : '▼';
+          });
+
+          accordion.appendChild(header);
+          accordion.appendChild(content);
+          gallery.appendChild(accordion);
+        });
+
+        // attach event listeners
+        document.querySelectorAll('.btn-folder-icon').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            currentPhotoId = e.target.dataset.id;
+            showFolderSelector();
+          });
+        });
+
+        document.querySelectorAll('.btn-update').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            const id = e.target.dataset.id;
+            const button = e.target;
+            const nameInput = document.querySelector(`.photo-name[data-id="${id}"]`);
+            
+            // Si el botón dice "Cambiar nombre", habilitar edición
+            if (button.textContent === 'Cambiar nombre') {
+              nameInput.disabled = false;
+              nameInput.focus();
+              button.textContent = 'Guardar nombre';
+              button.classList.add('editing');
+            } 
+            // Si el botón dice "Guardar nombre", guardar cambios
+            else {
+              try {
+                const res = await fetch(`/api/uploads/${id}`, {
+                  method: 'PATCH',
+                  headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ customName: nameInput.value })
+                });
+                const data = await res.json();
+                if (data.ok) {
+                  nameInput.disabled = true;
+                  button.textContent = 'Cambiar nombre';
+                  button.classList.remove('editing');
+                  invalidateCache(); // Clear cache after update
+                  alert('Nombre actualizado!');
+                } else {
+                  alert('Error: ' + (data.error || ''));
+                }
+              } catch (err) {
+                alert('Error: ' + err);
+              }
+            }
+          });
+        });
+
+        document.querySelectorAll('.btn-delete').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            if (!confirm('¿Seguro que quieres eliminar esta foto?')) return;
+            const id = e.target.dataset.id;
+            try {
+              const res = await fetch(`/api/uploads/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': 'Bearer ' + token }
+              });
+              const data = await res.json();
+              if (data.ok) {
+                alert('Eliminado!');
+                invalidateCache();
+                loadUploads(true); // refresh with force
+              } else {
+                alert('Error: ' + (data.error || ''));
+              }
+            } catch (err) {
+              alert('Error: ' + err);
+            }
+          });
+        });
+      }
+
+      function updateFolderSelect() {
+        const select = document.getElementById('uploadFolderSelect');
+        select.innerHTML = '';
+        
+        allFolders.forEach(folder => {
+          const option = document.createElement('option');
+          option.value = folder;
+          option.textContent = folder;
+          select.appendChild(option);
+        });
+      }
+
+      function showFolderManager() {
+        const existingList = document.getElementById('existingFoldersList');
+        existingList.innerHTML = '';
+        
+        if (allFolders.length > 0) {
+          const title = document.createElement('p');
+          title.textContent = 'Carpetas disponibles:';
+          title.style.marginBottom = '12px';
+          title.style.fontWeight = '600';
+          title.style.color = '#333';
+          existingList.appendChild(title);
+
+          allFolders.forEach(folder => {
+            const folderItem = document.createElement('div');
+            folderItem.className = 'folder-item';
+            folderItem.textContent = `📁 ${folder}`;
+            existingList.appendChild(folderItem);
+          });
+        }
+
+        document.getElementById('newFolderSection').style.display = 'none';
+        document.getElementById('newFolderName').value = '';
+        document.getElementById('folderResult').textContent = '';
+        folderModal.style.display = 'flex';
+      }
+
+      function showFolderSelector() {
+        const folderList = document.getElementById('folderList');
+        folderList.innerHTML = '';
+        
+        allFolders.forEach(folder => {
+          const btn = document.createElement('button');
+          btn.className = 'folder-option';
+          btn.textContent = folder;
+          btn.addEventListener('click', async () => {
+            try {
+              const res = await fetch(`/api/uploads/${currentPhotoId}`, {
+                method: 'PATCH',
+                headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ folder })
+              });
+              const data = await res.json();
+              if (data.ok) {
+                selectFolderModal.style.display = 'none';
+                invalidateCache();
+                loadUploads(true);
+              } else {
+                alert('Error: ' + (data.error || ''));
+              }
+            } catch (err) {
+              alert('Error: ' + err);
+            }
+          });
+          folderList.appendChild(btn);
+        });
+
+        selectFolderModal.style.display = 'flex';
+      }
+
+      document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const fd = new FormData(e.target);
+        const resEl = document.getElementById('uploadResult');
+        resEl.textContent = 'Subiendo...';
+        try {
+          const res = await fetch('/api/upload', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + token },
+            body: fd
+          });
+          const data = await res.json();
+          if (data.ok) {
+            resEl.textContent = 'Subido!';
+            e.target.reset();
+            invalidateCache();
+            setTimeout(() => {
+              uploadModal.style.display = 'none';
+              loadUploads(true); // refresh gallery with force
+            }, 800);
+          } else {
+            resEl.textContent = data.error || 'Error al subir';
+          }
+        } catch (err) {
+          resEl.textContent = String(err);
+        }
+      });
+
+      loadUploads();
+    </script>
+  </body>
+</html>

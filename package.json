@@ -1,0 +1,24 @@
+{
+  "name": "formulario-ia",
+  "version": "1.0.0",
+  "description": "Aplicación mínima: registro, cambiar contraseña y subir archivos que reenvía acciones a un webhook",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.81.0",
+    "axios": "^1.4.0",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "form-data": "^4.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1",
+    "sharp": "^0.34.5",
+    "uuid": "^9.0.1"
+  }
+}
