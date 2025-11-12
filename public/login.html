@@ -3,7 +3,13 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Iniciar Sesión - Formulario IA</title>
+    <title>Iniciar Sesión - Transforma tu empaque</title>
+    <link rel="icon" type="image/png" href="/favicon/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="/favicon/favicon.svg" />
+    <link rel="shortcut icon" href="/favicon/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicon/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="Transforma tu empaque" />
+    <link rel="manifest" href="/favicon/site.webmanifest" />
     <link rel="stylesheet" href="/style.css" />
   </head>
   <body>
@@ -30,8 +36,8 @@
       </div>
     </div>
     <script>
-      // Check if user is already logged in
-      const existingToken = localStorage.getItem('token');
+      // Check if user is already logged in (check both token formats)
+      const existingToken = localStorage.getItem('authToken') || localStorage.getItem('token');
       if (existingToken) {
         // Verify token is still valid by making a quick API call
         fetch('/api/uploads', {
@@ -39,17 +45,26 @@
         })
         .then(res => {
           if (res.ok) {
-            // Token is valid, redirect to dashboard
-            window.location.href = '/dashboard.html';
+            // Token is valid, check if admin and redirect accordingly
+            const userInfo = JSON.parse(localStorage.getItem('userInfo') || localStorage.getItem('user') || '{}');
+            if (userInfo.is_admin) {
+              window.location.href = '/admin-dashboard.html';
+            } else {
+              window.location.href = '/dashboard.html';
+            }
           } else {
-            // Token is invalid, clear it
+            // Token is invalid, clear ALL tokens
+            localStorage.removeItem('authToken');
             localStorage.removeItem('token');
+            localStorage.removeItem('userInfo');
             localStorage.removeItem('user');
           }
         })
         .catch(() => {
-          // Network error, clear token
+          // Network error, clear ALL tokens
+          localStorage.removeItem('authToken');
           localStorage.removeItem('token');
+          localStorage.removeItem('userInfo');
           localStorage.removeItem('user');
         });
       }
@@ -68,10 +83,18 @@
           });
           const data = await res.json();
           if (data.ok && data.token) {
-            localStorage.setItem('token', data.token);
-            localStorage.setItem('user', JSON.stringify(data.user));
+            localStorage.setItem('authToken', data.token);
+            localStorage.setItem('userInfo', JSON.stringify(data.user));
             resEl.textContent = 'Éxito! Redirigiendo...';
-            setTimeout(() => window.location.href = '/dashboard.html', 500);
+            
+            // Redirect to admin dashboard if user is admin, otherwise to regular dashboard
+            setTimeout(() => {
+              if (data.user.is_admin) {
+                window.location.href = '/admin-dashboard.html';
+              } else {
+                window.location.href = '/dashboard.html';
+              }
+            }, 500);
           } else {
             resEl.textContent = data.error || 'Error al iniciar sesión';
           }

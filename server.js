@@ -57,6 +57,35 @@ function authenticate(req, res, next) {
   }
 }
 
+// Admin authentication middleware: verify JWT and check if user is admin
+async function authenticateAdmin(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Unauthorized: No token provided' });
+  }
+  const token = authHeader.substring(7);
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.userId = decoded.userId;
+    
+    // Check if user is admin
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('is_admin')
+      .eq('id', req.userId)
+      .single();
+    
+    if (error) throw error;
+    if (!user || !user.is_admin) {
+      return res.status(403).json({ error: 'Forbidden: Admin access required' });
+    }
+    
+    next();
+  } catch (err) {
+    return res.status(401).json({ error: 'Unauthorized: Invalid token' });
+  }
+}
+
 function getWebhookUrlFromReq(req) {
   // Allow global disable via env var for easy testing/rollback
   if (process.env.DISABLE_WEBHOOK && process.env.DISABLE_WEBHOOK.toLowerCase() === 'true') return null;
@@ -91,7 +120,7 @@ app.post('/api/login', async (req, res) => {
     if (!match) return res.status(401).json({ error: 'Invalid credentials' });
 
     const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
-    res.json({ ok: true, token, user: { id: user.id, name: user.name, email: user.email } });
+    res.json({ ok: true, token, user: { id: user.id, name: user.name, email: user.email, is_admin: user.is_admin || false } });
   } catch (err) {
     console.error('login error', err.message || err);
     res.status(500).json({ error: err.message || String(err) });
@@ -1070,6 +1099,237 @@ app.get('/api/products/:formType', authenticate, async (req, res) => {
   } catch (err) {
     console.error('Error fetching products:', err);
     res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// =============== ADMIN ENDPOINTS ===============
+
+// Check if current user is admin
+app.get('/api/admin/check', authenticate, async (req, res) => {
+  try {
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('is_admin')
+      .eq('id', req.userId)
+      .single();
+    
+    if (error) throw error;
+    
+    res.json({ ok: true, is_admin: user?.is_admin || false });
+  } catch (err) {
+    console.error('Admin check error:', err.message);
+    res.status(500).json({ error: err.message || String(err) });
+  }
+});
+
+// Get admin dashboard statistics
+app.get('/api/admin/dashboard-stats', authenticateAdmin, async (req, res) => {
+  try {
+    // Total users
+    const { count: totalUsers, error: usersError } = await supabase
+      .from('users')
+      .select('*', { count: 'exact', head: true });
+    
+    if (usersError) throw usersError;
+
+    // Total uploads
+    const { count: totalUploads, error: uploadsError } = await supabase
+      .from('uploads')
+      .select('*', { count: 'exact', head: true });
+    
+    if (uploadsError) throw uploadsError;
+
+    // Total form submissions
+    const { count: totalSubmissions, error: submissionsError } = await supabase
+      .from('form_submissions')
+      .select('*', { count: 'exact', head: true });
+    
+    if (submissionsError) throw submissionsError;
+
+    // Successful submissions
+    const { count: successfulSubmissions, error: successError } = await supabase
+      .from('form_submissions')
+      .select('*', { count: 'exact', head: true })
+      .eq('success', true);
+    
+    if (successError) throw successError;
+
+    // Submissions by form type
+    const { data: submissionsByType, error: typeError } = await supabase
+      .from('form_submissions')
+      .select('form_type');
+    
+    if (typeError) throw typeError;
+
+    const formTypeStats = submissionsByType.reduce((acc, sub) => {
+      const type = sub.form_type || 'sin_tipo';
+      acc[type] = (acc[type] || 0) + 1;
+      return acc;
+    }, {});
+
+    // Recent submissions (last 10)
+    const { data: recentSubmissions, error: recentError } = await supabase
+      .from('form_submissions')
+      .select(`
+        id,
+        created_at,
+        form_type,
+        success,
+        users(name, email)
+      `)
+      .order('created_at', { ascending: false })
+      .limit(10);
+    
+    if (recentError) throw recentError;
+
+    // Total credits distributed
+    const { data: usersCredits, error: creditsError } = await supabase
+      .from('users')
+      .select('credits');
+    
+    if (creditsError) throw creditsError;
+
+    const totalCredits = usersCredits.reduce((sum, user) => sum + (user.credits || 0), 0);
+
+    // Storage usage (approximate from uploads table)
+    const { data: uploadsSize, error: sizeError } = await supabase
+      .from('uploads')
+      .select('size');
+    
+    if (sizeError) throw sizeError;
+
+    const totalStorageBytes = uploadsSize.reduce((sum, upload) => sum + (upload.size || 0), 0);
+    const totalStorageMB = (totalStorageBytes / (1024 * 1024)).toFixed(2);
+
+    res.json({
+      ok: true,
+      stats: {
+        totalUsers,
+        totalUploads,
+        totalSubmissions,
+        successfulSubmissions,
+        failedSubmissions: totalSubmissions - successfulSubmissions,
+        formTypeStats,
+        totalCredits,
+        totalStorageMB,
+        recentSubmissions: recentSubmissions.map(sub => ({
+          id: sub.id,
+          created_at: sub.created_at,
+          form_type: sub.form_type,
+          success: sub.success,
+          user_name: sub.users?.name || 'Desconocido',
+          user_email: sub.users?.email || 'N/A'
+        }))
+      }
+    });
+  } catch (err) {
+    console.error('Dashboard stats error:', err.message);
+    res.status(500).json({ error: err.message || String(err) });
+  }
+});
+
+// Get all users (admin only)
+app.get('/api/admin/users', authenticateAdmin, async (req, res) => {
+  try {
+    const { data: users, error } = await supabase
+      .from('users')
+      .select('id, name, email, created_at, credits, credits_last_reset, is_admin')
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+
+    res.json({ ok: true, users });
+  } catch (err) {
+    console.error('Get all users error:', err.message);
+    res.status(500).json({ error: err.message || String(err) });
+  }
+});
+
+// Get all form submissions (admin only)
+app.get('/api/admin/submissions', authenticateAdmin, async (req, res) => {
+  try {
+    const { data: submissions, error } = await supabase
+      .from('form_submissions')
+      .select(`
+        *,
+        users(name, email),
+        uploads(filename, custom_name),
+        products(name, category)
+      `)
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+
+    const submissionsWithInfo = submissions.map(sub => ({
+      ...sub,
+      user_name: sub.users?.name || 'Desconocido',
+      user_email: sub.users?.email || 'N/A',
+      photo_filename: sub.uploads?.custom_name || sub.uploads?.filename || 'Foto eliminada',
+      product_name: sub.products?.name || null,
+      product_category: sub.products?.category || null
+    }));
+
+    res.json({ ok: true, submissions: submissionsWithInfo });
+  } catch (err) {
+    console.error('Get all submissions error:', err.message);
+    res.status(500).json({ error: err.message || String(err) });
+  }
+});
+
+// Update user admin status (admin only)
+app.patch('/api/admin/users/:id/admin-status', authenticateAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { is_admin } = req.body;
+
+    if (typeof is_admin !== 'boolean') {
+      return res.status(400).json({ error: 'is_admin must be a boolean' });
+    }
+
+    // Prevent users from removing their own admin status
+    if (id === req.userId && !is_admin) {
+      return res.status(400).json({ error: 'No puedes remover tu propio acceso de administrador' });
+    }
+
+    const { data, error } = await supabase
+      .from('users')
+      .update({ is_admin })
+      .eq('id', id)
+      .select('id, name, email, is_admin')
+      .single();
+    
+    if (error) throw error;
+
+    res.json({ ok: true, user: data });
+  } catch (err) {
+    console.error('Update admin status error:', err.message);
+    res.status(500).json({ error: err.message || String(err) });
+  }
+});
+
+// Update user credits (admin only)
+app.patch('/api/admin/users/:id/credits', authenticateAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { credits } = req.body;
+
+    if (typeof credits !== 'number' || credits < 0) {
+      return res.status(400).json({ error: 'credits must be a non-negative number' });
+    }
+
+    const { data, error } = await supabase
+      .from('users')
+      .update({ credits })
+      .eq('id', id)
+      .select('id, name, email, credits')
+      .single();
+    
+    if (error) throw error;
+
+    res.json({ ok: true, user: data });
+  } catch (err) {
+    console.error('Update credits error:', err.message);
+    res.status(500).json({ error: err.message || String(err) });
   }
 });
 

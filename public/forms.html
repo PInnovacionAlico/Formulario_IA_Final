@@ -3,7 +3,13 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Formularios - Formulario IA</title>
+    <title>Formularios - Transforma tu empaque</title>
+    <link rel="icon" type="image/png" href="/favicon/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="/favicon/favicon.svg" />
+    <link rel="shortcut icon" href="/favicon/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicon/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="Transforma tu empaque" />
+    <link rel="manifest" href="/favicon/site.webmanifest" />
     <link rel="stylesheet" href="/style.css" />
     <style>
       .forms-grid {
@@ -163,6 +169,7 @@
             <span style="font-weight: 700; color: var(--alico-gold); font-size: 18px;" id="creditsCount">...</span>
             <span style="font-size: 13px; color: var(--alico-gold-80);">créditos</span>
           </div>
+          <button id="adminDashboardBtn" onclick="location.href='/admin-dashboard.html'" class="btn-secondary" style="display: none; background: linear-gradient(135deg, var(--alico-gold) 0%, #d4a017 100%); color: white;">🛡️ Panel Admin</button>
           <button type="button" onclick="location.href='/dashboard.html'" class="btn-secondary">Volver al Dashboard</button>
           <button id="logoutBtn" class="btn-secondary">Cerrar sesión</button>
         </div>
@@ -190,6 +197,7 @@
             </div>
           </div>
           <div class="mobile-menu-buttons">
+            <button id="mobileAdminDashboardBtn" onclick="location.href='/admin-dashboard.html'" class="btn-secondary" style="display: none; background: linear-gradient(135deg, var(--alico-gold) 0%, #d4a017 100%); color: white;">🛡️ Panel Admin</button>
             <button type="button" onclick="location.href='/dashboard.html'" class="btn-secondary">🏠 Dashboard</button>
             <button type="button" onclick="location.href='/forms.html'" class="btn-secondary active-page">📋 Formularios</button>
             <button type="button" onclick="location.href='/history.html'" class="btn-secondary">📊 Historial</button>
@@ -290,8 +298,8 @@
     </div>
 
     <script>
-      const token = localStorage.getItem('token');
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const token = localStorage.getItem('token') || localStorage.getItem('authToken');
+      const user = JSON.parse(localStorage.getItem('user') || localStorage.getItem('userInfo') || '{}');
       
       if (!token) {
         window.location.href = '/login.html';
@@ -300,6 +308,12 @@
       const userName = user.name || user.email || 'Usuario';
       document.getElementById('userName').textContent = userName;
       document.getElementById('mobileUserName').textContent = userName;
+
+      // Check if user is admin and show admin button
+      if (user.is_admin) {
+        document.getElementById('adminDashboardBtn').style.display = 'inline-block';
+        document.getElementById('mobileAdminDashboardBtn').style.display = 'block';
+      }
 
       // Mobile menu handlers
       const mobileMenuToggle = document.getElementById('mobileMenuToggle');
@@ -326,7 +340,9 @@
       document.getElementById('mobileLogoutBtn').addEventListener('click', () => {
         if (confirm('¿Estás seguro que deseas cerrar sesión?')) {
           localStorage.removeItem('token');
+          localStorage.removeItem('authToken');
           localStorage.removeItem('user');
+          localStorage.removeItem('userInfo');
           window.location.href = '/login.html';
         }
       });
@@ -371,7 +387,9 @@
       document.getElementById('logoutBtn').addEventListener('click', () => {
         if (confirm('¿Estás seguro que deseas cerrar sesión?')) {
           localStorage.removeItem('token');
+          localStorage.removeItem('authToken');
           localStorage.removeItem('user');
+          localStorage.removeItem('userInfo');
           window.location.href = '/login.html';
         }
       });
