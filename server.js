@@ -51,7 +51,29 @@ function authenticate(req, res, next) {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.userId = decoded.userId;
-    next();
+    
+    // Check if user is banned
+    supabase
+      .from('users')
+      .select('banned, banned_reason')
+      .eq('id', req.userId)
+      .single()
+      .then(({ data: user, error }) => {
+        if (error) {
+          return res.status(500).json({ error: 'Error checking user status' });
+        }
+        if (user && user.banned) {
+          return res.status(403).json({ 
+            error: 'Account banned', 
+            message: user.banned_reason || 'Your account has been permanently banned.',
+            userBanned: true
+          });
+        }
+        next();
+      })
+      .catch(() => {
+        return res.status(500).json({ error: 'Error checking user status' });
+      });
   } catch (err) {
     return res.status(401).json({ error: 'Unauthorized: Invalid token' });
   }
@@ -68,14 +90,23 @@ async function authenticateAdmin(req, res, next) {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.userId = decoded.userId;
     
-    // Check if user is admin
+    // Check if user is admin and not banned
     const { data: user, error } = await supabase
       .from('users')
-      .select('is_admin')
+      .select('is_admin, banned, banned_reason')
       .eq('id', req.userId)
       .single();
     
     if (error) throw error;
+    
+    if (user && user.banned) {
+      return res.status(403).json({ 
+        error: 'Account banned', 
+        message: user.banned_reason || 'Your account has been permanently banned.',
+        userBanned: true
+      });
+    }
+    
     if (!user || !user.is_admin) {
       return res.status(403).json({ error: 'Forbidden: Admin access required' });
     }
@@ -119,11 +150,21 @@ app.post('/api/login', async (req, res) => {
     const match = bcrypt.compareSync(password, user.password_hash);
     if (!match) return res.status(401).json({ error: 'Invalid credentials' });
 
+    // Check if user is banned
+    if (user.banned) {
+      return res.status(403).json({ 
+        error: 'Account banned', 
+        message: user.banned_reason || 'Your account has been permanently banned. Please contact support for more information.',
+        userBanned: true,
+        banned_at: user.banned_at
+      });
+    }
+
     // Check if email is verified
     if (!user.email_verified) {
       return res.status(403).json({ 
         error: 'Email not verified', 
-        message: 'Please verify your email before logging in. Check your inbox for the verification link.',
+        message: 'Por favor verifica tu correo electrónico antes de iniciar sesión. Revisa tu bandeja de entrada para encontrar el enlace de verificación.',
         emailNotVerified: true 
       });
     }
@@ -1802,7 +1843,7 @@ app.get('/api/admin/users', authenticateAdmin, async (req, res) => {
   try {
     const { data: users, error } = await supabase
       .from('users')
-      .select('id, name, email, created_at, credits, credits_last_reset, is_admin')
+      .select('id, name, email, created_at, credits, credits_last_reset, is_admin, banned, banned_at, banned_reason, banned_by')
       .order('created_at', { ascending: false });
     
     if (error) throw error;
@@ -1821,12 +1862,27 @@ app.get('/api/admin/users', authenticateAdmin, async (req, res) => {
         totalPhotos = uploads.length;
         totalSize = uploads.reduce((sum, upload) => sum + (upload.size || 0), 0);
       }
+
+      // Get banned_by user name if applicable
+      let banned_by_name = null;
+      if (user.banned_by) {
+        const { data: bannedByUser } = await supabase
+          .from('users')
+          .select('name, email')
+          .eq('id', user.banned_by)
+          .single();
+        
+        if (bannedByUser) {
+          banned_by_name = bannedByUser.name || bannedByUser.email;
+        }
+      }
       
       return {
         ...user,
         total_photos: totalPhotos,
         total_size_bytes: totalSize,
-        total_size_mb: (totalSize / (1024 * 1024)).toFixed(2)
+        total_size_mb: (totalSize / (1024 * 1024)).toFixed(2),
+        banned_by_name
       };
     }));
 
@@ -1921,6 +1977,81 @@ app.patch('/api/admin/users/:id/credits', authenticateAdmin, async (req, res) =>
     res.json({ ok: true, user: data });
   } catch (err) {
     console.error('Update credits error:', err.message);
+    res.status(500).json({ error: err.message || String(err) });
+  }
+});
+
+// Ban user (admin only)
+app.post('/api/admin/users/:id/ban', authenticateAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    // Prevent users from banning themselves
+    if (id === req.userId) {
+      return res.status(400).json({ error: 'No puedes banearte a ti mismo' });
+    }
+
+    // Check if user exists
+    const { data: targetUser, error: fetchError } = await supabase
+      .from('users')
+      .select('id, name, email, is_admin')
+      .eq('id', id)
+      .single();
+
+    if (fetchError) throw fetchError;
+    if (!targetUser) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    // Prevent banning other admins
+    if (targetUser.is_admin) {
+      return res.status(400).json({ error: 'No puedes banear a otro administrador' });
+    }
+
+    const { data, error } = await supabase
+      .from('users')
+      .update({ 
+        banned: true,
+        banned_at: new Date().toISOString(),
+        banned_reason: reason || 'Violación de los términos de servicio',
+        banned_by: req.userId
+      })
+      .eq('id', id)
+      .select('id, name, email, banned, banned_at, banned_reason')
+      .single();
+    
+    if (error) throw error;
+
+    res.json({ ok: true, user: data, message: 'Usuario baneado exitosamente' });
+  } catch (err) {
+    console.error('Ban user error:', err.message);
+    res.status(500).json({ error: err.message || String(err) });
+  }
+});
+
+// Unban user (admin only)
+app.post('/api/admin/users/:id/unban', authenticateAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const { data, error } = await supabase
+      .from('users')
+      .update({ 
+        banned: false,
+        banned_at: null,
+        banned_reason: null,
+        banned_by: null
+      })
+      .eq('id', id)
+      .select('id, name, email, banned')
+      .single();
+    
+    if (error) throw error;
+
+    res.json({ ok: true, user: data, message: 'Usuario desbaneado exitosamente' });
+  } catch (err) {
+    console.error('Unban user error:', err.message);
     res.status(500).json({ error: err.message || String(err) });
   }
 });

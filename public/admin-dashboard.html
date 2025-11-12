@@ -361,6 +361,7 @@
               <table class="admin-table">
                 <thead>
                   <tr>
+                    <th>ID</th>
                     <th>Nombre</th>
                     <th>Email</th>
                     <th>Créditos</th>
@@ -368,12 +369,13 @@
                     <th>💾 Tamaño</th>
                     <th>Registro</th>
                     <th>Admin</th>
+                    <th>Estado</th>
                     <th>Acciones</th>
                   </tr>
                 </thead>
                 <tbody id="usersTable">
                   <tr>
-                    <td colspan="8" style="text-align: center; padding: 20px; color: #999;">
+                    <td colspan="10" style="text-align: center; padding: 20px; color: #999;">
                       Cargando...
                     </td>
                   </tr>
@@ -612,26 +614,42 @@
         const tbody = document.getElementById('usersTable');
         
         if (!users || users.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 20px; color: #999;">No hay usuarios</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 20px; color: #999;">No hay usuarios</td></tr>';
           return;
         }
 
-        tbody.innerHTML = users.map(user => `
-          <tr>
-            <td>${user.name}</td>
-            <td>${user.email}</td>
-            <td>${user.credits || 0}</td>
-            <td><strong>${user.total_photos || 0}</strong></td>
-            <td>${user.total_size_mb || '0.00'} MB</td>
-            <td>${new Date(user.created_at).toLocaleDateString('es-ES')}</td>
-            <td>${user.is_admin ? '<span class="badge admin">🛡️ Admin</span>' : '-'}</td>
-            <td>
-              <button class="btn-small primary" onclick="editUserCredits('${user.id}', ${user.credits})">Editar Créditos</button>
-              ${!user.is_admin ? `<button class="btn-small danger" onclick="toggleAdminStatus('${user.id}', true)">Hacer Admin</button>` : `<button class="btn-small danger" onclick="toggleAdminStatus('${user.id}', false)">Quitar Admin</button>`}
-              <button class="btn-small" style="background: linear-gradient(135deg, var(--alico-blue) 0%, var(--alico-blue-70) 100%);" onclick="exportUserDataAdmin('${user.id}', '${user.name}')">📥 Exportar Datos</button>
-            </td>
-          </tr>
-        `).join('');
+        tbody.innerHTML = users.map(user => {
+          const statusBadge = user.banned 
+            ? `<span class="badge danger" title="Baneado el ${new Date(user.banned_at).toLocaleDateString('es-ES')}${user.banned_by_name ? ' por ' + user.banned_by_name : ''}">🚫 Baneado</span>`
+            : `<span class="badge success">✓ Activo</span>`;
+          
+          const banButton = user.banned
+            ? `<button class="btn-small success" onclick="unbanUser('${user.id}', '${user.name}')">Desbanear</button>`
+            : `<button class="btn-small" style="background: #e74c3c; color: white;" onclick="banUser('${user.id}', '${user.name}')">🚫 Banear</button>`;
+
+          // Truncate ID for display (first 8 characters)
+          const shortId = user.id.substring(0, 8) + '...';
+
+          return `
+            <tr style="${user.banned ? 'opacity: 0.7; background: #fff5f5;' : ''}">
+              <td style="font-family: monospace; font-size: 11px;" title="${user.id}">${shortId}</td>
+              <td>${user.name}</td>
+              <td>${user.email}</td>
+              <td>${user.credits || 0}</td>
+              <td><strong>${user.total_photos || 0}</strong></td>
+              <td>${user.total_size_mb || '0.00'} MB</td>
+              <td>${new Date(user.created_at).toLocaleDateString('es-ES')}</td>
+              <td>${user.is_admin ? '<span class="badge admin">🛡️ Admin</span>' : '-'}</td>
+              <td>${statusBadge}</td>
+              <td>
+                <button class="btn-small primary" onclick="editUserCredits('${user.id}', ${user.credits})" ${user.banned ? 'disabled' : ''}>Editar Créditos</button>
+                ${!user.is_admin ? `<button class="btn-small danger" onclick="toggleAdminStatus('${user.id}', true)" ${user.banned ? 'disabled' : ''}>Hacer Admin</button>` : `<button class="btn-small danger" onclick="toggleAdminStatus('${user.id}', false)" ${user.banned ? 'disabled' : ''}>Quitar Admin</button>`}
+                ${banButton}
+                <button class="btn-small" style="background: linear-gradient(135dx, var(--alico-blue) 0%, var(--alico-blue-70) 100%);" onclick="exportUserDataAdmin('${user.id}', '${user.name}')">📥 Exportar Datos</button>
+              </td>
+            </tr>
+          `;
+        }).join('');
       }
 
       // Load all submissions
@@ -756,6 +774,57 @@
         await loadAllSubmissions();
       }
 
+      // Show notification helper
+      function showNotification(message) {
+        // Create notification element if it doesn't exist
+        let notification = document.getElementById('adminNotification');
+        if (!notification) {
+          notification = document.createElement('div');
+          notification.id = 'adminNotification';
+          notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 16px 24px;
+            background: linear-gradient(135deg, var(--alico-blue) 0%, var(--alico-blue-70) 100%);
+            color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            z-index: 10000;
+            font-weight: 600;
+            max-width: 400px;
+            animation: slideIn 0.3s ease-out;
+          `;
+          document.body.appendChild(notification);
+          
+          // Add animation
+          const style = document.createElement('style');
+          style.textContent = `
+            @keyframes slideIn {
+              from { transform: translateX(400px); opacity: 0; }
+              to { transform: translateX(0); opacity: 1; }
+            }
+            @keyframes slideOut {
+              from { transform: translateX(0); opacity: 1; }
+              to { transform: translateX(400px); opacity: 0; }
+            }
+          `;
+          document.head.appendChild(style);
+        }
+        
+        notification.textContent = message;
+        notification.style.display = 'block';
+        notification.style.animation = 'slideIn 0.3s ease-out';
+        
+        // Auto hide after 3 seconds
+        setTimeout(() => {
+          notification.style.animation = 'slideOut 0.3s ease-out';
+          setTimeout(() => {
+            notification.style.display = 'none';
+          }, 300);
+        }, 3000);
+      }
+
       // Export user data (Admin function)
       async function exportUserDataAdmin(userId, userName) {
         if (!confirm(`¿Desea exportar todos los datos de ${userName}?\n\nEsto generará un archivo ZIP con:\n- Informe en PDF\n- Datos en JSON\n- Todas las imágenes subidas`)) {
@@ -796,6 +865,74 @@
         } catch (error) {
           console.error('Error exporting data:', error);
           alert('❌ Error al exportar datos: ' + error.message);
+        }
+      }
+
+      // Ban user
+      async function banUser(userId, userName) {
+        const reason = prompt(`¿Por qué deseas banear a ${userName}?\n\nEscribe el motivo del baneo (esto será visible para el usuario):`);
+        
+        if (reason === null) {
+          return; // User cancelled
+        }
+
+        if (!reason.trim()) {
+          alert('Debes proporcionar un motivo para el baneo');
+          return;
+        }
+
+        if (!confirm(`⚠️ ¿Estás seguro de que quieres BANEAR PERMANENTEMENTE a ${userName}?\n\nMotivo: ${reason}\n\nEsta acción impedirá que el usuario acceda a la plataforma.`)) {
+          return;
+        }
+
+        try {
+          const response = await fetch(`/api/admin/users/${userId}/ban`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ reason: reason.trim() })
+          });
+
+          const data = await response.json();
+          
+          if (!data.ok) {
+            throw new Error(data.error || 'Error al banear usuario');
+          }
+
+          alert(`✅ ${userName} ha sido baneado exitosamente`);
+          loadUsers(); // Reload users table
+        } catch (err) {
+          alert('❌ Error al banear usuario: ' + err.message);
+        }
+      }
+
+      // Unban user
+      async function unbanUser(userId, userName) {
+        if (!confirm(`¿Estás seguro de que quieres DESBANEAR a ${userName}?\n\nEl usuario podrá acceder nuevamente a la plataforma.`)) {
+          return;
+        }
+
+        try {
+          const response = await fetch(`/api/admin/users/${userId}/unban`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+
+          const data = await response.json();
+          
+          if (!data.ok) {
+            throw new Error(data.error || 'Error al desbanear usuario');
+          }
+
+          alert(`✅ ${userName} ha sido desbaneado exitosamente`);
+          loadUsers(); // Reload users table
+        } catch (err) {
+          alert('❌ Error al desbanear usuario: ' + err.message);
         }
       }
 

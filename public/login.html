@@ -52,6 +52,57 @@
             } else {
               window.location.href = '/dashboard.html';
             }
+          } else if (res.status === 403) {
+            // User might be banned, check the response
+            res.json().then(data => {
+              if (data.userBanned) {
+                // User is banned, clear all credentials
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('token');
+                localStorage.removeItem('userInfo');
+                localStorage.removeItem('user');
+                
+                // Show banned message
+                const resEl = document.getElementById('loginResult');
+                resEl.innerHTML = `
+                  <div style="padding: 16px; background: #fff5f5; border: 2px solid #e74c3c; border-radius: 8px; margin-top: 12px; text-align: left;">
+                    <div style="display: flex; align-items: center; margin-bottom: 12px;">
+                      <span style="font-size: 32px; margin-right: 12px;">🚫</span>
+                      <strong style="color: #721c24; font-size: 18px;">Tu Sesión Ha Sido Terminada</strong>
+                    </div>
+                    <div style="background: white; padding: 12px; border-radius: 4px; margin-bottom: 12px;">
+                      <p style="color: #721c24; font-size: 14px; margin: 0; line-height: 1.5;">
+                        Tu cuenta ha sido baneada permanentemente. ${data.message || 'Contacta al soporte para más información.'}
+                      </p>
+                    </div>
+                    <div style="margin-top: 16px; padding: 12px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+                      <p style="color: #856404; font-size: 13px; margin: 0 0 8px 0; line-height: 1.5;">
+                        ⚠️ No puedes acceder a la plataforma.
+                      </p>
+                    </div>
+                    <div style="margin-top: 12px; padding: 12px; background: #e7f3ff; border-left: 4px solid #3498db; border-radius: 4px;">
+                      <p style="color: #2c5282; font-size: 13px; margin: 0; line-height: 1.5;">
+                        📧 <strong>¿Crees que esto es un error?</strong><br>
+                        Puedes enviar una apelación al correo: <a href="mailto:innovacion@alico-sa.com?subject=Apelación Formulario IA" style="color: #2563eb; text-decoration: underline; font-weight: 600;">innovacion@alico-sa.com</a><br>
+                        <span style="font-size: 12px; color: #4a5568;">Asunto: <strong>Apelación Formulario IA</strong></span>
+                      </p>
+                    </div>
+                  </div>
+                `;
+              } else {
+                // Token is invalid for other reason, just clear it
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('token');
+                localStorage.removeItem('userInfo');
+                localStorage.removeItem('user');
+              }
+            }).catch(() => {
+              // Error parsing response, clear tokens
+              localStorage.removeItem('authToken');
+              localStorage.removeItem('token');
+              localStorage.removeItem('userInfo');
+              localStorage.removeItem('user');
+            });
           } else {
             // Token is invalid, clear ALL tokens
             localStorage.removeItem('authToken');
@@ -84,8 +135,18 @@
           });
           const data = await res.json();
           if (data.ok && data.token) {
+            // Clear any old tokens first
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('token');
+            localStorage.removeItem('userInfo');
+            localStorage.removeItem('user');
+            
+            // Set new credentials
             localStorage.setItem('authToken', data.token);
+            localStorage.setItem('token', data.token);
             localStorage.setItem('userInfo', JSON.stringify(data.user));
+            localStorage.setItem('user', JSON.stringify(data.user));
+            
             resEl.textContent = 'Éxito! Redirigiendo...';
             resEl.style.color = '#27ae60';
             
@@ -98,8 +159,49 @@
               }
             }, 500);
           } else {
+            // Clear all credentials on any error to prevent cached banned users
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('token');
+            localStorage.removeItem('userInfo');
+            localStorage.removeItem('user');
+
+            // Check if user is banned
+            if (data.userBanned) {
+              resEl.innerHTML = `
+                <div style="padding: 16px; background: #fff5f5; border: 2px solid #e74c3c; border-radius: 8px; margin-top: 12px; text-align: left;">
+                  <div style="display: flex; align-items: center; margin-bottom: 12px;">
+                    <span style="font-size: 32px; margin-right: 12px;">🚫</span>
+                    <strong style="color: #721c24; font-size: 18px;">Cuenta Baneada Permanentemente</strong>
+                  </div>
+                  <div style="background: white; padding: 12px; border-radius: 4px; margin-bottom: 12px;">
+                    <strong style="color: #333; font-size: 14px;">Motivo del baneo:</strong>
+                    <p style="color: #721c24; font-size: 14px; margin: 8px 0 0 0; line-height: 1.5;">
+                      ${data.message ? data.message.replace('Your account has been permanently banned. Reason: ', '').replace('Your account has been permanently banned.', 'No se especificó un motivo') : 'No se especificó un motivo'}
+                    </p>
+                  </div>
+                  ${data.banned_at ? `
+                    <div style="color: #666; font-size: 13px; margin-bottom: 16px;">
+                      📅 Fecha del baneo: <strong>${new Date(data.banned_at).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</strong>
+                    </div>
+                  ` : ''}
+                  <div style="margin-top: 16px; padding: 12px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+                    <p style="color: #856404; font-size: 13px; margin: 0 0 8px 0; line-height: 1.5;">
+                      ⚠️ Tu cuenta ha sido suspendida permanentemente y no puedes acceder a la plataforma.
+                    </p>
+                  </div>
+                  <div style="margin-top: 12px; padding: 12px; background: #e7f3ff; border-left: 4px solid #3498db; border-radius: 4px;">
+                    <p style="color: #2c5282; font-size: 13px; margin: 0; line-height: 1.5;">
+                      📧 <strong>¿Crees que esto es un error?</strong><br>
+                      Puedes enviar una apelación al correo: <a href="mailto:innovacion@alico-sa.com?subject=Apelación Formulario IA" style="color: #2563eb; text-decoration: underline; font-weight: 600;">innovacion@alico-sa.com</a><br>
+                      <span style="font-size: 12px; color: #4a5568;">Asunto: <strong>Apelación Formulario IA</strong></span>
+                    </p>
+                  </div>
+                </div>
+              `;
+              resEl.style.color = '';
+            }
             // Check if it's an email verification error
-            if (data.emailNotVerified) {
+            else if (data.emailNotVerified) {
               resEl.innerHTML = '⚠️ ' + data.message + '<br><a href="/check-email.html?email=' + encodeURIComponent(body.email) + '" style="color: #3498db; text-decoration: underline;">Reenviar correo de verificación</a>';
               resEl.style.color = '#f39c12';
             } else {
@@ -108,7 +210,14 @@
             }
           }
         } catch (err) {
+          // Clear credentials on error
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('token');
+          localStorage.removeItem('userInfo');
+          localStorage.removeItem('user');
+          
           resEl.textContent = String(err);
+          resEl.style.color = '#e74c3c';
         }
       });
 
