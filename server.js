@@ -128,8 +128,10 @@ app.post('/api/login', async (req, res) => {
 });
 
 app.post('/api/register', async (req, res) => {
-  const { name, email, password } = req.body || {};
+  const { name, email, password, acceptedTerms } = req.body || {};
   if (!name || !email || !password) return res.status(400).json({ error: 'name, email and password are required' });
+
+  if (!acceptedTerms) return res.status(400).json({ error: 'you must accept the terms and conditions' });
 
   if (password.length < 8) return res.status(400).json({ error: 'password must be at least 8 characters' });
 
@@ -322,6 +324,93 @@ app.post('/api/reset-password', async (req, res) => {
     res.json({ ok: true, message: 'Password reset successful' });
   } catch (err) {
     console.error('reset-password error', err.message || err);
+    res.status(500).json({ error: err.message || String(err) });
+  }
+});
+
+// Update user profile (name and/or email)
+app.post('/api/update-profile', authenticate, async (req, res) => {
+  const { name, email } = req.body || {};
+  
+  // At least one field must be provided
+  if (!name && !email) {
+    return res.status(400).json({ error: 'At least one field (name or email) is required' });
+  }
+
+  try {
+    const userId = req.user.id;
+    const updateData = {};
+    
+    // Add fields to update
+    if (name) {
+      if (name.trim().length === 0) {
+        return res.status(400).json({ error: 'Name cannot be empty' });
+      }
+      updateData.name = name.trim();
+    }
+    
+    if (email) {
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ error: 'Invalid email format' });
+      }
+      
+      // Check if email is already taken by another user
+      const { data: existingUser, error: checkErr } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', email)
+        .neq('id', userId)
+        .maybeSingle();
+      
+      if (checkErr) throw checkErr;
+      
+      if (existingUser) {
+        return res.status(400).json({ error: 'Email already in use by another user' });
+      }
+      
+      updateData.email = email.toLowerCase().trim();
+    }
+
+    // Update user in database
+    const { data: updatedUser, error: updateErr } = await supabase
+      .from('users')
+      .update(updateData)
+      .eq('id', userId)
+      .select('id, name, email, credits, is_admin, created_at')
+      .single();
+    
+    if (updateErr) throw updateErr;
+
+    // Send webhook notification
+    const webhookUrl = getWebhookUrlFromReq(req);
+    const payload = {
+      action: 'profile-updated',
+      data: {
+        id: updatedUser.id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        updated_fields: Object.keys(updateData),
+        updated_at: new Date().toISOString()
+      }
+    };
+
+    if (webhookUrl) {
+      try {
+        await postToWebhook(webhookUrl, payload, { 'Content-Type': 'application/json' });
+      } catch (err) {
+        console.error('webhook error', err.message);
+      }
+    }
+
+    res.json({ 
+      ok: true, 
+      message: 'Profile updated successfully',
+      user: updatedUser
+    });
+  } catch (err) {
+    console.error('update-profile error', err.message || err);
     res.status(500).json({ error: err.message || String(err) });
   }
 });
@@ -1118,6 +1207,315 @@ app.get('/api/admin/check', authenticate, async (req, res) => {
     res.json({ ok: true, is_admin: user?.is_admin || false });
   } catch (err) {
     console.error('Admin check error:', err.message);
+    res.status(500).json({ error: err.message || String(err) });
+  }
+});
+
+// Export user data (GDPR Data Portability)
+app.get('/api/export-user-data/:userId?', authenticate, async (req, res) => {
+  try {
+    const PDFDocument = require('pdfkit');
+    const archiver = require('archiver');
+    const fs = require('fs');
+    const path = require('path');
+    
+    // Determine which user's data to export
+    let targetUserId = req.params.userId;
+    
+    // If userId is provided in URL, check if requester is admin
+    if (targetUserId && targetUserId !== req.user.id) {
+      const { data: requester } = await supabase
+        .from('users')
+        .select('is_admin')
+        .eq('id', req.user.id)
+        .single();
+      
+      if (!requester || !requester.is_admin) {
+        return res.status(403).json({ error: 'Only admins can export other users data' });
+      }
+    } else {
+      // If no userId provided, export requester's own data
+      targetUserId = req.user.id;
+    }
+
+    // Fetch user data
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', targetUserId)
+      .single();
+    
+    if (userError) throw userError;
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    // Fetch all uploads
+    const { data: uploads, error: uploadsError } = await supabase
+      .from('uploads')
+      .select('*')
+      .eq('user_id', targetUserId)
+      .order('created_at', { ascending: false });
+    
+    if (uploadsError) throw uploadsError;
+
+    // Fetch all form submissions
+    const { data: submissions, error: submissionsError } = await supabase
+      .from('form_submissions')
+      .select('*')
+      .eq('user_id', targetUserId)
+      .order('created_at', { ascending: false });
+    
+    if (submissionsError) throw submissionsError;
+
+    // Prepare JSON data
+    const exportData = {
+      export_date: new Date().toISOString(),
+      user_information: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        credits: user.credits,
+        is_admin: user.is_admin,
+        created_at: user.created_at
+      },
+      statistics: {
+        total_uploads: uploads?.length || 0,
+        total_submissions: submissions?.length || 0,
+        total_storage_bytes: uploads?.reduce((sum, u) => sum + (u.file_size || 0), 0) || 0
+      },
+      uploads: uploads || [],
+      form_submissions: submissions || []
+    };
+
+    // Create temporary directory for export
+    const tempDir = path.join(__dirname, 'temp_exports', targetUserId);
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+
+    // Generate PDF
+    const pdfPath = path.join(tempDir, 'user_data_report.pdf');
+    const doc = new PDFDocument({ margin: 50 });
+    const pdfStream = fs.createWriteStream(pdfPath);
+    doc.pipe(pdfStream);
+
+    // PDF Header
+    doc.fontSize(24).font('Helvetica-Bold').text('Exportación de Datos Personales', { align: 'center' });
+    doc.moveDown();
+    doc.fontSize(10).font('Helvetica').text(`Generado el: ${new Date().toLocaleString('es-CO')}`, { align: 'center' });
+    doc.text(`Conforme a la Ley 1581 de 2012 - Habeas Data`, { align: 'center' });
+    doc.moveDown(2);
+
+    // User Information Section
+    doc.fontSize(16).font('Helvetica-Bold').text('Información del Usuario');
+    doc.moveDown(0.5);
+    doc.fontSize(11).font('Helvetica');
+    doc.text(`Nombre: ${user.name}`);
+    doc.text(`Email: ${user.email}`);
+    doc.text(`ID de Usuario: ${user.id}`);
+    doc.text(`Créditos Disponibles: ${user.credits}`);
+    doc.text(`Tipo de cuenta: ${user.is_admin ? 'Administrador' : 'Usuario'}`);
+    doc.text(`Fecha de Registro: ${new Date(user.created_at).toLocaleString('es-CO')}`);
+    doc.moveDown(2);
+
+    // Statistics Section
+    doc.fontSize(16).font('Helvetica-Bold').text('Estadísticas');
+    doc.moveDown(0.5);
+    doc.fontSize(11).font('Helvetica');
+    doc.text(`Total de imágenes subidas: ${exportData.statistics.total_uploads}`);
+    doc.text(`Total de formularios enviados: ${exportData.statistics.total_submissions}`);
+    doc.text(`Almacenamiento total: ${(exportData.statistics.total_storage_bytes / (1024 * 1024)).toFixed(2)} MB`);
+    doc.moveDown(2);
+
+    // Uploads Section
+    if (uploads && uploads.length > 0) {
+      doc.addPage();
+      doc.fontSize(16).font('Helvetica-Bold').text('Imágenes Subidas');
+      doc.moveDown(1);
+      
+      uploads.forEach((upload, index) => {
+        if (index > 0 && index % 8 === 0) {
+          doc.addPage();
+        }
+        
+        doc.fontSize(11).font('Helvetica-Bold').text(`${index + 1}. ${upload.filename || 'Sin nombre'}`);
+        doc.fontSize(9).font('Helvetica');
+        doc.text(`   ID: ${upload.id}`);
+        doc.text(`   Tipo: ${upload.file_type || 'N/A'}`);
+        doc.text(`   Tamaño: ${((upload.file_size || 0) / 1024).toFixed(2)} KB`);
+        doc.text(`   Fecha: ${new Date(upload.created_at).toLocaleString('es-CO')}`);
+        doc.text(`   URL Storage: ${upload.storage_path || 'N/A'}`);
+        doc.moveDown(0.5);
+      });
+    }
+
+    // Form Submissions Section
+    if (submissions && submissions.length > 0) {
+      doc.addPage();
+      doc.fontSize(16).font('Helvetica-Bold').text('Formularios Enviados');
+      doc.moveDown(1);
+      
+      submissions.forEach((submission, index) => {
+        if (index > 0 && index % 5 === 0) {
+          doc.addPage();
+        }
+        
+        doc.fontSize(11).font('Helvetica-Bold').text(`${index + 1}. Formulario: ${submission.form_type || 'N/A'}`);
+        doc.fontSize(9).font('Helvetica');
+        doc.text(`   ID: ${submission.id}`);
+        doc.text(`   Fecha: ${new Date(submission.created_at).toLocaleString('es-CO')}`);
+        
+        // Parse and display form data
+        if (submission.form_data) {
+          try {
+            const formData = typeof submission.form_data === 'string' 
+              ? JSON.parse(submission.form_data) 
+              : submission.form_data;
+            
+            doc.text(`   Datos del formulario:`);
+            Object.entries(formData).forEach(([key, value]) => {
+              if (key !== 'photos' && typeof value !== 'object') {
+                doc.text(`     • ${key}: ${value}`);
+              }
+            });
+          } catch (e) {
+            doc.text(`   Datos: ${submission.form_data}`);
+          }
+        }
+        
+        if (submission.response_data) {
+          doc.text(`   Respuesta IA: ${submission.response_data.substring(0, 100)}...`);
+        }
+        
+        doc.moveDown(0.5);
+      });
+    }
+
+    // Footer
+    doc.addPage();
+    doc.fontSize(10).font('Helvetica').text('Este documento contiene todos los datos personales almacenados en nuestra plataforma.', { align: 'center' });
+    doc.text('Conforme al derecho de portabilidad establecido en la Ley 1581 de 2012.', { align: 'center' });
+    doc.moveDown();
+    doc.text('ALICO S.A.', { align: 'center' });
+    doc.text('Calle 10 Sur N° 50FF 127 - Guayabal, Medellín, Colombia', { align: 'center' });
+    doc.text('(604) 360 00 30', { align: 'center' });
+
+    doc.end();
+
+    // Wait for PDF to finish
+    await new Promise((resolve, reject) => {
+      pdfStream.on('finish', resolve);
+      pdfStream.on('error', reject);
+    });
+
+    // Save JSON data
+    const jsonPath = path.join(tempDir, 'user_data.json');
+    fs.writeFileSync(jsonPath, JSON.stringify(exportData, null, 2));
+
+    // Download images from Supabase Storage
+    const imagesDir = path.join(tempDir, 'images');
+    if (!fs.existsSync(imagesDir)) {
+      fs.mkdirSync(imagesDir, { recursive: true });
+    }
+
+    if (uploads && uploads.length > 0) {
+      for (const upload of uploads) {
+        if (upload.storage_path) {
+          try {
+            const { data: imageData, error: downloadError } = await supabase
+              .storage
+              .from('uploads')
+              .download(upload.storage_path);
+            
+            if (!downloadError && imageData) {
+              const buffer = Buffer.from(await imageData.arrayBuffer());
+              const imagePath = path.join(imagesDir, upload.filename || `image_${upload.id}.jpg`);
+              fs.writeFileSync(imagePath, buffer);
+            }
+          } catch (err) {
+            console.error(`Error downloading image ${upload.id}:`, err);
+          }
+        }
+      }
+    }
+
+    // Create README
+    const readmePath = path.join(tempDir, 'README.txt');
+    const readmeContent = `EXPORTACIÓN DE DATOS PERSONALES
+================================
+
+Generado el: ${new Date().toLocaleString('es-CO')}
+Usuario: ${user.name} (${user.email})
+
+CONTENIDO DE ESTE ARCHIVO:
+--------------------------
+
+1. user_data_report.pdf
+   Informe completo en formato PDF con toda la información del usuario,
+   estadísticas y detalles de formularios enviados.
+
+2. user_data.json
+   Archivo JSON con todos los datos estructurados y legibles por máquina.
+   Incluye información del usuario, uploads y formularios enviados.
+
+3. images/ (carpeta)
+   Contiene todas las imágenes originales subidas por el usuario.
+   Total de imágenes: ${uploads?.length || 0}
+   Almacenamiento total: ${(exportData.statistics.total_storage_bytes / (1024 * 1024)).toFixed(2)} MB
+
+DERECHOS DEL TITULAR:
+--------------------
+
+Esta exportación se realiza conforme al derecho de portabilidad establecido
+en la Ley 1581 de 2012 de Protección de Datos Personales en Colombia.
+
+Usted tiene derecho a:
+- Conocer, actualizar y rectificar sus datos personales
+- Solicitar la supresión de sus datos
+- Revocar la autorización otorgada
+- Presentar quejas ante la Superintendencia de Industria y Comercio
+
+Para ejercer estos derechos, contacte a:
+Email: servicioalcliente@alico-sa.com
+Teléfono: (604) 360 00 30
+
+ALICO S.A.
+Calle 10 Sur N° 50FF 127 - Guayabal
+Medellín, Antioquia, Colombia
+`;
+    fs.writeFileSync(readmePath, readmeContent);
+
+    // Create ZIP archive
+    const zipPath = path.join(__dirname, 'temp_exports', `user_data_${targetUserId}_${Date.now()}.zip`);
+    const output = fs.createWriteStream(zipPath);
+    const archive = archiver('zip', { zlib: { level: 9 } });
+
+    archive.pipe(output);
+    archive.directory(tempDir, false);
+    await archive.finalize();
+
+    // Wait for ZIP to finish
+    await new Promise((resolve, reject) => {
+      output.on('close', resolve);
+      output.on('error', reject);
+    });
+
+    // Send ZIP file
+    res.download(zipPath, `datos_personales_${user.name.replace(/\s/g, '_')}_${new Date().toISOString().split('T')[0]}.zip`, (err) => {
+      // Cleanup temporary files
+      try {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+        fs.unlinkSync(zipPath);
+      } catch (cleanupErr) {
+        console.error('Error cleaning up temp files:', cleanupErr);
+      }
+
+      if (err) {
+        console.error('Error sending file:', err);
+      }
+    });
+
+  } catch (err) {
+    console.error('export-user-data error', err.message || err);
     res.status(500).json({ error: err.message || String(err) });
   }
 });

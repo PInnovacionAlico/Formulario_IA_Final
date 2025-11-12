@@ -92,6 +92,20 @@
         box-shadow: 0 4px 12px rgba(219, 149, 0, 0.4);
       }
 
+      .btn-nav-terms {
+        background: transparent;
+        color: #666;
+        border: 1px solid #ddd;
+        padding: 8px 16px;
+        font-size: 13px;
+      }
+
+      .btn-nav-terms:hover {
+        background: #f5f5f5;
+        border-color: #999;
+        color: #333;
+      }
+
       .hero-section {
         min-height: 100vh;
         display: flex;
@@ -250,9 +264,18 @@
           font-size: 20px;
         }
 
+        .landing-nav-buttons {
+          gap: 8px;
+        }
+
         .btn-nav {
           padding: 8px 16px;
           font-size: 13px;
+        }
+
+        .btn-nav-terms {
+          padding: 6px 12px;
+          font-size: 12px;
         }
 
         .hero-section {
@@ -313,6 +336,7 @@
     <nav class="landing-nav">
       <div class="landing-nav-logo">📷 Formulario IA</div>
       <div class="landing-nav-buttons">
+        <a href="/privacy-policy.html" class="btn-nav btn-nav-terms" target="_blank">📋 Habeas Data</a>
         <a href="/login.html" class="btn-nav btn-nav-login">Iniciar sesión</a>
         <a href="/register.html" class="btn-nav btn-nav-register">Registrarse</a>
       </div>

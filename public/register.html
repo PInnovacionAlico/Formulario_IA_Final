@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Registro - Formulario IA</title>
+    <title>Registro - Transforma tu empaque</title>
     <link rel="icon" type="image/png" href="/favicon/favicon-96x96.png" sizes="96x96" />
     <link rel="icon" type="image/svg+xml" href="/favicon/favicon.svg" />
     <link rel="shortcut icon" href="/favicon/favicon.ico" />
@@ -25,6 +25,20 @@
               <button type="button" class="password-toggle" onclick="togglePasswordVisibility('registerPassword', this)">👁️</button>
             </div>
           </label>
+          <div class="terms-checkbox">
+            <label style="display: flex; align-items: flex-start; gap: 0.5rem; margin-top: 1rem;">
+              <input type="checkbox" name="acceptTerms" id="acceptTerms" required style="margin-top: 0.25rem; cursor: pointer;" />
+              <span style="flex: 1; line-height: 1.5;">
+                He leído y acepto los 
+                <a href="/terms-and-conditions.html" target="_blank" style="color: #3498db; text-decoration: underline;">
+                  Términos y Condiciones
+                </a> y la 
+                <a href="/privacy-policy.html" target="_blank" style="color: #3498db; text-decoration: underline;">
+                  Política de Privacidad (Habeas Data)
+                </a>
+              </span>
+            </label>
+          </div>
           <button type="submit">Registrar</button>
           <div id="registerResult" class="result"></div>
         </form>
@@ -61,9 +75,25 @@
       document.getElementById('registerForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const fd = new FormData(e.target);
-        const body = { name: fd.get('name'), email: fd.get('email'), password: fd.get('password') };
+        
+        // Validar que se hayan aceptado los términos
+        const acceptTerms = document.getElementById('acceptTerms').checked;
+        if (!acceptTerms) {
+          const resEl = document.getElementById('registerResult');
+          resEl.textContent = 'Debes aceptar los Términos y Condiciones para continuar';
+          resEl.style.color = '#e74c3c';
+          return;
+        }
+        
+        const body = { 
+          name: fd.get('name'), 
+          email: fd.get('email'), 
+          password: fd.get('password'),
+          acceptedTerms: true
+        };
         const resEl = document.getElementById('registerResult');
         resEl.textContent = 'Registrando...';
+        resEl.style.color = '';
         try {
           const res = await fetch('/api/register', {
             method: 'POST',
@@ -73,12 +103,15 @@
           const data = await res.json();
           if (data.ok) {
             resEl.textContent = 'Registro exitoso! Redirigiendo...';
+            resEl.style.color = '#27ae60';
             setTimeout(() => window.location.href = '/login.html', 1000);
           } else {
             resEl.textContent = data.error || 'Error al registrar';
+            resEl.style.color = '#e74c3c';
           }
         } catch (err) {
           resEl.textContent = String(err);
+          resEl.style.color = '#e74c3c';
         }
       });
 

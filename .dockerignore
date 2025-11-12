@@ -7,6 +7,10 @@ npm-debug.log
 .env.local
 .env.*.local
 
+# Temporary files
+uploads
+temp_exports
+
 # Git
 .git
 .gitignore

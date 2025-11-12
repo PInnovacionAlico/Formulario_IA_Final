@@ -79,57 +79,86 @@
           <div class="form-section" style="margin-bottom: 32px;">
             <h3>👤 Información de Usuario</h3>
             <div class="form-section-content">
-              <div style="display: flex; flex-direction: column; gap: 16px;">
-                <div>
-                  <label style="font-weight: 600; color: #666; margin-bottom: 8px; display: block;">Nombre</label>
-                  <div style="padding: 12px; background: #f8f9fa; border-radius: 8px; font-size: 15px;" id="userNameDisplay">
-                    Cargando...
+              <form id="updateProfileForm">
+                <div style="display: flex; flex-direction: column; gap: 16px;">
+                  <div>
+                    <label style="font-weight: 600; color: #666; margin-bottom: 8px; display: block;">
+                      Nombre
+                      <span style="color: #999; font-weight: 400; font-size: 13px; margin-left: 8px;">(Editable)</span>
+                    </label>
+                    <input 
+                      type="text" 
+                      id="userNameInput" 
+                      name="name"
+                      required
+                      style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 15px; transition: border-color 0.3s;"
+                      onfocus="this.style.borderColor='var(--alico-gold)'"
+                      onblur="this.style.borderColor='#e0e0e0'"
+                      placeholder="Tu nombre"
+                    />
                   </div>
-                </div>
-                
-                <div>
-                  <label style="font-weight: 600; color: #666; margin-bottom: 8px; display: block;">Email</label>
-                  <div style="padding: 12px; background: #f8f9fa; border-radius: 8px; font-size: 15px;" id="userEmailDisplay">
-                    Cargando...
+                  
+                  <div>
+                    <label style="font-weight: 600; color: #666; margin-bottom: 8px; display: block;">
+                      Email
+                      <span style="color: #999; font-weight: 400; font-size: 13px; margin-left: 8px;">(Editable)</span>
+                    </label>
+                    <input 
+                      type="email" 
+                      id="userEmailInput" 
+                      name="email"
+                      required
+                      style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 15px; transition: border-color 0.3s;"
+                      onfocus="this.style.borderColor='var(--alico-gold)'"
+                      onblur="this.style.borderColor='#e0e0e0'"
+                      placeholder="tu@email.com"
+                    />
                   </div>
-                </div>
 
-                <div>
-                  <label style="font-weight: 600; color: #666; margin-bottom: 8px; display: block;">ID de Usuario</label>
-                  <div style="display: flex; align-items: center; gap: 12px;">
-                    <div style="flex: 1; padding: 12px; background: #f8f9fa; border-radius: 8px; font-family: monospace; font-size: 14px; color: #333;" id="userIdDisplay">
-                      Cargando...
+                  <div>
+                    <label style="font-weight: 600; color: #666; margin-bottom: 8px; display: block;">ID de Usuario</label>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                      <div style="flex: 1; padding: 12px; background: #f8f9fa; border-radius: 8px; font-family: monospace; font-size: 14px; color: #333;" id="userIdDisplay">
+                        Cargando...
+                      </div>
+                      <button 
+                        type="button"
+                        id="copyUserIdBtn"
+                        onclick="copyUserId()"
+                        style="background: linear-gradient(135deg, var(--alico-gold) 0%, var(--alico-gold-80) 100%); 
+                               color: white; 
+                               border: none; 
+                               padding: 12px 20px; 
+                               border-radius: 8px; 
+                               cursor: pointer; 
+                               font-size: 14px; 
+                               font-weight: 600;
+                               transition: all 0.3s;
+                               display: flex;
+                               align-items: center;
+                               gap: 6px;
+                               white-space: nowrap;"
+                        onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(219, 149, 0, 0.4)';"
+                        onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
+                        📋 Copiar ID
+                      </button>
                     </div>
-                    <button 
-                      id="copyUserIdBtn"
-                      onclick="copyUserId()"
-                      style="background: linear-gradient(135deg, var(--alico-gold) 0%, var(--alico-gold-80) 100%); 
-                             color: white; 
-                             border: none; 
-                             padding: 12px 20px; 
-                             border-radius: 8px; 
-                             cursor: pointer; 
-                             font-size: 14px; 
-                             font-weight: 600;
-                             transition: all 0.3s;
-                             display: flex;
-                             align-items: center;
-                             gap: 6px;
-                             white-space: nowrap;"
-                      onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(219, 149, 0, 0.4)';"
-                      onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
-                      📋 Copiar ID
+                  </div>
+
+                  <div>
+                    <label style="font-weight: 600; color: #666; margin-bottom: 8px; display: block;">Créditos Disponibles</label>
+                    <div style="padding: 12px; background: linear-gradient(135deg, var(--alico-gold-10) 0%, var(--alico-gold-20) 100%); border-radius: 8px; font-size: 18px; font-weight: 700; color: var(--alico-gold); text-align: center;" id="userCreditsDisplay">
+                      ... créditos
+                    </div>
+                  </div>
+
+                  <div style="margin-top: 16px;">
+                    <button type="submit" class="btn-submit" style="width: 100%;">
+                      💾 Guardar Cambios
                     </button>
                   </div>
                 </div>
-
-                <div>
-                  <label style="font-weight: 600; color: #666; margin-bottom: 8px; display: block;">Créditos Disponibles</label>
-                  <div style="padding: 12px; background: linear-gradient(135deg, var(--alico-gold-10) 0%, var(--alico-gold-20) 100%); border-radius: 8px; font-size: 18px; font-weight: 700; color: var(--alico-gold); text-align: center;" id="userCreditsDisplay">
-                    ... créditos
-                  </div>
-                </div>
-              </div>
+              </form>
             </div>
           </div>
 
@@ -176,6 +205,33 @@
                   </div>
                 </div>
               </form>
+            </div>
+          </div>
+
+          <!-- Data Export Section (GDPR) -->
+          <div class="form-section">
+            <h3>📦 Exportación de Datos (Habeas Data)</h3>
+            <div class="form-section-content">
+              <p style="color: #666; margin-bottom: 20px; line-height: 1.6;">
+                Conforme a la Ley 1581 de 2012, usted tiene derecho a solicitar una copia de todos sus datos personales 
+                almacenados en nuestra plataforma. La exportación incluye:
+              </p>
+              <ul style="color: #666; margin-bottom: 20px; line-height: 1.8; padding-left: 20px;">
+                <li>📄 Informe en PDF con su información personal y estadísticas</li>
+                <li>📊 Archivo JSON con todos sus datos estructurados</li>
+                <li>🖼️ Todas las imágenes originales que ha subido</li>
+                <li>📋 Historial completo de formularios enviados</li>
+              </ul>
+              <p style="color: #999; font-size: 13px; margin-bottom: 20px; font-style: italic;">
+                La descarga se genera en formato ZIP y puede tardar unos momentos dependiendo de la cantidad de imágenes.
+              </p>
+              <button 
+                onclick="exportUserData()"
+                class="btn-submit"
+                style="width: 100%; background: linear-gradient(135deg, var(--alico-blue) 0%, var(--alico-blue-70) 100%);">
+                📥 Descargar Mis Datos Personales
+              </button>
+              <div id="exportStatus" style="margin-top: 16px; text-align: center; font-weight: 600;"></div>
             </div>
           </div>
         </div>
@@ -253,8 +309,8 @@
 
       // Display user information
       document.getElementById('mobileUserName').textContent = user.name || user.email || 'Usuario';
-      document.getElementById('userNameDisplay').textContent = user.name || 'No disponible';
-      document.getElementById('userEmailDisplay').textContent = user.email || 'No disponible';
+      document.getElementById('userNameInput').value = user.name || '';
+      document.getElementById('userEmailInput').value = user.email || '';
       document.getElementById('userIdDisplay').textContent = user.id || 'No disponible';
 
       // Load user credits
@@ -371,6 +427,67 @@
       `;
       document.head.appendChild(style);
 
+      // Handle profile update
+      document.getElementById('updateProfileForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const name = document.getElementById('userNameInput').value.trim();
+        const email = document.getElementById('userEmailInput').value.trim();
+
+        // Validate inputs
+        if (!name) {
+          alert('❌ El nombre no puede estar vacío');
+          return;
+        }
+
+        if (!email) {
+          alert('❌ El email no puede estar vacío');
+          return;
+        }
+
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+          alert('❌ El formato del email no es válido');
+          return;
+        }
+
+        try {
+          const response = await fetch('/api/update-profile', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify({ name, email })
+          });
+
+          const result = await response.json();
+
+          if (response.ok && result.ok) {
+            // Update localStorage with new user data
+            const updatedUser = result.user;
+            const storageKey = localStorage.getItem('user') ? 'user' : 'userInfo';
+            localStorage.setItem(storageKey, JSON.stringify(updatedUser));
+            
+            // Update user object in memory
+            user.name = updatedUser.name;
+            user.email = updatedUser.email;
+            
+            // Update displayed values
+            document.getElementById('userName').textContent = updatedUser.name;
+            document.getElementById('mobileUserName').textContent = updatedUser.name;
+            
+            showNotification('✅ Perfil actualizado exitosamente');
+          } else {
+            alert('❌ Error: ' + (result.error || 'No se pudo actualizar el perfil'));
+          }
+        } catch (error) {
+          console.error('Error updating profile:', error);
+          alert('❌ Error al actualizar el perfil: ' + error.message);
+        }
+      });
+
       // Handle password change
       document.getElementById('changePasswordForm').addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -427,6 +544,49 @@
         } else {
           input.type = 'password';
           button.textContent = '👁️';
+        }
+      }
+
+      // Export user data
+      async function exportUserData() {
+        const statusEl = document.getElementById('exportStatus');
+        statusEl.innerHTML = '<span style="color: var(--alico-blue);">⏳ Generando exportación... Esto puede tardar unos momentos.</span>';
+        
+        try {
+          const response = await fetch(`/api/export-user-data`, {
+            method: 'GET',
+            headers: {
+              'Authorization': 'Bearer ' + token
+            }
+          });
+
+          if (!response.ok) {
+            throw new Error('Error al generar la exportación');
+          }
+
+          // Get the blob from response
+          const blob = await response.blob();
+          
+          // Create download link
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `datos_personales_${user.name.replace(/\s/g, '_')}_${new Date().toISOString().split('T')[0]}.zip`;
+          document.body.appendChild(a);
+          a.click();
+          
+          // Cleanup
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+          
+          statusEl.innerHTML = '<span style="color: #27ae60;">✅ Descarga completada exitosamente</span>';
+          
+          setTimeout(() => {
+            statusEl.innerHTML = '';
+          }, 5000);
+        } catch (error) {
+          console.error('Error exporting data:', error);
+          statusEl.innerHTML = '<span style="color: #e74c3c;">❌ Error al exportar datos. Inténtelo nuevamente.</span>';
         }
       }
     </script>

@@ -628,6 +628,7 @@
             <td>
               <button class="btn-small primary" onclick="editUserCredits('${user.id}', ${user.credits})">Editar Créditos</button>
               ${!user.is_admin ? `<button class="btn-small danger" onclick="toggleAdminStatus('${user.id}', true)">Hacer Admin</button>` : `<button class="btn-small danger" onclick="toggleAdminStatus('${user.id}', false)">Quitar Admin</button>`}
+              <button class="btn-small" style="background: linear-gradient(135deg, var(--alico-blue) 0%, var(--alico-blue-70) 100%);" onclick="exportUserDataAdmin('${user.id}', '${user.name}')">📥 Exportar Datos</button>
             </td>
           </tr>
         `).join('');
@@ -753,6 +754,49 @@
         await loadDashboardStats();
         await loadUsers();
         await loadAllSubmissions();
+      }
+
+      // Export user data (Admin function)
+      async function exportUserDataAdmin(userId, userName) {
+        if (!confirm(`¿Desea exportar todos los datos de ${userName}?\n\nEsto generará un archivo ZIP con:\n- Informe en PDF\n- Datos en JSON\n- Todas las imágenes subidas`)) {
+          return;
+        }
+
+        try {
+          // Show loading notification
+          showNotification('⏳ Generando exportación... Esto puede tardar unos momentos.');
+
+          const response = await fetch(`/api/export-user-data/${userId}`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+
+          if (!response.ok) {
+            throw new Error('Error al generar la exportación');
+          }
+
+          // Get the blob from response
+          const blob = await response.blob();
+          
+          // Create download link
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `datos_${userName.replace(/\s/g, '_')}_${new Date().toISOString().split('T')[0]}.zip`;
+          document.body.appendChild(a);
+          a.click();
+          
+          // Cleanup
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+          
+          showNotification('✅ Exportación completada y descargada exitosamente');
+        } catch (error) {
+          console.error('Error exporting data:', error);
+          alert('❌ Error al exportar datos: ' + error.message);
+        }
       }
 
       // Start initialization
