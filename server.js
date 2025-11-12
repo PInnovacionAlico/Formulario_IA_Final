@@ -1238,7 +1238,30 @@ app.get('/api/admin/users', authenticateAdmin, async (req, res) => {
     
     if (error) throw error;
 
-    res.json({ ok: true, users });
+    // Get upload stats for each user
+    const usersWithStats = await Promise.all(users.map(async (user) => {
+      const { data: uploads, error: uploadsError } = await supabase
+        .from('uploads')
+        .select('size')
+        .eq('owner_id', user.id);
+      
+      let totalPhotos = 0;
+      let totalSize = 0;
+      
+      if (!uploadsError && uploads) {
+        totalPhotos = uploads.length;
+        totalSize = uploads.reduce((sum, upload) => sum + (upload.size || 0), 0);
+      }
+      
+      return {
+        ...user,
+        total_photos: totalPhotos,
+        total_size_bytes: totalSize,
+        total_size_mb: (totalSize / (1024 * 1024)).toFixed(2)
+      };
+    }));
+
+    res.json({ ok: true, users: usersWithStats });
   } catch (err) {
     console.error('Get all users error:', err.message);
     res.status(500).json({ error: err.message || String(err) });
