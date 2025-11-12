@@ -376,7 +376,7 @@ app.post('/api/mobile-upload', upload.single('file'), async (req, res) => {
     const customName = req.body.customName || file.originalname;
 
     const { data: dbData, error: dbErr } = await supabase.from('uploads').insert({
-      user_id: userId,
+      owner_id: userId,
       filename: safeName,
       path: pathInBucket,
       thumbnail_path: thumbnailPath,
