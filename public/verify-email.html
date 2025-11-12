@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Verificación de Email - Transforma tu empaque</title>
+    <link rel="icon" type="image/png" href="/favicon/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="/favicon/favicon.svg" />
+    <link rel="shortcut icon" href="/favicon/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicon/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="Transforma tu empaque" />
+    <link rel="manifest" href="/favicon/site.webmanifest" />
+    <link rel="stylesheet" href="/style.css" />
+    <style>
+      .verify-container {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 2rem;
+      }
+      .verify-card {
+        background: white;
+        border-radius: 12px;
+        padding: 3rem;
+        max-width: 500px;
+        width: 100%;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        text-align: center;
+      }
+      .verify-icon {
+        font-size: 5rem;
+        margin-bottom: 1.5rem;
+      }
+      .verify-icon.success {
+        animation: scaleIn 0.5s ease-out;
+      }
+      @keyframes scaleIn {
+        0% { transform: scale(0); }
+        50% { transform: scale(1.2); }
+        100% { transform: scale(1); }
+      }
+      .verify-title {
+        color: #2c3e50;
+        font-size: 2rem;
+        margin-bottom: 1rem;
+      }
+      .verify-message {
+        color: #7f8c8d;
+        font-size: 1.1rem;
+        line-height: 1.6;
+        margin-bottom: 2rem;
+      }
+      .success-box {
+        background: #d4edda;
+        border-left: 4px solid #28a745;
+        padding: 1.5rem;
+        margin: 2rem 0;
+        text-align: left;
+        border-radius: 4px;
+      }
+      .success-box h4 {
+        color: #155724;
+        margin-top: 0;
+        margin-bottom: 0.5rem;
+      }
+      .success-box p {
+        color: #155724;
+        margin: 0.5rem 0;
+      }
+      .error-box {
+        background: #f8d7da;
+        border-left: 4px solid #dc3545;
+        padding: 1.5rem;
+        margin: 2rem 0;
+        text-align: left;
+        border-radius: 4px;
+      }
+      .error-box h4 {
+        color: #721c24;
+        margin-top: 0;
+        margin-bottom: 0.5rem;
+      }
+      .error-box p {
+        color: #721c24;
+        margin: 0.5rem 0;
+      }
+      .btn-login {
+        display: inline-block;
+        padding: 1rem 3rem;
+        background: #27ae60;
+        color: white;
+        text-decoration: none;
+        border-radius: 5px;
+        font-weight: 600;
+        font-size: 1.1rem;
+        transition: background 0.3s;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      }
+      .btn-login:hover {
+        background: #229954;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+      }
+      .btn-secondary {
+        display: inline-block;
+        padding: 0.75rem 2rem;
+        background: #95a5a6;
+        color: white;
+        text-decoration: none;
+        border-radius: 5px;
+        font-weight: 600;
+        margin-top: 1rem;
+        transition: background 0.3s;
+      }
+      .btn-secondary:hover {
+        background: #7f8c8d;
+      }
+      .loading {
+        text-align: center;
+        padding: 3rem;
+      }
+      .spinner {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #3498db;
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 1rem;
+      }
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="verify-container">
+      <div class="verify-card">
+        <div id="loadingState" class="loading">
+          <div class="spinner"></div>
+          <p style="color: #7f8c8d;">Verificando tu correo electrónico...</p>
+        </div>
+
+        <div id="successState" style="display: none;">
+          <div class="verify-icon success">✅</div>
+          <h1 class="verify-title">¡Email Verificado!</h1>
+          <p class="verify-message">
+            Tu cuenta ha sido verificada exitosamente.
+          </p>
+          
+          <div class="success-box">
+            <h4>✨ ¡Todo listo!</h4>
+            <p>Ahora puedes iniciar sesión y comenzar a usar nuestra plataforma para generar imágenes de tus productos con empaques de ALICO.</p>
+          </div>
+
+          <a href="/login.html" class="btn-login">Iniciar Sesión</a>
+        </div>
+
+        <div id="errorState" style="display: none;">
+          <div class="verify-icon">❌</div>
+          <h1 class="verify-title">Error de Verificación</h1>
+          <p class="verify-message" id="errorMessage">
+            Hubo un problema al verificar tu correo electrónico.
+          </p>
+          
+          <div class="error-box">
+            <h4>⚠️ Posibles causas:</h4>
+            <p>• El enlace de verificación ha expirado (válido por 24 horas)</p>
+            <p>• El enlace ya fue utilizado</p>
+            <p>• El token de verificación es inválido</p>
+          </div>
+
+          <a href="/register.html" class="btn-secondary">Volver a Registrarse</a>
+          <br>
+          <a href="/login.html" class="btn-secondary">Ir a Iniciar Sesión</a>
+        </div>
+
+        <div id="alreadyVerifiedState" style="display: none;">
+          <div class="verify-icon">✔️</div>
+          <h1 class="verify-title">Ya Verificado</h1>
+          <p class="verify-message">
+            Tu correo electrónico ya ha sido verificado anteriormente.
+          </p>
+          
+          <div class="success-box">
+            <h4>👍 Cuenta Activa</h4>
+            <p>Tu cuenta está activa y lista para usar. Puedes iniciar sesión cuando quieras.</p>
+          </div>
+
+          <a href="/login.html" class="btn-login">Iniciar Sesión</a>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Get token from URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get('token');
+
+      async function verifyEmail() {
+        if (!token) {
+          showError('No se proporcionó un token de verificación');
+          return;
+        }
+
+        try {
+          const res = await fetch(`/api/verify-email?token=${encodeURIComponent(token)}`);
+          const data = await res.json();
+
+          if (data.ok) {
+            if (data.alreadyVerified) {
+              showAlreadyVerified();
+            } else {
+              showSuccess();
+            }
+          } else {
+            showError(data.error || 'Error desconocido al verificar el email');
+          }
+        } catch (err) {
+          console.error('Verification error:', err);
+          showError('Error de conexión al verificar el email');
+        }
+      }
+
+      function showSuccess() {
+        document.getElementById('loadingState').style.display = 'none';
+        document.getElementById('successState').style.display = 'block';
+      }
+
+      function showError(message) {
+        document.getElementById('loadingState').style.display = 'none';
+        document.getElementById('errorState').style.display = 'block';
+        document.getElementById('errorMessage').textContent = message;
+      }
+
+      function showAlreadyVerified() {
+        document.getElementById('loadingState').style.display = 'none';
+        document.getElementById('alreadyVerifiedState').style.display = 'block';
+      }
+
+      // Auto-verify on page load
+      verifyEmail();
+    </script>
+  </body>
+</html>

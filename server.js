@@ -119,6 +119,15 @@ app.post('/api/login', async (req, res) => {
     const match = bcrypt.compareSync(password, user.password_hash);
     if (!match) return res.status(401).json({ error: 'Invalid credentials' });
 
+    // Check if email is verified
+    if (!user.email_verified) {
+      return res.status(403).json({ 
+        error: 'Email not verified', 
+        message: 'Please verify your email before logging in. Check your inbox for the verification link.',
+        emailNotVerified: true 
+      });
+    }
+
     const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
     res.json({ ok: true, token, user: { id: user.id, name: user.name, email: user.email, is_admin: user.is_admin || false } });
   } catch (err) {
@@ -136,10 +145,21 @@ app.post('/api/register', async (req, res) => {
   if (password.length < 8) return res.status(400).json({ error: 'password must be at least 8 characters' });
 
   try {
+    // Generate verification token
+    const verificationToken = uuidv4();
+    const verificationTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
     const password_hash = bcrypt.hashSync(password, 10);
     const { data, error } = await supabase
       .from('users')
-      .insert([{ name, email, password_hash }])
+      .insert([{ 
+        name, 
+        email, 
+        password_hash,
+        email_verified: false,
+        verification_token: verificationToken,
+        verification_token_expiry: verificationTokenExpiry.toISOString()
+      }])
       .select('*')
       .single();
 
@@ -151,8 +171,23 @@ app.post('/api/register', async (req, res) => {
       throw error;
     }
 
-    const webhookUrl = getWebhookUrlFromReq(req);
-    const payload = { action: 'register', data: { id: data.id, name: data.name, email: data.email, created_at: data.created_at } };
+    // Generate verification link
+    const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+    const verificationLink = `${baseUrl}/verify-email.html?token=${verificationToken}`;
+
+    // Send to webhook for email notification
+    const webhookUrl = 'https://apps.alico-sa.com/webhook/registro-usuario-formulario-ia';
+    const payload = { 
+      action: 'register', 
+      data: { 
+        id: data.id, 
+        name: data.name, 
+        email: data.email, 
+        created_at: data.created_at,
+        verification_link: verificationLink
+      } 
+    };
+    
     if (webhookUrl) {
       try {
         await postToWebhook(webhookUrl, payload, { 'Content-Type': 'application/json' });
@@ -162,7 +197,7 @@ app.post('/api/register', async (req, res) => {
       }
     }
 
-    res.json({ ok: true, id: data.id });
+    res.json({ ok: true, id: data.id, message: 'Please check your email to verify your account' });
   } catch (err) {
     console.error('register error', err.message || err);
     res.status(500).json({ error: err.message || String(err) });
@@ -200,6 +235,142 @@ app.post('/api/change-password', async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error('change-password error', err.message || err);
+    res.status(500).json({ error: err.message || String(err) });
+  }
+});
+
+// Verify email with token
+app.get('/api/verify-email', async (req, res) => {
+  const { token } = req.query;
+  
+  if (!token) {
+    return res.status(400).json({ error: 'Verification token is required' });
+  }
+
+  try {
+    // Find user with this verification token
+    const { data: user, error: fetchErr } = await supabase
+      .from('users')
+      .select('*')
+      .eq('verification_token', token)
+      .maybeSingle();
+
+    if (fetchErr) throw fetchErr;
+
+    if (!user) {
+      return res.status(400).json({ error: 'Invalid or expired verification token' });
+    }
+
+    // Check if already verified
+    if (user.email_verified) {
+      return res.json({ ok: true, message: 'Email already verified', alreadyVerified: true });
+    }
+
+    // Check if token has expired
+    if (user.verification_token_expiry && new Date(user.verification_token_expiry) < new Date()) {
+      return res.status(400).json({ error: 'Verification token has expired. Please request a new one.' });
+    }
+
+    // Update user as verified
+    const { data: updatedUser, error: updateErr } = await supabase
+      .from('users')
+      .update({ 
+        email_verified: true,
+        verification_token: null,
+        verification_token_expiry: null
+      })
+      .eq('id', user.id)
+      .select('*')
+      .single();
+
+    if (updateErr) throw updateErr;
+
+    res.json({ 
+      ok: true, 
+      message: 'Email verified successfully!',
+      user: {
+        id: updatedUser.id,
+        name: updatedUser.name,
+        email: updatedUser.email
+      }
+    });
+  } catch (err) {
+    console.error('verify-email error', err.message || err);
+    res.status(500).json({ error: err.message || String(err) });
+  }
+});
+
+// Resend verification email
+app.post('/api/resend-verification', async (req, res) => {
+  const { email } = req.body || {};
+  
+  if (!email) {
+    return res.status(400).json({ error: 'Email is required' });
+  }
+
+  try {
+    // Find user by email
+    const { data: user, error: fetchErr } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (fetchErr) throw fetchErr;
+
+    if (!user) {
+      // Don't reveal if user exists or not (security best practice)
+      return res.json({ ok: true, message: 'If the email exists, a verification link will be sent' });
+    }
+
+    // Check if already verified
+    if (user.email_verified) {
+      return res.status(400).json({ error: 'Email is already verified' });
+    }
+
+    // Generate new verification token
+    const verificationToken = uuidv4();
+    const verificationTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+    // Update user with new token
+    const { error: updateErr } = await supabase
+      .from('users')
+      .update({ 
+        verification_token: verificationToken,
+        verification_token_expiry: verificationTokenExpiry.toISOString()
+      })
+      .eq('id', user.id);
+
+    if (updateErr) throw updateErr;
+
+    // Generate verification link
+    const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+    const verificationLink = `${baseUrl}/verify-email.html?token=${verificationToken}`;
+
+    // Send to webhook for email notification
+    const webhookUrl = 'https://apps.alico-sa.com/webhook/registro-usuario-formulario-ia';
+    const payload = { 
+      action: 'resend-verification', 
+      data: { 
+        id: user.id, 
+        name: user.name, 
+        email: user.email, 
+        verification_link: verificationLink
+      } 
+    };
+    
+    if (webhookUrl) {
+      try {
+        await postToWebhook(webhookUrl, payload, { 'Content-Type': 'application/json' });
+      } catch (err) {
+        console.error('webhook error', err.message);
+        // do not fail because webhook failed
+      }
+    }
+
+    res.json({ ok: true, message: 'Verification email sent successfully' });
+  } catch (err) {
+    console.error('resend-verification error', err.message || err);
     res.status(500).json({ error: err.message || String(err) });
   }
 });

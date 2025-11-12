@@ -75,6 +75,7 @@
         const body = { email: fd.get('email'), password: fd.get('password') };
         const resEl = document.getElementById('loginResult');
         resEl.textContent = 'Iniciando sesión...';
+        resEl.style.color = '';
         try {
           const res = await fetch('/api/login', {
             method: 'POST',
@@ -86,6 +87,7 @@
             localStorage.setItem('authToken', data.token);
             localStorage.setItem('userInfo', JSON.stringify(data.user));
             resEl.textContent = 'Éxito! Redirigiendo...';
+            resEl.style.color = '#27ae60';
             
             // Redirect to admin dashboard if user is admin, otherwise to regular dashboard
             setTimeout(() => {
@@ -96,7 +98,14 @@
               }
             }, 500);
           } else {
-            resEl.textContent = data.error || 'Error al iniciar sesión';
+            // Check if it's an email verification error
+            if (data.emailNotVerified) {
+              resEl.innerHTML = '⚠️ ' + data.message + '<br><a href="/check-email.html?email=' + encodeURIComponent(body.email) + '" style="color: #3498db; text-decoration: underline;">Reenviar correo de verificación</a>';
+              resEl.style.color = '#f39c12';
+            } else {
+              resEl.textContent = data.error || 'Error al iniciar sesión';
+              resEl.style.color = '#e74c3c';
+            }
           }
         } catch (err) {
           resEl.textContent = String(err);

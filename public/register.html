@@ -18,13 +18,22 @@
         <h1>Registro</h1>
         <form id="registerForm">
           <label>Nombre<input type="text" name="name" required /></label>
-          <label>Email<input type="email" name="email" required /></label>
+          <label>Email<input type="email" name="email" id="registerEmail" required /></label>
+          <label>Confirmar Email<input type="email" name="confirmEmail" id="confirmEmail" required /></label>
+          <div id="emailMatchMessage" class="validation-message"></div>
           <label>Contraseña
             <div class="password-wrapper">
-              <input type="password" name="password" id="registerPassword" required />
+              <input type="password" name="password" id="registerPassword" required minlength="6" />
               <button type="button" class="password-toggle" onclick="togglePasswordVisibility('registerPassword', this)">👁️</button>
             </div>
           </label>
+          <label>Confirmar Contraseña
+            <div class="password-wrapper">
+              <input type="password" name="confirmPassword" id="confirmPassword" required minlength="6" />
+              <button type="button" class="password-toggle" onclick="togglePasswordVisibility('confirmPassword', this)">👁️</button>
+            </div>
+          </label>
+          <div id="passwordMatchMessage" class="validation-message"></div>
           <div class="terms-checkbox">
             <label style="display: flex; align-items: flex-start; gap: 0.5rem; margin-top: 1rem;">
               <input type="checkbox" name="acceptTerms" id="acceptTerms" required style="margin-top: 0.25rem; cursor: pointer;" />
@@ -84,11 +93,31 @@
           resEl.style.color = '#e74c3c';
           return;
         }
+
+        // Validar que los emails coincidan
+        const email = fd.get('email');
+        const confirmEmail = fd.get('confirmEmail');
+        if (email !== confirmEmail) {
+          const resEl = document.getElementById('registerResult');
+          resEl.textContent = 'Los correos electrónicos no coinciden';
+          resEl.style.color = '#e74c3c';
+          return;
+        }
+
+        // Validar que las contraseñas coincidan
+        const password = fd.get('password');
+        const confirmPassword = fd.get('confirmPassword');
+        if (password !== confirmPassword) {
+          const resEl = document.getElementById('registerResult');
+          resEl.textContent = 'Las contraseñas no coinciden';
+          resEl.style.color = '#e74c3c';
+          return;
+        }
         
         const body = { 
           name: fd.get('name'), 
-          email: fd.get('email'), 
-          password: fd.get('password'),
+          email: email, 
+          password: password,
           acceptedTerms: true
         };
         const resEl = document.getElementById('registerResult');
@@ -104,7 +133,8 @@
           if (data.ok) {
             resEl.textContent = 'Registro exitoso! Redirigiendo...';
             resEl.style.color = '#27ae60';
-            setTimeout(() => window.location.href = '/login.html', 1000);
+            // Redirect to check-email page with email parameter
+            setTimeout(() => window.location.href = `/check-email.html?email=${encodeURIComponent(body.email)}`, 1000);
           } else {
             resEl.textContent = data.error || 'Error al registrar';
             resEl.style.color = '#e74c3c';
@@ -114,6 +144,60 @@
           resEl.style.color = '#e74c3c';
         }
       });
+
+      // Real-time email validation
+      const emailInput = document.getElementById('registerEmail');
+      const confirmEmailInput = document.getElementById('confirmEmail');
+      const emailMatchMessage = document.getElementById('emailMatchMessage');
+
+      function validateEmailMatch() {
+        const email = emailInput.value;
+        const confirmEmail = confirmEmailInput.value;
+        
+        if (confirmEmail === '') {
+          emailMatchMessage.textContent = '';
+          emailMatchMessage.className = 'validation-message';
+          return;
+        }
+
+        if (email === confirmEmail) {
+          emailMatchMessage.textContent = '✓ Los correos coinciden';
+          emailMatchMessage.className = 'validation-message success';
+        } else {
+          emailMatchMessage.textContent = '✗ Los correos no coinciden';
+          emailMatchMessage.className = 'validation-message error';
+        }
+      }
+
+      emailInput.addEventListener('input', validateEmailMatch);
+      confirmEmailInput.addEventListener('input', validateEmailMatch);
+
+      // Real-time password validation
+      const passwordInput = document.getElementById('registerPassword');
+      const confirmPasswordInput = document.getElementById('confirmPassword');
+      const passwordMatchMessage = document.getElementById('passwordMatchMessage');
+
+      function validatePasswordMatch() {
+        const password = passwordInput.value;
+        const confirmPassword = confirmPasswordInput.value;
+        
+        if (confirmPassword === '') {
+          passwordMatchMessage.textContent = '';
+          passwordMatchMessage.className = 'validation-message';
+          return;
+        }
+
+        if (password === confirmPassword) {
+          passwordMatchMessage.textContent = '✓ Las contraseñas coinciden';
+          passwordMatchMessage.className = 'validation-message success';
+        } else {
+          passwordMatchMessage.textContent = '✗ Las contraseñas no coinciden';
+          passwordMatchMessage.className = 'validation-message error';
+        }
+      }
+
+      passwordInput.addEventListener('input', validatePasswordMatch);
+      confirmPasswordInput.addEventListener('input', validatePasswordMatch);
 
       // Password visibility toggle function
       function togglePasswordVisibility(inputId, button) {

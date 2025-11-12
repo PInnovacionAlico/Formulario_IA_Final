@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Verifica tu Email - Transforma tu empaque</title>
+    <link rel="icon" type="image/png" href="/favicon/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="/favicon/favicon.svg" />
+    <link rel="shortcut icon" href="/favicon/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicon/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="Transforma tu empaque" />
+    <link rel="manifest" href="/favicon/site.webmanifest" />
+    <link rel="stylesheet" href="/style.css" />
+    <style>
+      .check-email-container {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 2rem;
+      }
+      .check-email-card {
+        background: white;
+        border-radius: 12px;
+        padding: 3rem;
+        max-width: 500px;
+        width: 100%;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        text-align: center;
+      }
+      .check-email-icon {
+        font-size: 4rem;
+        margin-bottom: 1.5rem;
+        animation: bounce 2s infinite;
+      }
+      @keyframes bounce {
+        0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+        40% { transform: translateY(-20px); }
+        60% { transform: translateY(-10px); }
+      }
+      .check-email-title {
+        color: #2c3e50;
+        font-size: 2rem;
+        margin-bottom: 1rem;
+      }
+      .check-email-message {
+        color: #7f8c8d;
+        font-size: 1.1rem;
+        line-height: 1.6;
+        margin-bottom: 2rem;
+      }
+      .email-display {
+        background: #f8f9fa;
+        padding: 1rem;
+        border-radius: 8px;
+        color: #3498db;
+        font-weight: 600;
+        margin-bottom: 2rem;
+        word-break: break-all;
+      }
+      .info-box {
+        padding: 1rem;
+        margin: 1rem 0;
+        text-align: left;
+        border-radius: 4px;
+      }
+      .info-box h4 {
+        margin-top: 0;
+        margin-bottom: 0.5rem;
+      }
+      .info-box p {
+        margin: 0.5rem 0;
+        font-size: 0.9rem;
+      }
+      .info-box[style*="fff3cd"] h4,
+      .info-box[style*="fff3cd"] p {
+        color: #856404;
+      }
+      .info-box[style*="ffe5e5"] h4,
+      .info-box[style*="ffe5e5"] p {
+        color: #721c24;
+      }
+      .btn-back {
+        display: inline-block;
+        padding: 0.75rem 2rem;
+        background: #3498db;
+        color: white;
+        text-decoration: none;
+        border-radius: 5px;
+        font-weight: 600;
+        transition: background 0.3s;
+      }
+      .btn-back:hover {
+        background: #2980b9;
+      }
+      .resend-section {
+        margin-top: 2rem;
+        padding-top: 2rem;
+        border-top: 1px solid #ecf0f1;
+      }
+      .resend-text {
+        color: #7f8c8d;
+        font-size: 0.9rem;
+        margin-bottom: 1rem;
+      }
+      .btn-resend {
+        background: #95a5a6;
+        color: white;
+        border: none;
+        padding: 0.5rem 1.5rem;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: background 0.3s;
+      }
+      .btn-resend:hover:not(:disabled) {
+        background: #7f8c8d;
+      }
+      .btn-resend:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="check-email-container">
+      <div class="check-email-card">
+        <div class="check-email-icon">📧</div>
+        <h1 class="check-email-title">¡Revisa tu correo!</h1>
+        <p class="check-email-message">
+          Te hemos enviado un correo electrónico con un enlace de verificación a:
+        </p>
+        <div class="email-display" id="emailDisplay">cargando...</div>
+        
+        <div class="info-box" style="background: #fff3cd; border-left: 4px solid #ffc107;">
+          <h4>📌 Importante:</h4>
+          <p>• El enlace de verificación es válido por <strong>24 horas</strong></p>
+          <p>• Haz clic en el enlace para activar tu cuenta</p>
+        </div>
+
+        <div class="info-box" style="background: #ffe5e5; border-left: 4px solid #e74c3c;">
+          <h4>📬 ¡Revisa tu carpeta de SPAM!</h4>
+          <p>A veces los correos de verificación llegan a la carpeta de spam o correo no deseado. Si no encuentras el correo en tu bandeja de entrada, <strong>revisa tu carpeta de spam</strong>.</p>
+        </div>
+
+        <a href="/login.html" class="btn-back">Ir a Iniciar Sesión</a>
+
+        <div class="resend-section">
+          <p class="resend-text">¿No recibiste el correo?</p>
+          <button class="btn-resend" id="resendBtn" onclick="resendEmail()">Reenviar correo de verificación</button>
+          <div id="resendResult" style="margin-top: 1rem;"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Get email from URL params
+      const urlParams = new URLSearchParams(window.location.search);
+      const email = urlParams.get('email');
+      
+      if (email) {
+        document.getElementById('emailDisplay').textContent = email;
+      } else {
+        document.getElementById('emailDisplay').textContent = 'tu correo electrónico';
+      }
+
+      let resendCooldown = false;
+
+      async function resendEmail() {
+        if (!email) {
+          alert('No se pudo determinar el correo electrónico');
+          return;
+        }
+
+        if (resendCooldown) {
+          return;
+        }
+
+        const btn = document.getElementById('resendBtn');
+        const resultEl = document.getElementById('resendResult');
+        
+        btn.disabled = true;
+        resendCooldown = true;
+        resultEl.textContent = 'Reenviando...';
+        resultEl.style.color = '#3498db';
+
+        try {
+          const res = await fetch('/api/resend-verification', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+          });
+
+          const data = await res.json();
+          
+          if (data.ok) {
+            resultEl.textContent = '✅ Correo reenviado exitosamente';
+            resultEl.style.color = '#27ae60';
+            
+            // Cooldown de 60 segundos
+            let countdown = 60;
+            btn.textContent = `Espera ${countdown}s`;
+            
+            const interval = setInterval(() => {
+              countdown--;
+              btn.textContent = `Espera ${countdown}s`;
+              
+              if (countdown <= 0) {
+                clearInterval(interval);
+                btn.textContent = 'Reenviar correo de verificación';
+                btn.disabled = false;
+                resendCooldown = false;
+              }
+            }, 1000);
+          } else {
+            resultEl.textContent = '❌ ' + (data.error || 'Error al reenviar');
+            resultEl.style.color = '#e74c3c';
+            btn.disabled = false;
+            resendCooldown = false;
+          }
+        } catch (err) {
+          resultEl.textContent = '❌ Error de conexión';
+          resultEl.style.color = '#e74c3c';
+          btn.disabled = false;
+          resendCooldown = false;
+        }
+      }
+    </script>
+  </body>
+</html>

@@ -209,6 +209,33 @@ button[type="submit"]:hover {
   outline: none;
 }
 
+/* Validation message styles */
+.validation-message {
+  font-size: 13px;
+  font-weight: 500;
+  margin-top: -8px;
+  margin-bottom: 8px;
+  padding: 6px 12px;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+.validation-message.success {
+  color: #27ae60;
+  background-color: #d4edda;
+  border-left: 3px solid #27ae60;
+}
+
+.validation-message.error {
+  color: #e74c3c;
+  background-color: #f8d7da;
+  border-left: 3px solid #e74c3c;
+}
+
+.validation-message:empty {
+  display: none;
+}
+
 /* Terms and conditions checkbox */
 .terms-checkbox {
   margin-top: 1rem;
