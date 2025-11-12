@@ -643,7 +643,10 @@
 
           return `
             <tr style="${user.banned ? 'opacity: 0.7; background: #fff5f5;' : ''}">
-              <td style="font-family: monospace; font-size: 11px;" title="${user.id}">${shortId}</td>
+              <td style="font-family: monospace; font-size: 11px;" title="${user.id}">
+                ${shortId}
+                <button class="btn-small" style="margin-left: 5px; padding: 2px 6px; font-size: 10px;" onclick="copyUserId('${user.id}')" title="Copiar ID completo">📋</button>
+              </td>
               <td>${user.name}</td>
               <td>${user.email}</td>
               <td>${user.credits || 0}</td>
@@ -946,6 +949,22 @@
         } catch (err) {
           alert('❌ Error al desbanear usuario: ' + err.message);
         }
+      }
+
+      // Copy user ID to clipboard
+      function copyUserId(userId) {
+        navigator.clipboard.writeText(userId).then(() => {
+          alert('✅ ID copiado al portapapeles');
+        }).catch(err => {
+          // Fallback for older browsers
+          const textArea = document.createElement('textarea');
+          textArea.value = userId;
+          document.body.appendChild(textArea);
+          textArea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textArea);
+          alert('✅ ID copiado al portapapeles');
+        });
       }
 
       // Delete user completely

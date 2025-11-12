@@ -1695,10 +1695,17 @@ app.get('/api/export-user-data/:userId?', authenticate, async (req, res) => {
     const pdfStream = fs.createWriteStream(pdfPath);
     doc.pipe(pdfStream);
 
+    // Helper function to convert UTC to Colombia time (UTC-5)
+    function toColombiaTime(date) {
+      const utcDate = new Date(date);
+      const colombiaTime = new Date(utcDate.getTime() - (5 * 60 * 60 * 1000));
+      return colombiaTime.toLocaleString('es-CO', { timeZone: 'UTC' });
+    }
+
     // PDF Header
     doc.fontSize(24).font('Helvetica-Bold').text('Exportación de Datos Personales', { align: 'center' });
     doc.moveDown();
-    doc.fontSize(10).font('Helvetica').text(`Generado el: ${new Date().toLocaleString('es-CO')}`, { align: 'center' });
+    doc.fontSize(10).font('Helvetica').text(`Generado el: ${toColombiaTime(new Date())}`, { align: 'center' });
     doc.text(`Conforme a la Ley 1581 de 2012 - Habeas Data`, { align: 'center' });
     doc.moveDown(2);
 
@@ -1711,7 +1718,7 @@ app.get('/api/export-user-data/:userId?', authenticate, async (req, res) => {
     doc.text(`ID de Usuario: ${user.id}`);
     doc.text(`Créditos Disponibles: ${user.credits}`);
     doc.text(`Tipo de cuenta: ${user.is_admin ? 'Administrador' : 'Usuario'}`);
-    doc.text(`Fecha de Registro: ${new Date(user.created_at).toLocaleString('es-CO')}`);
+    doc.text(`Fecha de Registro: ${toColombiaTime(user.created_at)}`);
     doc.moveDown(2);
 
     // Statistics Section
@@ -1746,7 +1753,7 @@ app.get('/api/export-user-data/:userId?', authenticate, async (req, res) => {
         doc.text(`   Nombre personalizado: ${upload.custom_name || 'N/A'}`);
         doc.text(`   Tipo: ${upload.file_type || 'N/A'}`);
         doc.text(`   Tamaño: ${((upload.file_size || 0) / 1024).toFixed(2)} KB`);
-        doc.text(`   Fecha: ${new Date(upload.created_at).toLocaleString('es-CO')}`);
+        doc.text(`   Fecha: ${toColombiaTime(upload.created_at)}`);
         doc.moveDown(0.5);
       });
     }
@@ -1766,7 +1773,7 @@ app.get('/api/export-user-data/:userId?', authenticate, async (req, res) => {
         doc.fontSize(9).font('Helvetica');
         doc.text(`   ID: ${upload.id}`);
         doc.text(`   Nombre: ${upload.custom_name || 'N/A'}`);
-        doc.text(`   Fecha de generación: ${new Date(upload.created_at).toLocaleString('es-CO')}`);
+        doc.text(`   Fecha de generación: ${toColombiaTime(upload.created_at)}`);
         doc.text(`   Bucket: ${upload.bucket_name || 'generated'}`);
         doc.moveDown(0.5);
       });
@@ -1786,7 +1793,7 @@ app.get('/api/export-user-data/:userId?', authenticate, async (req, res) => {
         doc.fontSize(11).font('Helvetica-Bold').text(`${index + 1}. Formulario: ${submission.form_type || 'N/A'}`);
         doc.fontSize(9).font('Helvetica');
         doc.text(`   ID: ${submission.id}`);
-        doc.text(`   Fecha: ${new Date(submission.created_at).toLocaleString('es-CO')}`);
+        doc.text(`   Fecha: ${toColombiaTime(submission.created_at)}`);
         
         // Parse and display form data
         if (submission.form_data) {
@@ -1898,10 +1905,18 @@ app.get('/api/export-user-data/:userId?', authenticate, async (req, res) => {
 
     // Create README
     const readmePath = path.join(tempDir, 'README.txt');
+    
+    // Helper function for Colombia time in README (reuse from PDF)
+    const getColombiaNow = () => {
+      const utcDate = new Date();
+      const colombiaTime = new Date(utcDate.getTime() - (5 * 60 * 60 * 1000));
+      return colombiaTime.toLocaleString('es-CO', { timeZone: 'UTC' });
+    };
+    
     const readmeContent = `EXPORTACIÓN DE DATOS PERSONALES
 ================================
 
-Generado el: ${new Date().toLocaleString('es-CO')}
+Generado el: ${getColombiaNow()}
 Usuario: ${user.name} (${user.email})
 
 CONTENIDO DE ESTE ARCHIVO:
