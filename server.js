@@ -1431,15 +1431,19 @@ app.get('/api/export-user-data/:userId?', authenticate, async (req, res) => {
     const fs = require('fs');
     const path = require('path');
     
+    console.log('Export user data request received');
+    console.log('Params:', req.params);
+    console.log('UserId from token:', req.userId);
+    
     // Determine which user's data to export
     let targetUserId = req.params.userId;
     
     // If userId is provided in URL, check if requester is admin
-    if (targetUserId && targetUserId !== req.user.id) {
+    if (targetUserId && targetUserId !== req.userId) {
       const { data: requester } = await supabase
         .from('users')
         .select('is_admin')
-        .eq('id', req.user.id)
+        .eq('id', req.userId)
         .single();
       
       if (!requester || !requester.is_admin) {
@@ -1447,7 +1451,7 @@ app.get('/api/export-user-data/:userId?', authenticate, async (req, res) => {
       }
     } else {
       // If no userId provided, export requester's own data
-      targetUserId = req.user.id;
+      targetUserId = req.userId;
     }
 
     // Fetch user data
@@ -1464,7 +1468,7 @@ app.get('/api/export-user-data/:userId?', authenticate, async (req, res) => {
     const { data: uploads, error: uploadsError } = await supabase
       .from('uploads')
       .select('*')
-      .eq('user_id', targetUserId)
+      .eq('owner_id', targetUserId)
       .order('created_at', { ascending: false });
     
     if (uploadsError) throw uploadsError;
@@ -1477,6 +1481,9 @@ app.get('/api/export-user-data/:userId?', authenticate, async (req, res) => {
       .order('created_at', { ascending: false });
     
     if (submissionsError) throw submissionsError;
+
+    console.log(`Found ${uploads?.length || 0} uploads`);
+    console.log(`Found ${submissions?.length || 0} form submissions`);
 
     // Prepare JSON data
     const exportData = {
@@ -1499,13 +1506,21 @@ app.get('/api/export-user-data/:userId?', authenticate, async (req, res) => {
     };
 
     // Create temporary directory for export
-    const tempDir = path.join(__dirname, 'temp_exports', targetUserId);
+    const tempExportsDir = path.join(__dirname, 'temp_exports');
+    if (!fs.existsSync(tempExportsDir)) {
+      console.log('Creating temp_exports directory');
+      fs.mkdirSync(tempExportsDir, { recursive: true });
+    }
+    
+    const tempDir = path.join(tempExportsDir, targetUserId);
     if (!fs.existsSync(tempDir)) {
+      console.log('Creating user temp directory:', tempDir);
       fs.mkdirSync(tempDir, { recursive: true });
     }
 
     // Generate PDF
     const pdfPath = path.join(tempDir, 'user_data_report.pdf');
+    console.log('Generating PDF at:', pdfPath);
     const doc = new PDFDocument({ margin: 50 });
     const pdfStream = fs.createWriteStream(pdfPath);
     doc.pipe(pdfStream);
@@ -1583,6 +1598,8 @@ app.get('/api/export-user-data/:userId?', authenticate, async (req, res) => {
               ? JSON.parse(submission.form_data) 
               : submission.form_data;
             
+            console.log(`Submission ${index + 1} form_data:`, formData);
+            
             doc.text(`   Datos del formulario:`);
             Object.entries(formData).forEach(([key, value]) => {
               if (key !== 'photos' && typeof value !== 'object') {
@@ -1590,8 +1607,11 @@ app.get('/api/export-user-data/:userId?', authenticate, async (req, res) => {
               }
             });
           } catch (e) {
+            console.error(`Error parsing form_data for submission ${index + 1}:`, e);
             doc.text(`   Datos: ${submission.form_data}`);
           }
+        } else {
+          console.log(`Submission ${index + 1} has no form_data`);
         }
         
         if (submission.response_data) {
@@ -1630,24 +1650,31 @@ app.get('/api/export-user-data/:userId?', authenticate, async (req, res) => {
     }
 
     if (uploads && uploads.length > 0) {
+      console.log(`Found ${uploads.length} uploads to download`);
       for (const upload of uploads) {
-        if (upload.storage_path) {
+        if (upload.path) {
           try {
+            console.log(`Downloading image: ${upload.path}`);
             const { data: imageData, error: downloadError } = await supabase
               .storage
               .from('uploads')
-              .download(upload.storage_path);
+              .download(upload.path);
             
-            if (!downloadError && imageData) {
+            if (downloadError) {
+              console.error(`Error downloading ${upload.path}:`, downloadError);
+            } else if (imageData) {
               const buffer = Buffer.from(await imageData.arrayBuffer());
               const imagePath = path.join(imagesDir, upload.filename || `image_${upload.id}.jpg`);
               fs.writeFileSync(imagePath, buffer);
+              console.log(`Image saved: ${upload.filename}`);
             }
           } catch (err) {
             console.error(`Error downloading image ${upload.id}:`, err);
           }
         }
       }
+    } else {
+      console.log('No uploads found for this user');
     }
 
     // Create README
@@ -1698,6 +1725,7 @@ Medellín, Antioquia, Colombia
 
     // Create ZIP archive
     const zipPath = path.join(__dirname, 'temp_exports', `user_data_${targetUserId}_${Date.now()}.zip`);
+    console.log('Creating ZIP at:', zipPath);
     const output = fs.createWriteStream(zipPath);
     const archive = archiver('zip', { zlib: { level: 9 } });
 
@@ -1711,6 +1739,8 @@ Medellín, Antioquia, Colombia
       output.on('error', reject);
     });
 
+    console.log('ZIP created successfully, sending to client');
+    
     // Send ZIP file
     res.download(zipPath, `datos_personales_${user.name.replace(/\s/g, '_')}_${new Date().toISOString().split('T')[0]}.zip`, (err) => {
       // Cleanup temporary files
