@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Formulario Flow-Pack - Formulario IA</title>
+    <title>Formulario Flow-Pack - Transforma tu empaque</title>
     <link rel="icon" type="image/png" href="/favicon/favicon-96x96.png" sizes="96x96" />
     <link rel="icon" type="image/svg+xml" href="/favicon/favicon.svg" />
     <link rel="shortcut icon" href="/favicon/favicon.ico" />
@@ -335,15 +335,26 @@
         const originalButtonText = submitButton.textContent;
         
         try {
-          // Disable button and show loading state
+          // Disable button and show loading state with detailed message
           submitButton.disabled = true;
-          submitButton.textContent = 'Enviando...';
+          submitButton.innerHTML = '⏳ Generando imagen... (puede tardar hasta 60 segundos)';
           submitButton.style.opacity = '0.6';
+          
+          // Actualizar cada 10 segundos para dar feedback al usuario
+          let secondsElapsed = 0;
+          const progressInterval = setInterval(() => {
+            secondsElapsed += 10;
+            submitButton.innerHTML = `⏳ Generando imagen... (${secondsElapsed}s transcurridos)`;
+          }, 10000);
           
           const formData = {
             photo_id: photoId,
-            // Aquí se agregarán más campos cuando se añadan más secciones
+            form_type: 'flowpack'
           };
+
+          // Fetch con timeout de 70 segundos
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 70000);
 
           const response = await fetch('/api/submit-form', {
             method: 'POST',
@@ -351,8 +362,12 @@
               'Content-Type': 'application/json',
               'Authorization': 'Bearer ' + token
             },
-            body: JSON.stringify(formData)
+            body: JSON.stringify(formData),
+            signal: controller.signal
           });
+
+          clearTimeout(timeoutId);
+          clearInterval(progressInterval);
 
           const result = await response.json();
 
@@ -374,16 +389,47 @@
             setTimeout(() => {
               window.location.href = '/dashboard.html';
             }, 2000);
+          } else if (!result.ok && result.credit_refunded) {
+            // La generación falló pero el crédito fue reembolsado
+            console.log('⚠️ Generación falló, crédito reembolsado');
+            
+            // Actualizar créditos
+            if (typeof loadCredits === 'function') loadCredits();
+            
+            let message = '⚠️ La generación de la imagen falló\n\n';
+            message += '✅ Tu crédito ha sido reembolsado automáticamente\n';
+            message += `💳 Créditos actuales: ${result.new_credits || 'N/A'}\n\n`;
+            message += 'Por favor intenta nuevamente en unos momentos.';
+            
+            alert(message);
+            
+            // Redirigir al inicio del formulario (recargar página)
+            window.location.reload();
           } else {
-            throw new Error(result.error || 'Error al enviar formulario');
+            throw new Error(result.error || result.message || 'Error al enviar formulario');
           }
         } catch (error) {
           console.error('Error al enviar formulario:', error);
-          alert('❌ Error al enviar el formulario:\n' + error.message);
+          
+          // Limpiar interval si existe
+          if (typeof progressInterval !== 'undefined') {
+            clearInterval(progressInterval);
+          }
+          
+          let errorMessage = '❌ Error al enviar el formulario:\n';
+          
+          if (error.name === 'AbortError') {
+            errorMessage += 'La solicitud tardó demasiado tiempo (más de 70 segundos).\n';
+            errorMessage += 'El servidor de IA puede estar sobrecargado. Por favor intenta nuevamente.';
+          } else {
+            errorMessage += error.message;
+          }
+          
+          alert(errorMessage);
           
           // Re-enable button
           submitButton.disabled = false;
-          submitButton.textContent = originalButtonText;
+          submitButton.innerHTML = originalButtonText;
           submitButton.style.opacity = '1';
         }
       });

@@ -96,7 +96,7 @@
   </head>
   <body>
     <div class="terms-content">
-      <a href="/register.html" class="back-button">← Volver al Registro</a>
+      <a href="/register.html" class="back-button" id="backButton">← Volver al Registro</a>
       
       <div class="nav-links">
         <span>📄 Documentos legales:</span>
@@ -318,9 +318,42 @@
       </p>
 
       <div class="nav-links" style="margin-top: 2rem; justify-content: center;">
-        <a href="/register.html" class="back-button" style="color: white;">← Volver al Registro</a>
+        <a href="/register.html" class="back-button" id="backButtonFooter" style="color: white;">← Volver al Registro</a>
         <a href="/terms-and-conditions.html" class="back-button" style="background: #27ae60; color: white;">Ver Términos y Condiciones →</a>
       </div>
     </div>
+
+    <script>
+      // Detectar desde dónde se accedió y ajustar botones de regreso
+      (function() {
+        const referrer = document.referrer;
+        const backButtons = [
+          document.getElementById('backButton'),
+          document.getElementById('backButtonFooter')
+        ];
+        
+        let backUrl = '/index.html';
+        let backText = '← Volver a Inicio';
+        
+        // Si viene del registro
+        if (referrer.includes('/register.html')) {
+          backUrl = '/register.html';
+          backText = '← Volver al Registro';
+        }
+        // Si viene del login
+        else if (referrer.includes('/login.html')) {
+          backUrl = '/login.html';
+          backText = '← Volver al Inicio de Sesión';
+        }
+        // Para cualquier otro caso (landing, directo, etc.)
+        
+        backButtons.forEach(btn => {
+          if (btn) {
+            btn.href = backUrl;
+            btn.textContent = backText;
+          }
+        });
+      })();
+    </script>
   </body>
 </html>

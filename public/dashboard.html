@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Dashboard - Formulario IA</title>
+    <title>Dashboard - Transforma tu empaque</title>
     <link rel="icon" type="image/png" href="/favicon/favicon-96x96.png" sizes="96x96" />
     <link rel="icon" type="image/svg+xml" href="/favicon/favicon.svg" />
     <link rel="shortcut icon" href="/favicon/favicon.ico" />
@@ -975,6 +975,7 @@
                 </div>
                 <div class="photo-actions">
                   <button class="btn-update" data-id="${upload.id}">Cambiar nombre</button>
+                  <a href="${upload.signedUrl}" download="${upload.custom_name || upload.filename}" class="btn-download" title="Descargar imagen">📥 Descargar</a>
                   <button class="btn-delete" data-id="${upload.id}">Eliminar</button>
                 </div>
               </div>

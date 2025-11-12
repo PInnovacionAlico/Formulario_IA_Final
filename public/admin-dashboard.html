@@ -31,6 +31,10 @@
         border-left-color: var(--alico-gold);
       }
 
+      .stat-card.purple {
+        border-left-color: #9C27B0;
+      }
+
       .stat-card.success {
         border-left-color: #28a745;
       }
@@ -290,6 +294,12 @@
               <div class="stat-label">Imágenes subidas</div>
             </div>
 
+            <div class="stat-card purple">
+              <h3>🎨 Imágenes IA</h3>
+              <div class="stat-value" id="statAIGenerated">-</div>
+              <div class="stat-label">Generadas por IA</div>
+            </div>
+
             <div class="stat-card">
               <h3>📋 Total Formularios</h3>
               <div class="stat-value" id="statTotalSubmissions">-</div>
@@ -517,6 +527,7 @@
           // Update stat cards
           document.getElementById('statTotalUsers').textContent = stats.totalUsers || 0;
           document.getElementById('statTotalUploads').textContent = stats.totalUploads || 0;
+          document.getElementById('statAIGenerated').textContent = stats.aiGeneratedImages || 0;
           document.getElementById('statTotalSubmissions').textContent = stats.totalSubmissions || 0;
           document.getElementById('statSuccessfulSubmissions').textContent = stats.successfulSubmissions || 0;
           document.getElementById('statFailedSubmissions').textContent = stats.failedSubmissions || 0;

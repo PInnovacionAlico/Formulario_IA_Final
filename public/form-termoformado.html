@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Formulario Termoformado - Formulario IA</title>
+    <title>Formulario Termoformado - Transforma tu empaque</title>
     <link rel="icon" type="image/png" href="/favicon/favicon-96x96.png" sizes="96x96" />
     <link rel="icon" type="image/svg+xml" href="/favicon/favicon.svg" />
     <link rel="shortcut icon" href="/favicon/favicon.ico" />
@@ -139,13 +139,23 @@
                 
                 <div class="form-section-content">
                   <div class="photo-selector-container">
-                    <!-- Dropdown selector -->
-                    <label>
-                      Foto
-                      <select id="photoSelect" name="photo_id" required>
-                        <option value="">Cargando fotos...</option>
-                      </select>
-                    </label>
+                    <!-- Dropdown selector personalizado -->
+                    <label>Foto</label>
+                    <div class="custom-select-wrapper">
+                      <div class="custom-select-trigger" id="photoSelectTrigger">
+                        <span class="custom-select-text">Cargando fotos...</span>
+                        <span class="custom-select-arrow">▼</span>
+                      </div>
+                      <div class="custom-select-dropdown" id="photoSelectDropdown">
+                        <div class="custom-select-search">
+                          <input type="text" id="photoSearchInput" placeholder="🔍 Buscar foto...">
+                        </div>
+                        <div class="custom-select-options" id="photoSelectOptions">
+                          <!-- Las opciones se cargarán dinámicamente -->
+                        </div>
+                      </div>
+                    </div>
+                    <input type="hidden" id="photoSelect" name="photo_id" required>
                     
                     <!-- Preview de la foto seleccionada -->
                     <div id="photoPreview" class="photo-preview-container" style="display: none;">
@@ -536,19 +546,25 @@
         
         // Update photo confirmation
         const photoSelect = document.getElementById('photoSelect');
-        const selectedOption = photoSelect.options[photoSelect.selectedIndex];
-        if (selectedOption && selectedOption.value) {
-          const photoName = selectedOption.textContent;
-          const photoUrl = selectedOption.dataset.url;
-          const photoFolder = selectedOption.dataset.folder;
+        const photoId = photoSelect.value;
+        
+        if (photoId) {
+          // Buscar la foto en allPhotos
+          const selectedPhoto = allPhotos.find(p => p.id === photoId);
           
-          let html = `<div style="display: flex; align-items: center; gap: 16px;">`;
-          if (photoUrl) {
-            html += `<img src="${photoUrl}" alt="${photoName}" style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 2px solid var(--alico-gold);">`;
+          if (selectedPhoto) {
+            const photoName = selectedPhoto.custom_name || selectedPhoto.filename;
+            const photoUrl = selectedPhoto.thumbnailUrl || selectedPhoto.signedUrl;
+            const photoFolder = selectedPhoto.folder || 'Sin carpeta';
+            
+            let html = `<div style="display: flex; align-items: center; gap: 16px;">`;
+            if (photoUrl) {
+              html += `<img src="${photoUrl}" alt="${photoName}" style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 2px solid var(--alico-gold);">`;
+            }
+            html += `<div><div style="font-weight: 600; font-size: 16px;">${photoName}</div><div style="color: #666; font-size: 14px; margin-top: 4px;">📁 ${photoFolder}</div></div></div>`;
+            
+            document.getElementById('confirmPhoto').innerHTML = html;
           }
-          html += `<div><div style="font-weight: 600; font-size: 16px;">${photoName}</div><div style="color: #666; font-size: 14px; margin-top: 4px;">Carpeta: ${photoFolder}</div></div></div>`;
-          
-          document.getElementById('confirmPhoto').innerHTML = html;
         }
       }
 
@@ -596,10 +612,17 @@
         const originalButtonText = submitButton.textContent;
         
         try {
-          // Disable button and show loading state
+          // Disable button and show loading state with detailed message
           submitButton.disabled = true;
-          submitButton.textContent = 'Enviando...';
+          submitButton.innerHTML = '⏳ Generando imagen... (puede tardar hasta 60 segundos)';
           submitButton.style.opacity = '0.6';
+          
+          // Actualizar cada 10 segundos para dar feedback al usuario
+          let secondsElapsed = 0;
+          const progressInterval = setInterval(() => {
+            secondsElapsed += 10;
+            submitButton.innerHTML = `⏳ Generando imagen... (${secondsElapsed}s transcurridos)`;
+          }, 10000);
           
           const formData = {
             photo_id: photoId,
@@ -609,14 +632,22 @@
 
           console.log('📤 Datos a enviar:', formData);
 
+          // Fetch con timeout de 70 segundos
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 70000); // 70 segundos
+
           const response = await fetch('/api/submit-form', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
               'Authorization': 'Bearer ' + token
             },
-            body: JSON.stringify(formData)
+            body: JSON.stringify(formData),
+            signal: controller.signal
           });
+
+          clearTimeout(timeoutId);
+          clearInterval(progressInterval);
 
           const result = await response.json();
           console.log('📥 Respuesta recibida:', result);
@@ -660,16 +691,47 @@
             setTimeout(() => {
               window.location.href = '/dashboard.html';
             }, 2000);
+          } else if (!result.ok && result.credit_refunded) {
+            // La generación falló pero el crédito fue reembolsado
+            console.log('⚠️ Generación falló, crédito reembolsado');
+            
+            // Actualizar créditos
+            loadCredits();
+            
+            let message = '⚠️ La generación de la imagen falló\n\n';
+            message += '✅ Tu crédito ha sido reembolsado automáticamente\n';
+            message += `💳 Créditos actuales: ${result.new_credits || 'N/A'}\n\n`;
+            message += 'Por favor intenta nuevamente en unos momentos.';
+            
+            alert(message);
+            
+            // Redirigir al inicio del formulario (recargar página)
+            window.location.reload();
           } else {
-            throw new Error(result.error || 'Error al enviar formulario');
+            throw new Error(result.error || result.message || 'Error al enviar formulario');
           }
         } catch (error) {
           console.error('❌ Error al enviar formulario:', error);
-          alert('❌ Error al enviar el formulario:\n' + error.message);
+          
+          // Limpiar interval si existe
+          if (typeof progressInterval !== 'undefined') {
+            clearInterval(progressInterval);
+          }
+          
+          let errorMessage = '❌ Error al enviar el formulario:\n';
+          
+          if (error.name === 'AbortError') {
+            errorMessage += 'La solicitud tardó demasiado tiempo (más de 70 segundos).\n';
+            errorMessage += 'El servidor de IA puede estar sobrecargado. Por favor intenta nuevamente.';
+          } else {
+            errorMessage += error.message;
+          }
+          
+          alert(errorMessage);
           
           // Re-enable button
           submitButton.disabled = false;
-          submitButton.textContent = originalButtonText;
+          submitButton.innerHTML = originalButtonText;
           submitButton.style.opacity = '1';
         }
       });
@@ -709,17 +771,19 @@
       }
 
       function populatePhotoSelect(photos) {
-        const select = document.getElementById('photoSelect');
-        const currentValue = select.value;
+        const trigger = document.getElementById('photoSelectTrigger');
+        const triggerText = trigger.querySelector('.custom-select-text');
+        const optionsContainer = document.getElementById('photoSelectOptions');
+        const hiddenInput = document.getElementById('photoSelect');
         
         if (photos.length === 0) {
-          select.innerHTML = '<option value="">No hay fotos disponibles</option>';
+          triggerText.textContent = 'No hay fotos disponibles';
+          triggerText.classList.add('placeholder');
+          optionsContainer.innerHTML = '<div class="custom-select-no-results">No hay fotos disponibles</div>';
           document.getElementById('photoPreview').style.display = 'none';
           return;
         }
 
-        select.innerHTML = '<option value="">-- Selecciona una foto --</option>';
-        
         // Agrupar por carpeta
         const byFolder = {};
         photos.forEach(photo => {
@@ -729,32 +793,157 @@
         });
 
         // Crear opciones agrupadas
+        optionsContainer.innerHTML = '';
         Object.keys(byFolder).sort().forEach(folder => {
-          const optgroup = document.createElement('optgroup');
-          optgroup.label = `📁 ${folder}`;
+          // Etiqueta de grupo
+          const groupLabel = document.createElement('div');
+          groupLabel.className = 'custom-select-group-label';
+          groupLabel.textContent = `📁 ${folder}`;
+          optionsContainer.appendChild(groupLabel);
           
+          // Opciones del grupo
           byFolder[folder].forEach(photo => {
-            const option = document.createElement('option');
-            option.value = photo.id;
-            option.textContent = photo.custom_name || photo.filename;
+            const option = document.createElement('div');
+            option.className = 'custom-select-option';
+            option.dataset.value = photo.id;
+            option.dataset.name = photo.custom_name || photo.filename;
             option.dataset.url = photo.thumbnailUrl || photo.signedUrl;
+            option.dataset.fullUrl = photo.signedUrl;
             option.dataset.filename = photo.filename;
             option.dataset.folder = photo.folder;
-            optgroup.appendChild(option);
+            
+            option.innerHTML = `
+              <img src="${photo.thumbnailUrl || photo.signedUrl}" 
+                   alt="${photo.custom_name || photo.filename}" 
+                   class="custom-select-option-thumbnail"
+                   loading="lazy">
+              <div class="custom-select-option-info">
+                <div class="custom-select-option-name">${photo.custom_name || photo.filename}</div>
+                <div class="custom-select-option-folder">📁 ${photo.folder || 'Sin carpeta'}</div>
+              </div>
+            `;
+            
+            option.addEventListener('click', () => selectPhoto(photo, option));
+            optionsContainer.appendChild(option);
           });
-          
-          select.appendChild(optgroup);
         });
 
-        // Restore selection if still available
-        if (currentValue) {
-          const option = Array.from(select.options).find(opt => opt.value === currentValue);
-          if (option) {
-            select.value = currentValue;
-          } else {
-            document.getElementById('photoPreview').style.display = 'none';
+        // Resetear texto del trigger
+        triggerText.textContent = '-- Selecciona una foto --';
+        triggerText.classList.add('placeholder');
+      }
+
+      function selectPhoto(photo, optionElement) {
+        const trigger = document.getElementById('photoSelectTrigger');
+        const triggerText = trigger.querySelector('.custom-select-text');
+        const dropdown = document.getElementById('photoSelectDropdown');
+        const hiddenInput = document.getElementById('photoSelect');
+        
+        // Actualizar valor
+        hiddenInput.value = photo.id;
+        
+        // Actualizar texto del trigger
+        triggerText.textContent = photo.custom_name || photo.filename;
+        triggerText.classList.remove('placeholder');
+        
+        // Actualizar selección visual
+        document.querySelectorAll('.custom-select-option').forEach(opt => {
+          opt.classList.remove('selected');
+        });
+        optionElement.classList.add('selected');
+        
+        // Cerrar dropdown
+        trigger.classList.remove('active');
+        dropdown.classList.remove('active');
+        
+        // Mostrar preview
+        showPhotoPreview(photo);
+      }
+
+      function showPhotoPreview(photo) {
+        const previewContainer = document.getElementById('photoPreview');
+        const previewImage = document.getElementById('previewImage');
+        const previewInfo = document.getElementById('previewInfo');
+        
+        previewImage.src = photo.signedUrl;
+        previewImage.onclick = () => viewFormFullImage(photo.signedUrl, photo.custom_name || photo.filename);
+        previewInfo.textContent = `📁 ${photo.folder || 'Sin carpeta'}`;
+        previewContainer.style.display = 'block';
+        
+        currentFullImageUrl = photo.signedUrl;
+      }
+
+      // Inicializar dropdown personalizado
+      function initCustomSelect() {
+        const trigger = document.getElementById('photoSelectTrigger');
+        const dropdown = document.getElementById('photoSelectDropdown');
+        const searchInput = document.getElementById('photoSearchInput');
+        
+        // Toggle dropdown
+        trigger.addEventListener('click', (e) => {
+          e.stopPropagation();
+          trigger.classList.toggle('active');
+          dropdown.classList.toggle('active');
+          if (dropdown.classList.contains('active')) {
+            searchInput.focus();
           }
-        }
+        });
+        
+        // Cerrar al hacer click fuera
+        document.addEventListener('click', (e) => {
+          if (!trigger.contains(e.target) && !dropdown.contains(e.target)) {
+            trigger.classList.remove('active');
+            dropdown.classList.remove('active');
+          }
+        });
+        
+        // Búsqueda
+        searchInput.addEventListener('input', (e) => {
+          const searchTerm = e.target.value.toLowerCase();
+          const options = document.querySelectorAll('.custom-select-option');
+          const groupLabels = document.querySelectorAll('.custom-select-group-label');
+          
+          let hasVisibleOptions = false;
+          let currentGroupHasVisible = false;
+          let currentGroupLabel = null;
+          
+          document.querySelectorAll('.custom-select-group-label, .custom-select-option').forEach(el => {
+            if (el.classList.contains('custom-select-group-label')) {
+              // Mostrar/ocultar grupo anterior
+              if (currentGroupLabel) {
+                currentGroupLabel.style.display = currentGroupHasVisible ? 'block' : 'none';
+              }
+              currentGroupLabel = el;
+              currentGroupHasVisible = false;
+            } else {
+              const name = el.dataset.name.toLowerCase();
+              const folder = (el.dataset.folder || 'Sin carpeta').toLowerCase();
+              const matches = name.includes(searchTerm) || folder.includes(searchTerm);
+              
+              el.style.display = matches ? 'flex' : 'none';
+              if (matches) {
+                hasVisibleOptions = true;
+                currentGroupHasVisible = true;
+              }
+            }
+          });
+          
+          // Último grupo
+          if (currentGroupLabel) {
+            currentGroupLabel.style.display = currentGroupHasVisible ? 'block' : 'none';
+          }
+          
+          // Mostrar mensaje si no hay resultados
+          const noResults = document.querySelector('.custom-select-no-results');
+          if (!hasVisibleOptions && !noResults) {
+            const msg = document.createElement('div');
+            msg.className = 'custom-select-no-results';
+            msg.textContent = '🔍 No se encontraron resultados';
+            document.getElementById('photoSelectOptions').appendChild(msg);
+          } else if (hasVisibleOptions && noResults) {
+            noResults.remove();
+          }
+        });
       }
 
       // Modal for full image view
@@ -779,29 +968,6 @@
       }
 
       // Preview de la foto seleccionada
-      document.getElementById('photoSelect').addEventListener('change', (e) => {
-        const selectedOption = e.target.options[e.target.selectedIndex];
-        const photoId = e.target.value;
-        
-        if (!photoId) {
-          document.getElementById('photoPreview').style.display = 'none';
-          return;
-        }
-
-        const photoUrl = selectedOption.dataset.url; // This is thumbnail
-        const photoName = selectedOption.textContent;
-        const photoFolder = selectedOption.dataset.folder;
-        
-        // Find the full photo object to get the full image URL
-        const selectedPhoto = allPhotos.find(p => p.id === photoId);
-        currentFullImageUrl = selectedPhoto ? selectedPhoto.signedUrl : photoUrl;
-        
-        document.getElementById('previewImage').src = photoUrl; // Show thumbnail
-        document.getElementById('previewImage').onclick = () => viewFormFullImage(currentFullImageUrl, photoName);
-        document.getElementById('previewInfo').textContent = `Carpeta: ${photoFolder}`;
-        document.getElementById('photoPreview').style.display = 'block';
-      });
-
       // Enviar formulario - DESHABILITADO (ahora se maneja en step3Submit)
       /* document.getElementById('mainForm').addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -920,6 +1086,9 @@
           }
         });
       });
+
+      // Inicializar dropdown personalizado
+      initCustomSelect();
 
       // Cargar productos y fotos al iniciar
       loadProducts();

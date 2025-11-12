@@ -56,6 +56,19 @@
 
       .landing-nav-buttons {
         display: flex;
+        gap: 24px;
+        align-items: center;
+      }
+
+      .landing-nav-legal {
+        display: flex;
+        gap: 10px;
+        padding-right: 24px;
+        border-right: 2px solid rgba(219, 149, 0, 0.2);
+      }
+
+      .landing-nav-auth {
+        display: flex;
         gap: 12px;
       }
 
@@ -67,6 +80,22 @@
         transition: all 0.3s;
         text-decoration: none;
         font-size: 14px;
+      }
+
+      .btn-nav-legal {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        font-size: 13px;
+        box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+        font-weight: 600;
+      }
+
+      .btn-nav-legal:hover {
+        background: linear-gradient(135deg, #20c997 0%, #17a2b8 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
       }
 
       .btn-nav-login {
@@ -90,20 +119,6 @@
       .btn-nav-register:hover {
         transform: translateY(-2px);
         box-shadow: 0 4px 12px rgba(219, 149, 0, 0.4);
-      }
-
-      .btn-nav-terms {
-        background: transparent;
-        color: #666;
-        border: 1px solid #ddd;
-        padding: 8px 16px;
-        font-size: 13px;
-      }
-
-      .btn-nav-terms:hover {
-        background: #f5f5f5;
-        border-color: #999;
-        color: #333;
       }
 
       .hero-section {
@@ -265,16 +280,34 @@
         }
 
         .landing-nav-buttons {
+          gap: 12px;
+          flex-direction: column;
+          align-items: stretch;
+        }
+
+        .landing-nav-legal {
+          flex-direction: column;
+          gap: 8px;
+          padding-right: 0;
+          padding-bottom: 12px;
+          border-right: none;
+          border-bottom: 2px solid rgba(219, 149, 0, 0.2);
+        }
+
+        .landing-nav-auth {
+          flex-direction: column;
           gap: 8px;
         }
 
         .btn-nav {
+          width: 100%;
+          text-align: center;
           padding: 8px 16px;
           font-size: 13px;
         }
 
-        .btn-nav-terms {
-          padding: 6px 12px;
+        .btn-nav-legal {
+          padding: 8px 16px;
           font-size: 12px;
         }
 
@@ -336,19 +369,24 @@
     <nav class="landing-nav">
       <div class="landing-nav-logo">📷 Formulario IA</div>
       <div class="landing-nav-buttons">
-        <a href="/privacy-policy.html" class="btn-nav btn-nav-terms" target="_blank">📋 Habeas Data</a>
-        <a href="/login.html" class="btn-nav btn-nav-login">Iniciar sesión</a>
-        <a href="/register.html" class="btn-nav btn-nav-register">Registrarse</a>
+        <div class="landing-nav-legal">
+          <a href="/privacy-policy.html" class="btn-nav btn-nav-legal" target="_blank">📋 Habeas Data</a>
+          <a href="/terms-and-conditions.html" class="btn-nav btn-nav-legal" target="_blank">📜 Términos y Condiciones</a>
+        </div>
+        <div class="landing-nav-auth">
+          <a href="/login.html" class="btn-nav btn-nav-login">Iniciar sesión</a>
+          <a href="/register.html" class="btn-nav btn-nav-register">Registrarse</a>
+        </div>
       </div>
     </nav>
 
     <!-- Hero Section -->
     <section class="hero-section">
       <div class="hero-content">
-        <h1 class="hero-title">Gestiona tus fotos de forma inteligente</h1>
+        <h1 class="hero-title">Transforma tu empaque con Inteligencia Artificial</h1>
         <p class="hero-subtitle">
-          Sube, organiza y gestiona todas tus imágenes en un solo lugar. 
-          Con carpetas personalizadas, renombrado intuitivo y carga ultrarrápida con thumbnails optimizados.
+          Visualiza tus diseños de empaques antes de producirlos. Genera imágenes realistas con IA 
+          de Doy Pack, Flow Pack y Termoformado personalizados para tu marca.
         </p>
         <div class="hero-buttons">
           <a href="/register.html" class="btn-hero btn-hero-primary btn-register-link">Comenzar gratis</a>
@@ -363,20 +401,20 @@
         <h2 class="features-title">¿Por qué elegir Formulario IA?</h2>
         <div class="features-grid">
           <div class="feature-card">
-            <div class="feature-icon">📁</div>
-            <h3 class="feature-title">Organización por carpetas</h3>
+            <div class="feature-icon">🎨</div>
+            <h3 class="feature-title">Generación con IA</h3>
             <p class="feature-description">
-              Crea carpetas personalizadas y organiza tus fotos de la manera que prefieras. 
-              Todo al alcance de un clic.
+              Crea imágenes realistas de tus diseños de empaques con inteligencia artificial. 
+              Visualiza Doy Pack, Flow Pack y Termoformado en segundos.
             </p>
           </div>
 
           <div class="feature-card">
-            <div class="feature-icon">⚡</div>
-            <h3 class="feature-title">Carga ultrarrápida</h3>
+            <div class="feature-icon">📋</div>
+            <h3 class="feature-title">Formularios inteligentes</h3>
             <p class="feature-description">
-              Thumbnails optimizados automáticamente para una experiencia de navegación instantánea. 
-              LCP < 1 segundo.
+              Completa formularios específicos para cada tipo de empaque con todos los detalles 
+              técnicos y visuales que necesitas.
             </p>
           </div>
 
@@ -384,15 +422,17 @@
             <div class="feature-icon">🔒</div>
             <h3 class="feature-title">Seguro y privado</h3>
             <p class="feature-description">
-              Autenticación JWT, contraseñas encriptadas con bcrypt y tus archivos protegidos en Supabase Storage.
+              Autenticación JWT, contraseñas encriptadas con bcrypt y tus archivos protegidos 
+              en almacenamiento seguro en la nube.
             </p>
           </div>
 
           <div class="feature-card">
-            <div class="feature-icon">✏️</div>
-            <h3 class="feature-title">Renombrado fácil</h3>
+            <div class="feature-icon">💾</div>
+            <h3 class="feature-title">Gestión de imágenes</h3>
             <p class="feature-description">
-              Dale nombres personalizados a tus fotos y muévelas entre carpetas con un simple clic.
+              Organiza todas tus imágenes generadas y cargadas. Descarga, visualiza y gestiona 
+              tu galería desde un dashboard centralizado.
             </p>
           </div>
 
@@ -400,15 +440,17 @@
             <div class="feature-icon">📱</div>
             <h3 class="feature-title">100% Responsive</h3>
             <p class="feature-description">
-              Diseñado para funcionar perfectamente en cualquier dispositivo: desktop, tablet o móvil.
+              Diseñado para funcionar perfectamente en cualquier dispositivo: desktop, tablet o móvil. 
+              Genera imágenes desde donde estés.
             </p>
           </div>
 
           <div class="feature-card">
-            <div class="feature-icon">📝</div>
-            <h3 class="feature-title">Formularios inteligentes</h3>
+            <div class="feature-icon">�</div>
+            <h3 class="feature-title">Historial completo</h3>
             <p class="feature-description">
-              Crea formularios vinculados a tus fotos con filtros avanzados y previsualización instantánea.
+              Revisa todos tus formularios enviados, imágenes generadas y créditos utilizados. 
+              Exporta tu información en cualquier momento.
             </p>
           </div>
         </div>
@@ -417,8 +459,8 @@
 
     <!-- CTA Section -->
     <section class="cta-section">
-      <h2 class="cta-title">¿Listo para empezar?</h2>
-      <p class="cta-subtitle">Únete hoy y comienza a gestionar tus fotos de manera profesional</p>
+      <h2 class="cta-title">¿Listo para visualizar tus empaques?</h2>
+      <p class="cta-subtitle">Únete hoy y comienza a generar diseños realistas con inteligencia artificial</p>
       <div class="hero-buttons">
         <a href="/register.html" class="btn-hero btn-hero-primary btn-register-link">Crear cuenta gratis</a>
         <a href="/login.html" class="btn-hero btn-hero-secondary btn-login-link">Iniciar sesión</a>

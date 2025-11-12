@@ -12,12 +12,24 @@
     <link rel="manifest" href="/favicon/site.webmanifest" />
     <link rel="stylesheet" href="/style.css" />
     <style>
+      /* Alico color variables */
+      :root {
+        --alico-gold: #DB9500;
+        --alico-gold-80: #E2AA33;
+        --alico-gold-70: #E6B54D;
+        --alico-gold-20: #F8EACC;
+        --alico-gold-10: #FBF4E5;
+        --alico-blue: #000F9F;
+        --alico-blue-80: #333FB2;
+        --alico-blue-70: #4D58BC;
+      }
+
       .verify-container {
         min-height: 100vh;
         display: flex;
         align-items: center;
         justify-content: center;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, var(--alico-blue) 0%, var(--alico-blue-70) 50%, var(--alico-gold) 100%);
         padding: 2rem;
       }
       .verify-card {
@@ -26,8 +38,9 @@
         padding: 3rem;
         max-width: 500px;
         width: 100%;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        box-shadow: 0 20px 60px rgba(0, 15, 159, 0.3);
         text-align: center;
+        border-top: 4px solid var(--alico-gold);
       }
       .verify-icon {
         font-size: 5rem;
@@ -42,12 +55,13 @@
         100% { transform: scale(1); }
       }
       .verify-title {
-        color: #2c3e50;
+        color: var(--alico-blue);
         font-size: 2rem;
         margin-bottom: 1rem;
+        font-weight: 700;
       }
       .verify-message {
-        color: #7f8c8d;
+        color: #555;
         font-size: 1.1rem;
         line-height: 1.6;
         margin-bottom: 2rem;
@@ -58,12 +72,13 @@
         padding: 1.5rem;
         margin: 2rem 0;
         text-align: left;
-        border-radius: 4px;
+        border-radius: 8px;
       }
       .success-box h4 {
         color: #155724;
         margin-top: 0;
         margin-bottom: 0.5rem;
+        font-weight: 700;
       }
       .success-box p {
         color: #155724;
@@ -75,12 +90,13 @@
         padding: 1.5rem;
         margin: 2rem 0;
         text-align: left;
-        border-radius: 4px;
+        border-radius: 8px;
       }
       .error-box h4 {
         color: #721c24;
         margin-top: 0;
         margin-bottom: 0.5rem;
+        font-weight: 700;
       }
       .error-box p {
         color: #721c24;
@@ -89,41 +105,44 @@
       .btn-login {
         display: inline-block;
         padding: 1rem 3rem;
-        background: #27ae60;
+        background: linear-gradient(135deg, var(--alico-blue) 0%, var(--alico-blue-70) 100%);
         color: white;
         text-decoration: none;
-        border-radius: 5px;
+        border-radius: 8px;
         font-weight: 600;
         font-size: 1.1rem;
-        transition: background 0.3s;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        transition: all 0.3s;
+        box-shadow: 0 6px 20px rgba(0, 15, 159, 0.3);
       }
       .btn-login:hover {
-        background: #229954;
-        transform: translateY(-2px);
-        box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        background: linear-gradient(135deg, var(--alico-blue-70) 0%, var(--alico-blue) 100%);
+        transform: translateY(-3px);
+        box-shadow: 0 10px 30px rgba(0, 15, 159, 0.4);
       }
       .btn-secondary {
         display: inline-block;
         padding: 0.75rem 2rem;
-        background: #95a5a6;
+        background: linear-gradient(135deg, var(--alico-gold) 0%, var(--alico-gold-70) 100%);
         color: white;
         text-decoration: none;
-        border-radius: 5px;
+        border-radius: 8px;
         font-weight: 600;
         margin-top: 1rem;
-        transition: background 0.3s;
+        transition: all 0.3s;
+        box-shadow: 0 4px 15px rgba(219, 149, 0, 0.3);
       }
       .btn-secondary:hover {
-        background: #7f8c8d;
+        background: linear-gradient(135deg, var(--alico-gold-70) 0%, var(--alico-gold) 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(219, 149, 0, 0.4);
       }
       .loading {
         text-align: center;
         padding: 3rem;
       }
       .spinner {
-        border: 4px solid #f3f3f3;
-        border-top: 4px solid #3498db;
+        border: 4px solid var(--alico-gold-20);
+        border-top: 4px solid var(--alico-blue);
         border-radius: 50%;
         width: 50px;
         height: 50px;

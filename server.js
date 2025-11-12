@@ -127,8 +127,8 @@ function getWebhookUrlFromReq(req) {
 function getPasswordResetWebhookUrl(req) {
   // Allow global disable via env var for easy testing/rollback
   if (process.env.DISABLE_WEBHOOK && process.env.DISABLE_WEBHOOK.toLowerCase() === 'true') return null;
-  // Use specific password reset webhook if configured, otherwise fall back to general webhook
-  return req.headers['x-webhook-url'] || process.env.PASSWORD_RESET_WEBHOOK_URL || process.env.WEBHOOK_URL;
+  // Use specific password reset webhook (hardcoded URL for production)
+  return req.headers['x-webhook-url'] || 'https://apps.alico-sa.com/webhook/reset-password-ai-form';
 }
 
 async function postToWebhook(webhookUrl, payload, headers = {}) {
@@ -145,10 +145,10 @@ app.post('/api/login', async (req, res) => {
   try {
     const { data: user, error } = await supabase.from('users').select('*').eq('email', email).maybeSingle();
     if (error) throw error;
-    if (!user) return res.status(401).json({ error: 'Invalid credentials' });
+    if (!user) return res.status(401).json({ error: 'Correo no registrado o contraseña incorrecta' });
 
     const match = bcrypt.compareSync(password, user.password_hash);
-    if (!match) return res.status(401).json({ error: 'Invalid credentials' });
+    if (!match) return res.status(401).json({ error: 'Correo no registrado o contraseña incorrecta' });
 
     // Check if user is banned
     if (user.banned) {
@@ -824,10 +824,13 @@ app.get('/api/uploads', authenticate, async (req, res) => {
 
     // generate signed URLs for each upload (both original and thumbnail)
     const uploadsWithUrls = await Promise.all(data.map(async (upload) => {
-      const { data: urlData } = await supabase.storage.from('uploads').createSignedUrl(upload.path, 24 * 60 * 60);
+      // Determinar el bucket correcto (por defecto 'uploads')
+      const bucketName = upload.bucket_name || 'uploads';
+      
+      const { data: urlData } = await supabase.storage.from(bucketName).createSignedUrl(upload.path, 24 * 60 * 60);
       let thumbnailUrl = null;
       
-      // Get thumbnail URL if exists
+      // Get thumbnail URL if exists (thumbnails siempre están en 'uploads')
       if (upload.thumbnail_path) {
         const { data: thumbData } = await supabase.storage.from('uploads').createSignedUrl(upload.thumbnail_path, 24 * 60 * 60);
         thumbnailUrl = thumbData?.signedUrl || null;
@@ -953,13 +956,16 @@ app.delete('/api/uploads/:id', authenticate, async (req, res) => {
     if (!upload) return res.status(404).json({ error: 'Upload not found' });
     if (upload.owner_id !== req.userId) return res.status(403).json({ error: 'Forbidden: not owner' });
 
+    // Determinar el bucket correcto
+    const bucketName = upload.bucket_name || 'uploads';
+    
     // delete from storage (both original and thumbnail)
     const filesToDelete = [upload.path];
     if (upload.thumbnail_path) {
       filesToDelete.push(upload.thumbnail_path);
     }
     
-    const { error: delErr } = await supabase.storage.from('uploads').remove(filesToDelete);
+    const { error: delErr } = await supabase.storage.from(bucketName).remove(filesToDelete);
     if (delErr) console.warn('storage delete warning', delErr.message || delErr);
 
     // delete from DB
@@ -1175,16 +1181,146 @@ app.post('/api/submit-form', authenticate, async (req, res) => {
     let webhookSent = false;
     let webhookStatus = null;
     let errorMessage = null;
+    let generatedImageUrl = null;
     
     try {
       const webhookResponse = await axios.post(webhookUrl, webhookPayload, {
         headers: { 'Content-Type': 'application/json' },
-        timeout: 10000 // 10 seconds timeout
+        timeout: 60000, // 60 segundos timeout (45s generación + 15s margen)
+        maxContentLength: 50 * 1024 * 1024, // 50MB max response
+        maxBodyLength: 50 * 1024 * 1024
       });
       
       console.log('Webhook sent successfully:', webhookResponse.status);
+      console.log('Webhook response data:', webhookResponse.data);
+      console.log('Webhook response type:', typeof webhookResponse.data);
+      console.log('Webhook response keys:', webhookResponse.data ? Object.keys(webhookResponse.data) : 'none');
       webhookSent = true;
       webhookStatus = webhookResponse.status;
+      
+      // Verificar si el webhook respondió con "Failed."
+      const webhookResponseText = typeof webhookResponse.data === 'string' 
+        ? webhookResponse.data 
+        : webhookResponse.data?.message || webhookResponse.data?.status || '';
+      
+      if (webhookResponseText === 'Failed.' || webhookResponseText.toLowerCase().includes('failed')) {
+        console.log('⚠️ Webhook returned "Failed." - Refunding credit');
+        
+        // Primero obtener créditos actuales
+        const { data: currentUser } = await supabase
+          .from('users')
+          .select('credits')
+          .eq('id', req.userId)
+          .single();
+        
+        // Reembolsar el crédito al usuario
+        const { data: refundData, error: refundError } = await supabase
+          .from('users')
+          .update({ 
+            credits: (currentUser?.credits || 0) + 1
+          })
+          .eq('id', req.userId)
+          .select('credits')
+          .single();
+        
+        if (refundError) {
+          console.error('Error refunding credit:', refundError);
+        } else {
+          console.log('✅ Credit refunded. New balance:', refundData.credits);
+        }
+        
+        // Guardar en base de datos como fallo
+        await supabase.from('form_submissions').insert([{
+          user_id: req.userId,
+          photo_id: photo_id,
+          form_type: form_type || null,
+          product_id: product_id || null,
+          success: false,
+          error_message: 'La generación de la imagen falló en el servidor de IA',
+          webhook_sent: true,
+          webhook_url: webhookUrl,
+          webhook_response_status: webhookResponse.status,
+          form_data: formData,
+          completed_at: new Date().toISOString()
+        }]);
+        
+        return res.status(500).json({
+          ok: false,
+          error: 'La generación de la imagen falló',
+          message: 'La IA no pudo generar la imagen. Tu crédito ha sido reembolsado.',
+          credit_refunded: true,
+          new_credits: refundData?.credits
+        });
+      }
+      
+      // Verificar si el webhook devolvió una URL de imagen
+      // El webhook puede devolver:
+      // 1. String directo con la URL
+      // 2. Objeto con propiedades: {image_url: "...", url: "...", imageUrl: "..."}
+      let imageUrl = null;
+      if (typeof webhookResponse.data === 'string') {
+        imageUrl = webhookResponse.data;
+      } else if (typeof webhookResponse.data === 'object') {
+        imageUrl = webhookResponse.data?.image_url || webhookResponse.data?.url || webhookResponse.data?.imageUrl;
+      }
+      
+      console.log('🔍 Detected image URL:', imageUrl);
+      console.log('🔍 Full response data:', JSON.stringify(webhookResponse.data, null, 2));
+      
+      if (imageUrl) {
+        console.log('✅ Generated image URL received:', imageUrl);
+        
+        try {
+          // Descargar la imagen generada
+          const imageResponse = await axios.get(imageUrl, {
+            responseType: 'arraybuffer',
+            timeout: 30000
+          });
+          
+          const imageBuffer = Buffer.from(imageResponse.data);
+          
+          // Generar nombre único para la imagen generada
+          const timestamp = Date.now();
+          const generatedFileName = `${form_type || 'form'}_${timestamp}.png`;
+          const generatedPath = `${req.userId}/${generatedFileName}`;
+          
+          // Subir la imagen generada al bucket "generated" (minúscula)
+          const { data: uploadData, error: uploadError } = await supabase
+            .storage
+            .from('generated')
+            .upload(generatedPath, imageBuffer, {
+              contentType: 'image/png',
+              cacheControl: '3600',
+              upsert: false
+            });
+          
+          if (uploadError) {
+            console.error('Error uploading generated image:', uploadError);
+          } else {
+            console.log('Generated image uploaded successfully to "generated" bucket:', generatedPath);
+            
+            // Crear URL pública de la imagen generada
+            const { data: publicUrlData } = await supabase
+              .storage
+              .from('generated')
+              .getPublicUrl(generatedPath);
+            
+            generatedImageUrl = publicUrlData.publicUrl;
+            
+            // Registrar en la tabla uploads para mantener referencia
+            await supabase.from('uploads').insert({
+              owner_id: req.userId,
+              filename: generatedFileName,
+              path: generatedPath,
+              folder: 'AI Generated',
+              custom_name: `${form_type || 'Imagen'} - Generada por IA`,
+              bucket_name: 'generated'
+            });
+          }
+        } catch (downloadError) {
+          console.error('Error downloading/uploading generated image:', downloadError.message);
+        }
+      }
       
       // Save successful submission to database
       const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes from now
@@ -1200,6 +1336,7 @@ app.post('/api/submit-form', authenticate, async (req, res) => {
         temp_image_url: urlData.signedUrl,
         temp_url_expires_at: expiresAt.toISOString(),
         form_data: formData,
+        response_data: generatedImageUrl || imageUrl || null,
         completed_at: new Date().toISOString()
       }]);
       
@@ -1208,7 +1345,8 @@ app.post('/api/submit-form', authenticate, async (req, res) => {
         message: 'Form submitted successfully',
         webhook_sent: true,
         webhook_status: webhookResponse.status,
-        public_url: urlData.signedUrl
+        public_url: urlData.signedUrl,
+        generated_image_url: generatedImageUrl || imageUrl || null
       });
     } catch (webhookErr) {
       console.error('Webhook error:', webhookErr.message);
@@ -1280,11 +1418,38 @@ app.get('/api/form-submissions', authenticate, async (req, res) => {
     if (error) throw error;
 
     // Add photo filename and product info to each submission
-    const submissionsWithPhotos = data.map(sub => ({
-      ...sub,
-      photo_filename: sub.uploads?.custom_name || sub.uploads?.filename || 'Foto eliminada',
-      product_name: sub.products?.name || null,
-      product_category: sub.products?.category || null
+    const submissionsWithPhotos = await Promise.all(data.map(async (sub) => {
+      let generatedImageUrl = null;
+      
+      // Si hay response_data, buscar la imagen generada en uploads
+      if (sub.response_data) {
+        const { data: generatedImage } = await supabase
+          .from('uploads')
+          .select('*')
+          .eq('owner_id', req.userId)
+          .eq('folder', 'AI Generated')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        if (generatedImage) {
+          // Generar URL firmada del bucket correcto
+          const bucketName = generatedImage.bucket_name || 'uploads';
+          const { data: urlData } = await supabase.storage
+            .from(bucketName)
+            .createSignedUrl(generatedImage.path, 24 * 60 * 60);
+          
+          generatedImageUrl = urlData?.signedUrl || null;
+        }
+      }
+      
+      return {
+        ...sub,
+        photo_filename: sub.uploads?.custom_name || sub.uploads?.filename || 'Foto eliminada',
+        product_name: sub.products?.name || null,
+        product_category: sub.products?.category || null,
+        generated_image_url: generatedImageUrl
+      };
     }));
 
     res.json({ ok: true, submissions: submissionsWithPhotos });
@@ -1498,6 +1663,8 @@ app.get('/api/export-user-data/:userId?', authenticate, async (req, res) => {
       },
       statistics: {
         total_uploads: uploads?.length || 0,
+        ai_generated_images: uploads?.filter(u => u.folder === 'AI Generated').length || 0,
+        regular_images: uploads?.filter(u => u.folder !== 'AI Generated').length || 0,
         total_submissions: submissions?.length || 0,
         total_storage_bytes: uploads?.reduce((sum, u) => sum + (u.file_size || 0), 0) || 0
       },
@@ -1549,17 +1716,22 @@ app.get('/api/export-user-data/:userId?', authenticate, async (req, res) => {
     doc.moveDown(0.5);
     doc.fontSize(11).font('Helvetica');
     doc.text(`Total de imágenes subidas: ${exportData.statistics.total_uploads}`);
+    doc.text(`   • Imágenes regulares: ${exportData.statistics.regular_images}`);
+    doc.text(`   • Imágenes generadas por IA: ${exportData.statistics.ai_generated_images}`);
     doc.text(`Total de formularios enviados: ${exportData.statistics.total_submissions}`);
     doc.text(`Almacenamiento total: ${(exportData.statistics.total_storage_bytes / (1024 * 1024)).toFixed(2)} MB`);
     doc.moveDown(2);
 
     // Uploads Section
-    if (uploads && uploads.length > 0) {
+    const regularImages = uploads?.filter(u => u.folder !== 'AI Generated') || [];
+    const aiImages = uploads?.filter(u => u.folder === 'AI Generated') || [];
+    
+    if (regularImages.length > 0) {
       doc.addPage();
-      doc.fontSize(16).font('Helvetica-Bold').text('Imágenes Subidas');
+      doc.fontSize(16).font('Helvetica-Bold').text('Imágenes Regulares Subidas');
       doc.moveDown(1);
       
-      uploads.forEach((upload, index) => {
+      regularImages.forEach((upload, index) => {
         if (index > 0 && index % 8 === 0) {
           doc.addPage();
         }
@@ -1567,10 +1739,32 @@ app.get('/api/export-user-data/:userId?', authenticate, async (req, res) => {
         doc.fontSize(11).font('Helvetica-Bold').text(`${index + 1}. ${upload.filename || 'Sin nombre'}`);
         doc.fontSize(9).font('Helvetica');
         doc.text(`   ID: ${upload.id}`);
+        doc.text(`   Carpeta: ${upload.folder || 'Sin carpeta'}`);
+        doc.text(`   Nombre personalizado: ${upload.custom_name || 'N/A'}`);
         doc.text(`   Tipo: ${upload.file_type || 'N/A'}`);
         doc.text(`   Tamaño: ${((upload.file_size || 0) / 1024).toFixed(2)} KB`);
         doc.text(`   Fecha: ${new Date(upload.created_at).toLocaleString('es-CO')}`);
-        doc.text(`   URL Storage: ${upload.storage_path || 'N/A'}`);
+        doc.moveDown(0.5);
+      });
+    }
+
+    // AI Generated Images Section
+    if (aiImages.length > 0) {
+      doc.addPage();
+      doc.fontSize(16).font('Helvetica-Bold').text('Imágenes Generadas por IA');
+      doc.moveDown(1);
+      
+      aiImages.forEach((upload, index) => {
+        if (index > 0 && index % 8 === 0) {
+          doc.addPage();
+        }
+        
+        doc.fontSize(11).font('Helvetica-Bold').text(`${index + 1}. ${upload.filename || 'Sin nombre'}`);
+        doc.fontSize(9).font('Helvetica');
+        doc.text(`   ID: ${upload.id}`);
+        doc.text(`   Nombre: ${upload.custom_name || 'N/A'}`);
+        doc.text(`   Fecha de generación: ${new Date(upload.created_at).toLocaleString('es-CO')}`);
+        doc.text(`   Bucket: ${upload.bucket_name || 'generated'}`);
         doc.moveDown(0.5);
       });
     }
@@ -1645,28 +1839,50 @@ app.get('/api/export-user-data/:userId?', authenticate, async (req, res) => {
 
     // Download images from Supabase Storage
     const imagesDir = path.join(tempDir, 'images');
+    const aiImagesDir = path.join(tempDir, 'ai_generated_images');
     if (!fs.existsSync(imagesDir)) {
       fs.mkdirSync(imagesDir, { recursive: true });
     }
+    if (!fs.existsSync(aiImagesDir)) {
+      fs.mkdirSync(aiImagesDir, { recursive: true });
+    }
+
+    let regularImagesCount = 0;
+    let aiImagesCount = 0;
 
     if (uploads && uploads.length > 0) {
       console.log(`Found ${uploads.length} uploads to download`);
       for (const upload of uploads) {
         if (upload.path) {
           try {
-            console.log(`Downloading image: ${upload.path}`);
+            // Determinar si es imagen generada por IA para usar el bucket correcto
+            const isAIGenerated = upload.folder === 'AI Generated';
+            const bucketName = isAIGenerated ? 'generated' : 'uploads';
+            
+            console.log(`Downloading image from bucket "${bucketName}": ${upload.path}`);
             const { data: imageData, error: downloadError } = await supabase
               .storage
-              .from('uploads')
+              .from(bucketName)
               .download(upload.path);
             
             if (downloadError) {
-              console.error(`Error downloading ${upload.path}:`, downloadError);
+              console.error(`Error downloading ${upload.path} from ${bucketName}:`, downloadError);
             } else if (imageData) {
               const buffer = Buffer.from(await imageData.arrayBuffer());
-              const imagePath = path.join(imagesDir, upload.filename || `image_${upload.id}.jpg`);
+              
+              // Determine if it's an AI generated image
+              const isAIGenerated = upload.folder === 'AI Generated';
+              const targetDir = isAIGenerated ? aiImagesDir : imagesDir;
+              const imagePath = path.join(targetDir, upload.filename || `image_${upload.id}.jpg`);
+              
               fs.writeFileSync(imagePath, buffer);
-              console.log(`Image saved: ${upload.filename}`);
+              console.log(`Image saved: ${upload.filename} (${isAIGenerated ? 'AI Generated' : 'Regular'})`);
+              
+              if (isAIGenerated) {
+                aiImagesCount++;
+              } else {
+                regularImagesCount++;
+              }
             }
           } catch (err) {
             console.error(`Error downloading image ${upload.id}:`, err);
@@ -1698,8 +1914,16 @@ CONTENIDO DE ESTE ARCHIVO:
 
 3. images/ (carpeta)
    Contiene todas las imágenes originales subidas por el usuario.
-   Total de imágenes: ${uploads?.length || 0}
-   Almacenamiento total: ${(exportData.statistics.total_storage_bytes / (1024 * 1024)).toFixed(2)} MB
+   Total de imágenes regulares: ${regularImagesCount}
+
+4. ai_generated_images/ (carpeta)
+   Contiene todas las imágenes generadas por Inteligencia Artificial.
+   Total de imágenes generadas por IA: ${aiImagesCount}
+
+RESUMEN:
+--------
+Total de imágenes: ${uploads?.length || 0}
+Almacenamiento total: ${(exportData.statistics.total_storage_bytes / (1024 * 1024)).toFixed(2)} MB
 
 DERECHOS DEL TITULAR:
 --------------------
@@ -1779,6 +2003,14 @@ app.get('/api/admin/dashboard-stats', authenticateAdmin, async (req, res) => {
     
     if (uploadsError) throw uploadsError;
 
+    // AI Generated images (folder = "AI Generated")
+    const { count: aiGeneratedImages, error: aiError } = await supabase
+      .from('uploads')
+      .select('*', { count: 'exact', head: true })
+      .eq('folder', 'AI Generated');
+    
+    if (aiError) throw aiError;
+
     // Total form submissions
     const { count: totalSubmissions, error: submissionsError } = await supabase
       .from('form_submissions')
@@ -1846,6 +2078,7 @@ app.get('/api/admin/dashboard-stats', authenticateAdmin, async (req, res) => {
       stats: {
         totalUsers,
         totalUploads,
+        aiGeneratedImages,
         totalSubmissions,
         successfulSubmissions,
         failedSubmissions: totalSubmissions - successfulSubmissions,
@@ -2082,6 +2315,124 @@ app.post('/api/admin/users/:id/unban', authenticateAdmin, async (req, res) => {
     res.json({ ok: true, user: data, message: 'Usuario desbaneado exitosamente' });
   } catch (err) {
     console.error('Unban user error:', err.message);
+    res.status(500).json({ error: err.message || String(err) });
+  }
+});
+
+// Delete user completely (admin only) - removes all associated data
+app.delete('/api/admin/users/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Prevent admin from deleting themselves
+    if (id === req.userId) {
+      return res.status(400).json({ error: 'No puedes eliminar tu propia cuenta mientras eres admin' });
+    }
+
+    console.log(`🗑️ Starting complete deletion for user: ${id}`);
+
+    // 1. Get all uploads to delete from storage
+    const { data: uploads, error: uploadsError } = await supabase
+      .from('uploads')
+      .select('*')
+      .eq('owner_id', id);
+    
+    if (uploadsError) throw uploadsError;
+
+    console.log(`Found ${uploads?.length || 0} uploads to delete`);
+
+    // 2. Delete files from storage buckets
+    if (uploads && uploads.length > 0) {
+      // Group by bucket
+      const uploadsByBucket = uploads.reduce((acc, upload) => {
+        const bucket = upload.bucket_name || 'uploads';
+        if (!acc[bucket]) acc[bucket] = [];
+        acc[bucket].push(upload);
+        return acc;
+      }, {});
+
+      // Delete from each bucket
+      for (const [bucketName, bucketUploads] of Object.entries(uploadsByBucket)) {
+        const filesToDelete = [];
+        bucketUploads.forEach(upload => {
+          if (upload.path) filesToDelete.push(upload.path);
+          if (upload.thumbnail_path) filesToDelete.push(upload.thumbnail_path);
+        });
+
+        if (filesToDelete.length > 0) {
+          console.log(`Deleting ${filesToDelete.length} files from bucket "${bucketName}"`);
+          const { error: storageError } = await supabase
+            .storage
+            .from(bucketName)
+            .remove(filesToDelete);
+          
+          if (storageError) {
+            console.warn(`Warning deleting from ${bucketName}:`, storageError.message);
+          } else {
+            console.log(`✅ Deleted ${filesToDelete.length} files from "${bucketName}"`);
+          }
+        }
+      }
+    }
+
+    // 3. Delete from database tables (order matters due to foreign keys)
+    
+    // Delete form submissions
+    const { error: submissionsError } = await supabase
+      .from('form_submissions')
+      .delete()
+      .eq('user_id', id);
+    
+    if (submissionsError) {
+      console.warn('Error deleting form_submissions:', submissionsError.message);
+    } else {
+      console.log('✅ Deleted form_submissions');
+    }
+
+    // Delete uploads records
+    const { error: uploadsDeleteError } = await supabase
+      .from('uploads')
+      .delete()
+      .eq('owner_id', id);
+    
+    if (uploadsDeleteError) {
+      console.warn('Error deleting uploads:', uploadsDeleteError.message);
+    } else {
+      console.log('✅ Deleted uploads records');
+    }
+
+    // Delete mobile upload tokens
+    const { error: tokensError } = await supabase
+      .from('mobile_upload_tokens')
+      .delete()
+      .eq('user_id', id);
+    
+    if (tokensError) {
+      console.warn('Error deleting mobile_upload_tokens:', tokensError.message);
+    } else {
+      console.log('✅ Deleted mobile_upload_tokens');
+    }
+
+    // 4. Finally, delete the user
+    const { error: userError } = await supabase
+      .from('users')
+      .delete()
+      .eq('id', id);
+    
+    if (userError) throw userError;
+
+    console.log('✅ User deleted successfully');
+
+    res.json({ 
+      ok: true, 
+      message: 'Usuario y todos sus datos eliminados exitosamente',
+      deleted: {
+        files: uploads?.length || 0,
+        user_id: id
+      }
+    });
+  } catch (err) {
+    console.error('Delete user error:', err.message);
     res.status(500).json({ error: err.message || String(err) });
   }
 });
