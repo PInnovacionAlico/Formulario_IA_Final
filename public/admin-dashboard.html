@@ -346,6 +346,8 @@
               <table class="admin-table">
                 <thead>
                   <tr>
+                    <th>ID Envío</th>
+                    <th>ID Usuario</th>
                     <th>Fecha</th>
                     <th>Usuario</th>
                     <th>Email</th>
@@ -355,7 +357,7 @@
                 </thead>
                 <tbody id="recentSubmissionsTable">
                   <tr>
-                    <td colspan="5" style="text-align: center; padding: 20px; color: #999;">
+                    <td colspan="7" style="text-align: center; padding: 20px; color: #999;">
                       Cargando...
                     </td>
                   </tr>
@@ -401,7 +403,8 @@
               <table class="admin-table">
                 <thead>
                   <tr>
-                    <th>ID</th>
+                    <th>ID Envío</th>
+                    <th>ID Usuario</th>
                     <th>Fecha</th>
                     <th>Usuario</th>
                     <th>Tipo</th>
@@ -412,7 +415,7 @@
                 </thead>
                 <tbody id="allSubmissionsTable">
                   <tr>
-                    <td colspan="7" style="text-align: center; padding: 20px; color: #999;">
+                    <td colspan="8" style="text-align: center; padding: 20px; color: #999;">
                       Cargando...
                     </td>
                   </tr>
@@ -585,19 +588,32 @@
         const tbody = document.getElementById('recentSubmissionsTable');
         
         if (!submissions || submissions.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px; color: #999;">No hay envíos recientes</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px; color: #999;">No hay envíos recientes</td></tr>';
           return;
         }
 
-        tbody.innerHTML = submissions.map(sub => `
+        tbody.innerHTML = submissions.map(sub => {
+          const shortSubmissionId = sub.id.substring(0, 8) + '...';
+          const shortUserId = sub.user_id ? sub.user_id.substring(0, 8) + '...' : 'N/A';
+          
+          return `
           <tr>
+            <td style="font-family: monospace; font-size: 11px;" title="${sub.id}">
+              ${shortSubmissionId}
+              <button class="btn-small" style="margin-left: 5px; padding: 2px 6px; font-size: 10px;" onclick="copySubmissionId('${sub.id}')" title="Copiar ID de envío">📋</button>
+            </td>
+            <td style="font-family: monospace; font-size: 11px;" title="${sub.user_id || 'N/A'}">
+              ${shortUserId}
+              ${sub.user_id ? `<button class="btn-small" style="margin-left: 5px; padding: 2px 6px; font-size: 10px;" onclick="copyUserId('${sub.user_id}')" title="Copiar ID de usuario">📋</button>` : ''}
+            </td>
             <td>${new Date(sub.created_at).toLocaleDateString('es-ES', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
             <td>${sub.user_name}</td>
             <td>${sub.user_email}</td>
             <td>${sub.form_type || 'N/A'}</td>
             <td><span class="badge ${sub.success ? 'success' : 'danger'}">${sub.success ? '✅ Exitoso' : '❌ Fallido'}</span></td>
           </tr>
-        `).join('');
+        `;
+        }).join('');
       }
 
       // Load all users
@@ -635,14 +651,33 @@
             : `<span class="badge success">✓ Activo</span>`;
           
           const banButton = user.banned
-            ? `<button class="btn-small success" onclick="unbanUser('${user.id}', '${user.name}')">Desbanear</button>`
-            : `<button class="btn-small" style="background: #e74c3c; color: white;" onclick="banUser('${user.id}', '${user.name}')">🚫 Banear</button>`;
+            ? `<button class="btn-small success" onclick="unbanUser('${user.id}', '${user.name}')" ${user.is_super_admin ? 'disabled' : ''}>Desbanear</button>`
+            : `<button class="btn-small" style="background: #e74c3c; color: white;" onclick="banUser('${user.id}', '${user.name}')" ${user.is_super_admin ? 'disabled' : ''}>🚫 Banear</button>`;
 
           // Truncate ID for display (first 8 characters)
           const shortId = user.id.substring(0, 8) + '...';
 
+          // Admin badge with super admin variant
+          const adminBadge = user.is_super_admin 
+            ? '<span class="badge" style="background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); color: #000; font-weight: bold;">👑 Super Admin</span>'
+            : user.is_admin 
+            ? '<span class="badge admin">🛡️ Admin</span>' 
+            : '-';
+
+          // Disable actions for super admin
+          const isSuperAdmin = user.is_super_admin;
+          const adminToggleButton = isSuperAdmin 
+            ? '' 
+            : !user.is_admin 
+            ? `<button class="btn-small danger" onclick="toggleAdminStatus('${user.id}', true)" ${user.banned ? 'disabled' : ''}>Hacer Admin</button>` 
+            : `<button class="btn-small danger" onclick="toggleAdminStatus('${user.id}', false)" ${user.banned ? 'disabled' : ''}>Quitar Admin</button>`;
+
+          const deleteButton = isSuperAdmin 
+            ? '' 
+            : `<button class="btn-small" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white;" onclick="deleteUser('${user.id}', '${user.name}')" ${user.banned ? 'disabled' : ''}>🗑️ Eliminar</button>`;
+
           return `
-            <tr style="${user.banned ? 'opacity: 0.7; background: #fff5f5;' : ''}">
+            <tr style="${user.banned ? 'opacity: 0.7; background: #fff5f5;' : isSuperAdmin ? 'background: #fffef0;' : ''}">
               <td style="font-family: monospace; font-size: 11px;" title="${user.id}">
                 ${shortId}
                 <button class="btn-small" style="margin-left: 5px; padding: 2px 6px; font-size: 10px;" onclick="copyUserId('${user.id}')" title="Copiar ID completo">📋</button>
@@ -653,14 +688,14 @@
               <td><strong>${user.total_photos || 0}</strong></td>
               <td>${user.total_size_mb || '0.00'} MB</td>
               <td>${new Date(user.created_at).toLocaleDateString('es-ES')}</td>
-              <td>${user.is_admin ? '<span class="badge admin">🛡️ Admin</span>' : '-'}</td>
+              <td>${adminBadge}</td>
               <td>${statusBadge}</td>
               <td>
                 <button class="btn-small primary" onclick="editUserCredits('${user.id}', ${user.credits})" ${user.banned ? 'disabled' : ''}>Editar Créditos</button>
-                ${!user.is_admin ? `<button class="btn-small danger" onclick="toggleAdminStatus('${user.id}', true)" ${user.banned ? 'disabled' : ''}>Hacer Admin</button>` : `<button class="btn-small danger" onclick="toggleAdminStatus('${user.id}', false)" ${user.banned ? 'disabled' : ''}>Quitar Admin</button>`}
+                ${adminToggleButton}
                 ${banButton}
                 <button class="btn-small" style="background: linear-gradient(135deg, var(--alico-blue) 0%, var(--alico-blue-70) 100%);" onclick="exportUserDataAdmin('${user.id}', '${user.name}')">📥 Exportar</button>
-                <button class="btn-small" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white;" onclick="deleteUser('${user.id}', '${user.name}')">🗑️ Eliminar</button>
+                ${deleteButton}
               </td>
             </tr>
           `;
@@ -692,13 +727,24 @@
         const tbody = document.getElementById('allSubmissionsTable');
         
         if (!submissions || submissions.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px; color: #999;">No hay formularios enviados</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 20px; color: #999;">No hay formularios enviados</td></tr>';
           return;
         }
 
-        tbody.innerHTML = submissions.slice(0, 50).map(sub => `
+        tbody.innerHTML = submissions.slice(0, 50).map(sub => {
+          const shortSubmissionId = sub.id.substring(0, 8) + '...';
+          const shortUserId = sub.user_id ? sub.user_id.substring(0, 8) + '...' : 'N/A';
+          
+          return `
           <tr>
-            <td>${sub.id.substring(0, 8)}...</td>
+            <td style="font-family: monospace; font-size: 11px;" title="${sub.id}">
+              ${shortSubmissionId}
+              <button class="btn-small" style="margin-left: 5px; padding: 2px 6px; font-size: 10px;" onclick="copySubmissionId('${sub.id}')" title="Copiar ID de envío">📋</button>
+            </td>
+            <td style="font-family: monospace; font-size: 11px;" title="${sub.user_id || 'N/A'}">
+              ${shortUserId}
+              ${sub.user_id ? `<button class="btn-small" style="margin-left: 5px; padding: 2px 6px; font-size: 10px;" onclick="copyUserId('${sub.user_id}')" title="Copiar ID de usuario">📋</button>` : ''}
+            </td>
             <td>${new Date(sub.created_at).toLocaleDateString('es-ES', { year: 'numeric', month: 'short', day: 'numeric' })}</td>
             <td>${sub.user_name}</td>
             <td>${sub.form_type || 'N/A'}</td>
@@ -706,10 +752,11 @@
             <td><span class="badge ${sub.success ? 'success' : 'danger'}">${sub.success ? '✅ Exitoso' : '❌ Fallido'}</span></td>
             <td><span class="badge ${sub.webhook_sent ? 'success' : 'danger'}">${sub.webhook_sent ? '✅ Enviado' : '❌ No enviado'}</span></td>
           </tr>
-        `).join('');
+        `;
+        }).join('');
 
         if (submissions.length > 50) {
-          tbody.innerHTML += `<tr><td colspan="7" style="text-align: center; padding: 12px; color: #999; font-style: italic;">Mostrando 50 de ${submissions.length} formularios</td></tr>`;
+          tbody.innerHTML += `<tr><td colspan="8" style="text-align: center; padding: 12px; color: #999; font-style: italic;">Mostrando 50 de ${submissions.length} formularios</td></tr>`;
         }
       }
 
@@ -954,7 +1001,7 @@
       // Copy user ID to clipboard
       function copyUserId(userId) {
         navigator.clipboard.writeText(userId).then(() => {
-          alert('✅ ID copiado al portapapeles');
+          alert('✅ ID de usuario copiado al portapapeles');
         }).catch(err => {
           // Fallback for older browsers
           const textArea = document.createElement('textarea');
@@ -963,7 +1010,23 @@
           textArea.select();
           document.execCommand('copy');
           document.body.removeChild(textArea);
-          alert('✅ ID copiado al portapapeles');
+          alert('✅ ID de usuario copiado al portapapeles');
+        });
+      }
+
+      // Copy submission ID to clipboard
+      function copySubmissionId(submissionId) {
+        navigator.clipboard.writeText(submissionId).then(() => {
+          alert('✅ ID de envío copiado al portapapeles');
+        }).catch(err => {
+          // Fallback for older browsers
+          const textArea = document.createElement('textarea');
+          textArea.value = submissionId;
+          document.body.appendChild(textArea);
+          textArea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textArea);
+          alert('✅ ID de envío copiado al portapapeles');
         });
       }
 

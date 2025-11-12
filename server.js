@@ -93,7 +93,7 @@ async function authenticateAdmin(req, res, next) {
     // Check if user is admin and not banned
     const { data: user, error } = await supabase
       .from('users')
-      .select('is_admin, banned, banned_reason')
+      .select('is_admin, is_super_admin, banned, banned_reason')
       .eq('id', req.userId)
       .single();
     
@@ -110,6 +110,9 @@ async function authenticateAdmin(req, res, next) {
     if (!user || !user.is_admin) {
       return res.status(403).json({ error: 'Forbidden: Admin access required' });
     }
+    
+    // Attach super admin status to request
+    req.isSuperAdmin = user.is_super_admin || false;
     
     next();
   } catch (err) {
@@ -170,7 +173,7 @@ app.post('/api/login', async (req, res) => {
     }
 
     const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
-    res.json({ ok: true, token, user: { id: user.id, name: user.name, email: user.email, is_admin: user.is_admin || false } });
+    res.json({ ok: true, token, user: { id: user.id, name: user.name, email: user.email, is_admin: user.is_admin || false, is_super_admin: user.is_super_admin || false } });
   } catch (err) {
     console.error('login error', err.message || err);
     res.status(500).json({ error: err.message || String(err) });
@@ -590,7 +593,7 @@ app.post('/api/update-profile', authenticate, async (req, res) => {
       .from('users')
       .update(updateData)
       .eq('id', userId)
-      .select('id, name, email, credits, is_admin, created_at')
+      .select('id, name, email, credits, is_admin, is_super_admin, created_at')
       .single();
     
     if (updateErr) throw updateErr;
@@ -2124,7 +2127,7 @@ app.get('/api/admin/users', authenticateAdmin, async (req, res) => {
   try {
     const { data: users, error } = await supabase
       .from('users')
-      .select('id, name, email, created_at, credits, credits_last_reset, is_admin, banned, banned_at, banned_reason, banned_by')
+      .select('id, name, email, created_at, credits, credits_last_reset, is_admin, is_super_admin, banned, banned_at, banned_reason, banned_by')
       .order('created_at', { ascending: false });
     
     if (error) throw error;
@@ -2215,6 +2218,18 @@ app.patch('/api/admin/users/:id/admin-status', authenticateAdmin, async (req, re
       return res.status(400).json({ error: 'is_admin must be a boolean' });
     }
 
+    // Check if target user is super admin
+    const { data: targetUser } = await supabase
+      .from('users')
+      .select('is_super_admin, is_admin')
+      .eq('id', id)
+      .single();
+
+    // Prevent modification of super admin status
+    if (targetUser?.is_super_admin) {
+      return res.status(403).json({ error: 'No se puede modificar el estado de super administrador' });
+    }
+
     // Prevent users from removing their own admin status
     if (id === req.userId && !is_admin) {
       return res.status(400).json({ error: 'No puedes remover tu propio acceso de administrador' });
@@ -2273,10 +2288,10 @@ app.post('/api/admin/users/:id/ban', authenticateAdmin, async (req, res) => {
       return res.status(400).json({ error: 'No puedes banearte a ti mismo' });
     }
 
-    // Check if user exists
+    // Check if user exists and get their admin status
     const { data: targetUser, error: fetchError } = await supabase
       .from('users')
-      .select('id, name, email, is_admin')
+      .select('id, name, email, is_admin, is_super_admin')
       .eq('id', id)
       .single();
 
@@ -2285,9 +2300,14 @@ app.post('/api/admin/users/:id/ban', authenticateAdmin, async (req, res) => {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
-    // Prevent banning other admins
-    if (targetUser.is_admin) {
-      return res.status(400).json({ error: 'No puedes banear a otro administrador' });
+    // Cannot ban super admin
+    if (targetUser.is_super_admin) {
+      return res.status(403).json({ error: 'No se puede banear al super administrador' });
+    }
+
+    // Prevent banning other admins (unless you're super admin)
+    if (targetUser.is_admin && !req.isSuperAdmin) {
+      return res.status(400).json({ error: 'Solo el super administrador puede banear a otros administradores' });
     }
 
     const { data, error } = await supabase
@@ -2345,6 +2365,23 @@ app.delete('/api/admin/users/:id', authenticateAdmin, async (req, res) => {
     // Prevent admin from deleting themselves
     if (id === req.userId) {
       return res.status(400).json({ error: 'No puedes eliminar tu propia cuenta mientras eres admin' });
+    }
+
+    // Check if target user is super admin or admin
+    const { data: targetUser } = await supabase
+      .from('users')
+      .select('is_super_admin, is_admin, name')
+      .eq('id', id)
+      .single();
+
+    // Super admin cannot be deleted by anyone
+    if (targetUser?.is_super_admin) {
+      return res.status(403).json({ error: 'No se puede eliminar al super administrador' });
+    }
+
+    // Only super admin can delete other admins
+    if (targetUser?.is_admin && !req.isSuperAdmin) {
+      return res.status(403).json({ error: 'Solo el super administrador puede eliminar a otros administradores' });
     }
 
     console.log(`🗑️ Starting complete deletion for user: ${id}`);
