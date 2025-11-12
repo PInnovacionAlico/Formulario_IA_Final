@@ -2273,6 +2273,18 @@ app.patch('/api/admin/users/:id/credits', authenticateAdmin, async (req, res) =>
       return res.status(400).json({ error: 'credits must be a non-negative number' });
     }
 
+    // Check if target user is super admin
+    const { data: targetUser } = await supabase
+      .from('users')
+      .select('is_super_admin')
+      .eq('id', id)
+      .single();
+
+    // Cannot modify super admin credits
+    if (targetUser?.is_super_admin) {
+      return res.status(403).json({ error: 'No se pueden modificar los créditos del super administrador' });
+    }
+
     const { data, error } = await supabase
       .from('users')
       .update({ credits })

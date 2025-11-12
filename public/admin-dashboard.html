@@ -695,7 +695,7 @@
               <td>${adminBadge}</td>
               <td>${statusBadge}</td>
               <td>
-                <button class="btn-small primary" onclick="editUserCredits('${user.id}', ${user.credits})" ${user.banned ? 'disabled' : ''}>Editar Créditos</button>
+                <button class="btn-small primary" onclick="editUserCredits('${user.id}', ${user.credits})" ${user.banned || isSuperAdmin ? 'disabled' : ''}>Editar Créditos</button>
                 ${adminToggleButton}
                 ${banButton}
                 ${exportButton}
