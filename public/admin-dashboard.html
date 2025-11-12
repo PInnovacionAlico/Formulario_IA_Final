@@ -676,6 +676,10 @@
             ? '' 
             : `<button class="btn-small" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white;" onclick="deleteUser('${user.id}', '${user.name}')" ${user.banned ? 'disabled' : ''}>🗑️ Eliminar</button>`;
 
+          const exportButton = isSuperAdmin 
+            ? '' 
+            : `<button class="btn-small" style="background: linear-gradient(135deg, var(--alico-blue) 0%, var(--alico-blue-70) 100%);" onclick="exportUserDataAdmin('${user.id}', '${user.name}')">📥 Exportar</button>`;
+
           return `
             <tr style="${user.banned ? 'opacity: 0.7; background: #fff5f5;' : isSuperAdmin ? 'background: #fffef0;' : ''}">
               <td style="font-family: monospace; font-size: 11px;" title="${user.id}">
@@ -694,7 +698,7 @@
                 <button class="btn-small primary" onclick="editUserCredits('${user.id}', ${user.credits})" ${user.banned ? 'disabled' : ''}>Editar Créditos</button>
                 ${adminToggleButton}
                 ${banButton}
-                <button class="btn-small" style="background: linear-gradient(135deg, var(--alico-blue) 0%, var(--alico-blue-70) 100%);" onclick="exportUserDataAdmin('${user.id}', '${user.name}')">📥 Exportar</button>
+                ${exportButton}
                 ${deleteButton}
               </td>
             </tr>

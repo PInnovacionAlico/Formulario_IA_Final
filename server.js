@@ -1613,12 +1613,24 @@ app.get('/api/export-user-data/:userId?', authenticate, async (req, res) => {
     if (targetUserId && targetUserId !== req.userId) {
       const { data: requester } = await supabase
         .from('users')
-        .select('is_admin')
+        .select('is_admin, is_super_admin')
         .eq('id', req.userId)
         .single();
       
       if (!requester || !requester.is_admin) {
         return res.status(403).json({ error: 'Only admins can export other users data' });
+      }
+
+      // Check if target user is super admin
+      const { data: targetUser } = await supabase
+        .from('users')
+        .select('is_super_admin')
+        .eq('id', targetUserId)
+        .single();
+
+      // Only super admin can export another super admin's data
+      if (targetUser?.is_super_admin && !requester.is_super_admin) {
+        return res.status(403).json({ error: 'Solo el super administrador puede exportar los datos de otro super administrador' });
       }
     } else {
       // If no userId provided, export requester's own data
