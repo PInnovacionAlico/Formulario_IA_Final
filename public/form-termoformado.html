@@ -47,8 +47,9 @@
           </div>
           <div class="mobile-menu-buttons">
             <button type="button" onclick="location.href='/dashboard.html'" class="btn-secondary">🏠 Dashboard</button>
-            <button type="button" onclick="location.href='/forms.html'" class="btn-secondary">📋 Formularios</button>
+            <button type="button" onclick="location.href='/forms.html'" class="btn-secondary active-page">📋 Formularios</button>
             <button type="button" onclick="location.href='/history.html'" class="btn-secondary">📊 Historial</button>
+            <button type="button" onclick="location.href='/settings.html'" class="btn-secondary">⚙️ Configuración</button>
             <button id="mobileLogoutBtn" class="btn-secondary">🚪 Cerrar sesión</button>
           </div>
         </div>
@@ -104,7 +105,20 @@
                     <div style="font-size: 48px; margin-bottom: 16px;">⏳</div>
                     <p>Cargando productos...</p>
                   </div>
+                  
+                  <!-- Category navigation buttons -->
+                  <div id="categoryNavigation" style="display: none; margin-bottom: 20px; gap: 12px; flex-wrap: wrap; justify-content: center;">
+                    <!-- Buttons will be generated dynamically -->
+                  </div>
+                  
                   <div id="productsContainer"></div>
+                </div>
+                
+                <!-- Navigation buttons for Step 1 -->
+                <div style="display: flex; gap: 12px; justify-content: center; margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 10px;">
+                  <button type="button" id="step1Next" class="btn-submit" style="padding: 14px 40px; font-size: 16px; font-weight: 700;">
+                    Siguiente →
+                  </button>
                 </div>
               </div>
             </div>
@@ -140,6 +154,17 @@
                       </div>
                       <p id="previewInfo" class="preview-info"></p>
                     </div>
+                  </div>
+                </div>
+                
+                <!-- Navigation buttons for Step 2 -->
+                <div style="display: flex; gap: 12px; justify-content: center; margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 10px;">
+                  <button type="button" id="step2Prev" class="btn-secondary" style="padding: 14px 40px; font-size: 16px; font-weight: 700;">
+                    ← Anterior
+                  </button>
+                  <button type="button" id="step2Next" class="btn-submit" style="padding: 14px 40px; font-size: 16px; font-weight: 700;">
+                    Siguiente →
+                  </button>
                 </div>
               </div>
             </div>
@@ -161,20 +186,17 @@
                     </div>
                   </div>
                 </div>
+                
+                <!-- Navigation buttons for Step 3 -->
+                <div style="display: flex; gap: 12px; justify-content: center; margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 10px;">
+                  <button type="button" id="step3Prev" class="btn-secondary" style="padding: 14px 40px; font-size: 16px; font-weight: 700;">
+                    ← Anterior
+                  </button>
+                  <button type="button" id="step3Submit" class="btn-submit" style="padding: 14px 40px; font-size: 16px; font-weight: 700;">
+                    ✓ Enviar formulario
+                  </button>
+                </div>
               </div>
-            </div>
-
-            <!-- Navigation buttons -->
-            <div class="form-actions wizard-navigation" style="display: flex !important; visibility: visible !important;">
-              <button type="button" id="prevBtn" class="btn-secondary" style="display: none;">
-                ← Anterior
-              </button>
-              <button type="button" id="nextBtn" class="btn-submit" style="display: inline-block;">
-                Siguiente →
-              </button>
-              <button type="submit" id="submitBtn" class="btn-submit" style="display: none;">
-                Enviar formulario
-              </button>
             </div>
           </form>
         </div>
@@ -285,6 +307,9 @@
 
       // Load products from API with cache
       async function loadProducts() {
+        console.log('🔄 Iniciando carga de productos...');
+        console.log('Token:', token ? 'Existe ✓' : 'No existe ✗');
+        
         try {
           // Check cache first (5 minutes)
           const cacheKey = 'products_termoformado';
@@ -296,19 +321,24 @@
 
           // Use cache if available and not expired
           if (cacheData && cacheTime && (now - parseInt(cacheTime)) < CACHE_DURATION) {
+            console.log('📦 Usando caché...');
             const data = JSON.parse(cacheData);
             allProducts = data.groupedProducts;
             renderProducts(data.groupedProducts);
             document.getElementById('productsLoading').style.display = 'none';
-            console.log('✅ Productos cargados desde caché');
+            console.log('✅ Productos cargados desde caché:', Object.keys(data.groupedProducts).length, 'categorías');
             return;
           }
 
           // Fetch from API
+          console.log('🌐 Llamando a /api/products/termoformado...');
           const res = await fetch('/api/products/termoformado', {
             headers: { 'Authorization': 'Bearer ' + token }
           });
+          
+          console.log('📡 Respuesta recibida:', res.status, res.statusText);
           const data = await res.json();
+          console.log('📦 Datos recibidos:', data);
           
           if (data.ok && data.groupedProducts) {
             allProducts = data.groupedProducts;
@@ -318,16 +348,20 @@
             // Save to cache
             localStorage.setItem(cacheKey, JSON.stringify(data));
             localStorage.setItem(cacheTimeKey, now.toString());
-            console.log('✅ Productos cargados desde API y guardados en caché');
+            console.log('✅ Productos cargados desde API:', Object.keys(data.groupedProducts).length, 'categorías');
           } else {
             throw new Error(data.error || 'Error al cargar productos');
           }
         } catch (err) {
-          console.error('Error loading products:', err);
+          console.error('❌ Error loading products:', err);
           document.getElementById('productsLoading').innerHTML = `
             <div style="color: #721c24; text-align: center; padding: 40px;">
               <div style="font-size: 48px; margin-bottom: 16px;">❌</div>
-              <p>Error al cargar productos: ${err.message}</p>
+              <p><strong>Error al cargar productos</strong></p>
+              <p style="font-size: 14px; margin-top: 12px;">${err.message}</p>
+              <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px; background: #dc3545; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                Recargar página
+              </button>
             </div>
           `;
         }
@@ -441,11 +475,6 @@
           document.querySelector(`.wizard-step[data-step="${i}"]`).classList.add('completed');
         }
         
-        // Update buttons
-        document.getElementById('prevBtn').style.display = step === 1 ? 'none' : 'inline-block';
-        document.getElementById('nextBtn').style.display = step === totalSteps ? 'none' : 'inline-block';
-        document.getElementById('submitBtn').style.display = step === totalSteps ? 'inline-block' : 'none';
-        
         // Scroll to top
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
@@ -502,20 +531,125 @@
         }
       }
 
-      document.getElementById('nextBtn').addEventListener('click', () => {
-        if (validateStep(currentStep)) {
-          currentStep++;
-          if (currentStep === totalSteps) {
-            updateConfirmation();
-          }
+      // Step 1 navigation
+      document.getElementById('step1Next').addEventListener('click', () => {
+        if (validateStep(1)) {
+          currentStep = 2;
           showStep(currentStep);
         }
       });
 
-      document.getElementById('prevBtn').addEventListener('click', () => {
-        if (currentStep > 1) {
-          currentStep--;
+      // Step 2 navigation
+      document.getElementById('step2Prev').addEventListener('click', () => {
+        currentStep = 1;
+        showStep(currentStep);
+      });
+
+      document.getElementById('step2Next').addEventListener('click', () => {
+        if (validateStep(2)) {
+          currentStep = 3;
+          updateConfirmation();
           showStep(currentStep);
+        }
+      });
+
+      // Step 3 navigation
+      document.getElementById('step3Prev').addEventListener('click', () => {
+        currentStep = 2;
+        showStep(currentStep);
+      });
+
+      document.getElementById('step3Submit').addEventListener('click', async (e) => {
+        e.preventDefault();
+        console.log('🚀 Enviando formulario...');
+        
+        const photoId = document.getElementById('photoSelect').value;
+        const selectedProduct = document.querySelector('input[name="product_type"]:checked');
+
+        if (!selectedProduct || !photoId) {
+          alert('Por favor completa todos los campos requeridos');
+          return;
+        }
+
+        const submitButton = e.target;
+        const originalButtonText = submitButton.textContent;
+        
+        try {
+          // Disable button and show loading state
+          submitButton.disabled = true;
+          submitButton.textContent = 'Enviando...';
+          submitButton.style.opacity = '0.6';
+          
+          const formData = {
+            photo_id: photoId,
+            form_type: 'termoformado',
+            product_id: selectedProduct.value,
+          };
+
+          console.log('📤 Datos a enviar:', formData);
+
+          const response = await fetch('/api/submit-form', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify(formData)
+          });
+
+          const result = await response.json();
+          console.log('📥 Respuesta recibida:', result);
+
+          if (response.status === 403 && result.credits !== undefined) {
+            // No credits available
+            const nextReset = new Date(result.nextReset);
+            alert(`❌ No tienes créditos disponibles\n\n` +
+                  `Tus créditos se recargarán el ${nextReset.toLocaleDateString('es-ES', { 
+                    day: 'numeric', 
+                    month: 'long', 
+                    year: 'numeric' 
+                  })}\n\n` +
+                  `Cada mes recibes 3 créditos nuevos.`);
+            
+            submitButton.disabled = false;
+            submitButton.textContent = originalButtonText;
+            submitButton.style.opacity = '1';
+            return;
+          }
+
+          if (response.ok && result.ok) {
+            console.log('✅ Formulario enviado exitosamente:', result);
+            
+            // Update credits display
+            loadCredits();
+            
+            let message = '✅ ¡Formulario enviado correctamente!\n';
+            message += '💳 Se ha descontado 1 crédito\n\n';
+            
+            if (result.webhook_sent) {
+              message += '🎯 Webhook enviado a Alico exitosamente';
+            } else {
+              message += '⚠️ Advertencia: El webhook no pudo ser enviado\n';
+              message += `Error: ${result.webhook_error || 'Desconocido'}`;
+            }
+            
+            alert(message);
+            
+            // Redirect to dashboard after success
+            setTimeout(() => {
+              window.location.href = '/dashboard.html';
+            }, 2000);
+          } else {
+            throw new Error(result.error || 'Error al enviar formulario');
+          }
+        } catch (error) {
+          console.error('❌ Error al enviar formulario:', error);
+          alert('❌ Error al enviar el formulario:\n' + error.message);
+          
+          // Re-enable button
+          submitButton.disabled = false;
+          submitButton.textContent = originalButtonText;
+          submitButton.style.opacity = '1';
         }
       });
 
@@ -645,8 +779,8 @@
         document.getElementById('photoPreview').style.display = 'block';
       });
 
-      // Enviar formulario
-      document.getElementById('mainForm').addEventListener('submit', async (e) => {
+      // Enviar formulario - DESHABILITADO (ahora se maneja en step3Submit)
+      /* document.getElementById('mainForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         
         const photoId = document.getElementById('photoSelect').value;
@@ -730,7 +864,7 @@
           submitButton.textContent = originalButtonText;
           submitButton.style.opacity = '1';
         }
-      });
+      }); */
 
       // Toggle accordion function (permite múltiples abiertos)
       function toggleAccordion(button) {

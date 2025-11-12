@@ -266,7 +266,20 @@
         }
 
         .stats-container {
-          grid-template-columns: 1fr;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 12px;
+        }
+
+        .stat-card {
+          padding: 16px;
+        }
+
+        .stat-number {
+          font-size: 28px;
+        }
+
+        .stat-label {
+          font-size: 12px;
         }
       }
     </style>
@@ -313,6 +326,8 @@
           <div class="mobile-menu-buttons">
             <button type="button" onclick="location.href='/dashboard.html'" class="btn-secondary">🏠 Dashboard</button>
             <button type="button" onclick="location.href='/forms.html'" class="btn-secondary">📋 Formularios</button>
+            <button type="button" onclick="location.href='/history.html'" class="btn-secondary active-page">📊 Historial</button>
+            <button type="button" onclick="location.href='/settings.html'" class="btn-secondary">⚙️ Configuración</button>
             <button id="mobileLogoutBtn" class="btn-secondary">🚪 Cerrar sesión</button>
           </div>
         </div>
@@ -641,7 +656,29 @@
 
         content.innerHTML = `
           <div style="display: flex; flex-direction: column; gap: 16px;">
-            <div><strong>ID:</strong> ${sub.id}</div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <strong>ID:</strong> 
+              <span id="submissionId" style="font-family: monospace; font-size: 13px; color: #666;">${sub.id}</span>
+              <button 
+                onclick="copyToClipboard('${sub.id}')" 
+                style="background: linear-gradient(135deg, var(--alico-gold) 0%, var(--alico-gold-80) 100%); 
+                       color: white; 
+                       border: none; 
+                       padding: 6px 10px; 
+                       border-radius: 6px; 
+                       cursor: pointer; 
+                       font-size: 12px; 
+                       font-weight: 600;
+                       transition: all 0.3s;
+                       display: flex;
+                       align-items: center;
+                       gap: 4px;"
+                onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(219, 149, 0, 0.4)';"
+                onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';"
+                title="Copiar ID al portapapeles">
+                📋 Copiar
+              </button>
+            </div>
             <div><strong>Fecha:</strong> ${formattedDate}</div>
             <div><strong>Formulario:</strong> ${formTypeDisplay}</div>
             ${productInfo}
@@ -739,6 +776,109 @@
 
       // Initialize default filter as active
       document.querySelector('.date-filter-option[data-filter="all"]').classList.add('active');
+
+      // Copy to clipboard function
+      function copyToClipboard(text) {
+        // Try modern clipboard API first
+        if (navigator.clipboard && window.isSecureContext) {
+          navigator.clipboard.writeText(text).then(() => {
+            showCopyNotification('✅ ID copiado al portapapeles');
+          }).catch(err => {
+            console.error('Error copying to clipboard:', err);
+            fallbackCopyToClipboard(text);
+          });
+        } else {
+          fallbackCopyToClipboard(text);
+        }
+      }
+
+      // Fallback method for older browsers
+      function fallbackCopyToClipboard(text) {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        
+        try {
+          const successful = document.execCommand('copy');
+          if (successful) {
+            showCopyNotification('✅ ID copiado al portapapeles');
+          } else {
+            showCopyNotification('❌ Error al copiar');
+          }
+        } catch (err) {
+          console.error('Fallback copy failed:', err);
+          showCopyNotification('❌ Error al copiar');
+        }
+        
+        document.body.removeChild(textArea);
+      }
+
+      // Show temporary notification
+      function showCopyNotification(message) {
+        // Remove existing notification if any
+        const existingNotification = document.getElementById('copyNotification');
+        if (existingNotification) {
+          existingNotification.remove();
+        }
+
+        const notification = document.createElement('div');
+        notification.id = 'copyNotification';
+        notification.textContent = message;
+        notification.style.cssText = `
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          background: linear-gradient(135deg, var(--alico-gold) 0%, var(--alico-gold-80) 100%);
+          color: white;
+          padding: 16px 24px;
+          border-radius: 8px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+          z-index: 10000;
+          font-weight: 600;
+          font-size: 14px;
+          animation: slideIn 0.3s ease-out;
+        `;
+
+        document.body.appendChild(notification);
+
+        // Remove after 3 seconds
+        setTimeout(() => {
+          notification.style.animation = 'slideOut 0.3s ease-out';
+          setTimeout(() => notification.remove(), 300);
+        }, 3000);
+      }
+
+      // Add animations
+      const style = document.createElement('style');
+      style.textContent = `
+        @keyframes slideIn {
+          from {
+            transform: translateX(400px);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+
+        @keyframes slideOut {
+          from {
+            transform: translateX(0);
+            opacity: 1;
+          }
+          to {
+            transform: translateX(400px);
+            opacity: 0;
+          }
+        }
+      `;
+      document.head.appendChild(style);
 
       // Load history on page load
       loadHistory();

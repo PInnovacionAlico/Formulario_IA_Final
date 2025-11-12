@@ -40,8 +40,10 @@
             </div>
           </div>
           <div class="mobile-menu-buttons">
+            <button onclick="location.href='/dashboard.html'" class="btn-secondary active-page">🏠 Dashboard</button>
             <button onclick="location.href='/forms.html'" class="btn-action btn-form">📝 Formularios</button>
             <button onclick="location.href='/history.html'" class="btn-secondary">📊 Historial</button>
+            <button onclick="location.href='/settings.html'" class="btn-secondary">⚙️ Configuración</button>
             <button id="mobileLogoutBtn" class="btn-secondary">🚪 Cerrar sesión</button>
           </div>
         </div>
@@ -356,13 +358,25 @@
             if (cachedData) {
               const cached = JSON.parse(cachedData);
               
-              // Simple comparison: check if count or last modified differs
-              if (cached.length !== data.uploads.length || 
-                  JSON.stringify(cached) !== JSON.stringify(data.uploads)) {
-                console.log('🔄 Updates detected, refreshing...');
+              // Smart comparison: only check metadata, not URLs (they change every time)
+              const hasRealChanges = 
+                cached.length !== data.uploads.length || 
+                cached.some((c, i) => {
+                  const current = data.uploads.find(u => u.id === c.id);
+                  if (!current) return true; // Photo deleted
+                  // Compare only important fields, not URLs
+                  return c.filename !== current.filename ||
+                         c.custom_name !== current.custom_name ||
+                         c.folder !== current.folder ||
+                         c.size !== current.size;
+                }) ||
+                data.uploads.some(u => !cached.find(c => c.id === u.id)); // New photo
+              
+              if (hasRealChanges) {
+                console.log('🔄 Real updates detected, refreshing...');
                 loadUploads(true);
               } else {
-                console.log('✅ No updates');
+                console.log('✅ No real updates (URLs ignored)');
               }
             }
           }

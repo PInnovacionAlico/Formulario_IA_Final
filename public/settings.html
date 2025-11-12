@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Configuración - Formulario IA</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <div class="dashboard-container">
+      <header class="dashboard-header">
+        <h1>⚙️ Configuración</h1>
+        
+        <!-- Mobile hamburger button -->
+        <button class="mobile-menu-toggle" id="mobileMenuToggle">
+          ☰
+        </button>
+      </header>
+
+      <!-- Mobile menu overlay and sidebar -->
+      <div class="mobile-menu-overlay" id="mobileMenuOverlay"></div>
+      <div class="mobile-menu" id="mobileMenu">
+        <div class="mobile-menu-header">
+          <h2>Menú</h2>
+          <button class="mobile-menu-close" id="mobileMenuClose">×</button>
+        </div>
+        <div class="mobile-menu-content">
+          <div class="mobile-menu-user">
+            <span id="mobileUserName"></span>
+            <div class="mobile-menu-credits">
+              <span class="mobile-menu-credits-icon">💳</span>
+              <span class="mobile-menu-credits-count" id="mobileCreditsCount">...</span>
+              <span class="mobile-menu-credits-label">créditos</span>
+            </div>
+          </div>
+          <div class="mobile-menu-buttons">
+            <button type="button" onclick="location.href='/dashboard.html'" class="btn-secondary">🏠 Dashboard</button>
+            <button type="button" onclick="location.href='/forms.html'" class="btn-secondary">📋 Formularios</button>
+            <button type="button" onclick="location.href='/history.html'" class="btn-secondary">📊 Historial</button>
+            <button type="button" onclick="location.href='/settings.html'" class="btn-secondary active-page">⚙️ Configuración</button>
+            <button id="mobileLogoutBtn" class="btn-secondary">🚪 Cerrar sesión</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="dashboard-content">
+        <div class="gallery-section">
+          <!-- Breadcrumb -->
+          <div class="breadcrumb-container">
+            <nav aria-label="breadcrumb">
+              <ol class="breadcrumb">
+                <li class="breadcrumb-item">
+                  <a href="/dashboard.html">🏠 Dashboard</a>
+                </li>
+                <li class="breadcrumb-separator">›</li>
+                <li class="breadcrumb-item active" aria-current="page">
+                  ⚙️ Configuración
+                </li>
+              </ol>
+            </nav>
+          </div>
+
+          <!-- User ID Section -->
+          <div class="form-section" style="margin-bottom: 32px;">
+            <h3>👤 Información de Usuario</h3>
+            <div class="form-section-content">
+              <div style="display: flex; flex-direction: column; gap: 16px;">
+                <div>
+                  <label style="font-weight: 600; color: #666; margin-bottom: 8px; display: block;">Nombre</label>
+                  <div style="padding: 12px; background: #f8f9fa; border-radius: 8px; font-size: 15px;" id="userNameDisplay">
+                    Cargando...
+                  </div>
+                </div>
+                
+                <div>
+                  <label style="font-weight: 600; color: #666; margin-bottom: 8px; display: block;">Email</label>
+                  <div style="padding: 12px; background: #f8f9fa; border-radius: 8px; font-size: 15px;" id="userEmailDisplay">
+                    Cargando...
+                  </div>
+                </div>
+
+                <div>
+                  <label style="font-weight: 600; color: #666; margin-bottom: 8px; display: block;">ID de Usuario</label>
+                  <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="flex: 1; padding: 12px; background: #f8f9fa; border-radius: 8px; font-family: monospace; font-size: 14px; color: #333;" id="userIdDisplay">
+                      Cargando...
+                    </div>
+                    <button 
+                      id="copyUserIdBtn"
+                      onclick="copyUserId()"
+                      style="background: linear-gradient(135deg, var(--alico-gold) 0%, var(--alico-gold-80) 100%); 
+                             color: white; 
+                             border: none; 
+                             padding: 12px 20px; 
+                             border-radius: 8px; 
+                             cursor: pointer; 
+                             font-size: 14px; 
+                             font-weight: 600;
+                             transition: all 0.3s;
+                             display: flex;
+                             align-items: center;
+                             gap: 6px;
+                             white-space: nowrap;"
+                      onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(219, 149, 0, 0.4)';"
+                      onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
+                      📋 Copiar ID
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label style="font-weight: 600; color: #666; margin-bottom: 8px; display: block;">Créditos Disponibles</label>
+                  <div style="padding: 12px; background: linear-gradient(135deg, var(--alico-gold-10) 0%, var(--alico-gold-20) 100%); border-radius: 8px; font-size: 18px; font-weight: 700; color: var(--alico-gold); text-align: center;" id="userCreditsDisplay">
+                    ... créditos
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Change Password Section -->
+          <div class="form-section">
+            <h3>🔐 Cambiar Contraseña</h3>
+            <div class="form-section-content">
+              <form id="changePasswordForm">
+                <div style="display: flex; flex-direction: column; gap: 16px;">
+                  <label>
+                    Contraseña Actual
+                    <input type="password" id="oldPassword" name="oldPassword" required minlength="8" />
+                  </label>
+
+                  <label>
+                    Nueva Contraseña
+                    <input type="password" id="newPassword" name="newPassword" required minlength="8" />
+                  </label>
+
+                  <label>
+                    Confirmar Nueva Contraseña
+                    <input type="password" id="confirmPassword" name="confirmPassword" required minlength="8" />
+                  </label>
+
+                  <div style="margin-top: 16px;">
+                    <button type="submit" class="btn-submit" style="width: 100%;">
+                      🔒 Cambiar Contraseña
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const token = localStorage.getItem('token');
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      
+      if (!token) {
+        window.location.href = '/login.html';
+      }
+
+      // Mobile menu handlers
+      const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+      const mobileMenu = document.getElementById('mobileMenu');
+      const mobileMenuOverlay = document.getElementById('mobileMenuOverlay');
+      const mobileMenuClose = document.getElementById('mobileMenuClose');
+
+      function openMobileMenu() {
+        mobileMenu.classList.add('active');
+        mobileMenuOverlay.classList.add('active');
+        document.body.style.overflow = 'hidden';
+      }
+
+      function closeMobileMenu() {
+        mobileMenu.classList.remove('active');
+        mobileMenuOverlay.classList.remove('active');
+        document.body.style.overflow = '';
+      }
+
+      mobileMenuToggle.addEventListener('click', openMobileMenu);
+      mobileMenuClose.addEventListener('click', closeMobileMenu);
+      mobileMenuOverlay.addEventListener('click', closeMobileMenu);
+
+      document.getElementById('mobileLogoutBtn').addEventListener('click', () => {
+        if (confirm('¿Estás seguro que deseas cerrar sesión?')) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          window.location.href = '/login.html';
+        }
+      });
+
+      // Display user information
+      document.getElementById('mobileUserName').textContent = user.name || user.email || 'Usuario';
+      document.getElementById('userNameDisplay').textContent = user.name || 'No disponible';
+      document.getElementById('userEmailDisplay').textContent = user.email || 'No disponible';
+      document.getElementById('userIdDisplay').textContent = user.id || 'No disponible';
+
+      // Load user credits
+      async function loadCredits() {
+        try {
+          const res = await fetch('/api/credits', {
+            headers: { 'Authorization': 'Bearer ' + token }
+          });
+          const data = await res.json();
+          
+          if (data.ok) {
+            document.getElementById('mobileCreditsCount').textContent = data.credits;
+            document.getElementById('userCreditsDisplay').textContent = `${data.credits} créditos`;
+          }
+        } catch (err) {
+          console.error('Error loading credits:', err);
+        }
+      }
+
+      loadCredits();
+
+      // Copy user ID to clipboard
+      function copyUserId() {
+        const userId = user.id;
+        
+        if (navigator.clipboard && window.isSecureContext) {
+          navigator.clipboard.writeText(userId).then(() => {
+            showNotification('✅ ID copiado al portapapeles');
+          }).catch(err => {
+            console.error('Error copying to clipboard:', err);
+            fallbackCopy(userId);
+          });
+        } else {
+          fallbackCopy(userId);
+        }
+      }
+
+      function fallbackCopy(text) {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        
+        try {
+          document.execCommand('copy');
+          showNotification('✅ ID copiado al portapapeles');
+        } catch (err) {
+          showNotification('❌ Error al copiar');
+        }
+        
+        document.body.removeChild(textArea);
+      }
+
+      // Show notification
+      function showNotification(message) {
+        const existingNotification = document.getElementById('notification');
+        if (existingNotification) {
+          existingNotification.remove();
+        }
+
+        const notification = document.createElement('div');
+        notification.id = 'notification';
+        notification.textContent = message;
+        notification.style.cssText = `
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          background: linear-gradient(135deg, var(--alico-gold) 0%, var(--alico-gold-80) 100%);
+          color: white;
+          padding: 16px 24px;
+          border-radius: 8px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+          z-index: 10000;
+          font-weight: 600;
+          font-size: 14px;
+          animation: slideIn 0.3s ease-out;
+        `;
+
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+          notification.style.animation = 'slideOut 0.3s ease-out';
+          setTimeout(() => notification.remove(), 300);
+        }, 3000);
+      }
+
+      // Add animations
+      const style = document.createElement('style');
+      style.textContent = `
+        @keyframes slideIn {
+          from {
+            transform: translateX(400px);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+
+        @keyframes slideOut {
+          from {
+            transform: translateX(0);
+            opacity: 1;
+          }
+          to {
+            transform: translateX(400px);
+            opacity: 0;
+          }
+        }
+      `;
+      document.head.appendChild(style);
+
+      // Handle password change
+      document.getElementById('changePasswordForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const oldPassword = document.getElementById('oldPassword').value;
+        const newPassword = document.getElementById('newPassword').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+
+        // Validate new passwords match
+        if (newPassword !== confirmPassword) {
+          alert('❌ Las contraseñas nuevas no coinciden');
+          return;
+        }
+
+        // Validate password length
+        if (newPassword.length < 8) {
+          alert('❌ La nueva contraseña debe tener al menos 8 caracteres');
+          return;
+        }
+
+        try {
+          const response = await fetch('/api/change-password', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              email: user.email,
+              oldPassword: oldPassword,
+              newPassword: newPassword
+            })
+          });
+
+          const result = await response.json();
+
+          if (response.ok && result.ok) {
+            showNotification('✅ Contraseña cambiada exitosamente');
+            document.getElementById('changePasswordForm').reset();
+          } else {
+            alert('❌ Error: ' + (result.error || 'No se pudo cambiar la contraseña'));
+          }
+        } catch (error) {
+          console.error('Error changing password:', error);
+          alert('❌ Error al cambiar la contraseña: ' + error.message);
+        }
+      });
+    </script>
+  </body>
+</html>
