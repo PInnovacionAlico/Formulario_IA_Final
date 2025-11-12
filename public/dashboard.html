@@ -51,8 +51,20 @@
 
       <div class="dashboard-content">
         <div class="gallery-section">
+            <!-- Breadcrumb -->
+            <div class="breadcrumb-container">
+              <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                  <li class="breadcrumb-item active" aria-current="page">
+                    🏠 Dashboard
+                  </li>
+                </ol>
+              </nav>
+            </div>
+
             <div class="action-buttons">
               <button id="uploadBtn" class="btn-action btn-upload">📷 Subir foto</button>
+              <button id="qrUploadBtn" class="btn-action" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">📱 Subir desde celular</button>
               <button id="createFolderBtn" class="btn-action btn-folder">📁 Nueva carpeta</button>
               <span id="cacheBadge" style="display: none; margin-left: 12px; padding: 6px 12px; background: var(--alico-gold-20); color: var(--alico-gold); border-radius: 6px; font-size: 12px; font-weight: 600;">📦 Cargado desde caché</span>
             </div>
@@ -67,17 +79,28 @@
     <div id="uploadModal" class="modal">
       <div class="modal-content">
         <span class="modal-close">&times;</span>
-        <h2>Subir nueva foto</h2>
+        <h2>Subir fotos</h2>
         <form id="uploadForm" enctype="multipart/form-data">
-          <label>Selecciona una imagen
-            <input type="file" name="file" accept="image/*" required />
+          <div style="background: #f0f8ff; border-left: 4px solid var(--alico-blue); padding: 12px; margin: 12px 0; border-radius: 6px;">
+            <p style="margin: 0; font-size: 13px; color: #333; line-height: 1.6;">
+              <strong>ℹ️ Formatos permitidos:</strong> JPG, JPEG, PNG<br>
+              <strong>📦 Tamaño máximo:</strong> 5 MB por archivo<br>
+              <strong>📸 Múltiples archivos:</strong> Puedes seleccionar varias fotos a la vez
+            </p>
+          </div>
+          <label>Selecciona una o más imágenes
+            <input type="file" id="fileInputUpload" name="file" accept="image/jpeg,image/jpg,image/png" multiple required />
           </label>
+          <div id="uploadPreview" style="display: none; margin: 16px 0; padding: 12px; background: #f8f9fa; border-radius: 8px;">
+            <p style="margin: 0 0 8px 0; font-weight: 600; color: #333;">Archivos seleccionados:</p>
+            <div id="uploadFileList" style="font-size: 13px; color: #666;"></div>
+          </div>
           <label>Carpeta de destino
             <select id="uploadFolderSelect" name="folder">
               <option value="Sin carpeta">Sin carpeta</option>
             </select>
           </label>
-          <button type="submit">Subir</button>
+          <button type="submit" id="uploadSubmitBtn">Subir</button>
           <div id="uploadResult" class="result"></div>
         </form>
       </div>
@@ -116,6 +139,87 @@
       </div>
     </div>
 
+    <!-- Modal for delete folder -->
+    <div id="deleteFolderModal" class="modal">
+      <div class="modal-content">
+        <span class="modal-close">&times;</span>
+        <h2>🗑️ Eliminar Carpeta</h2>
+        <p style="margin: 16px 0; color: #666;">
+          ¿Qué deseas hacer con las <strong id="folderImageCount">0</strong> imágenes de la carpeta "<strong id="folderNameToDelete"></strong>"?
+        </p>
+        <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 24px;">
+          <button id="moveFolderImagesBtn" style="width: 100%; padding: 14px; background: linear-gradient(135deg, var(--alico-gold) 0%, var(--alico-gold-80) 100%); color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.3s; box-shadow: 0 2px 6px rgba(219, 149, 0, 0.3);">
+            📁 Mover a otra carpeta
+          </button>
+          <button id="deleteAllImagesBtn" style="width: 100%; padding: 14px; background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.3s; box-shadow: 0 2px 6px rgba(220, 53, 69, 0.3);">
+            🗑️ Eliminar todas las imágenes
+          </button>
+          <button id="cancelDeleteFolderBtn" style="width: 100%; padding: 14px; background: linear-gradient(135deg, var(--alico-blue) 0%, var(--alico-blue-80) 100%); color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.3s; box-shadow: 0 2px 6px rgba(0, 15, 159, 0.3);">
+            Cancelar
+          </button>
+        </div>
+        <div id="deleteFolderResult" class="result" style="margin-top: 16px;"></div>
+      </div>
+    </div>
+
+    <!-- Modal for select destination folder -->
+    <div id="moveImagesModal" class="modal">
+      <div class="modal-content">
+        <span class="modal-close">&times;</span>
+        <h2>📁 Seleccionar carpeta destino</h2>
+        <p style="margin: 16px 0; color: #666;">
+          Selecciona la carpeta a la que deseas mover las imágenes:
+        </p>
+        <div id="destinationFolderList" style="margin-top: 16px;"></div>
+        <div id="selectedFolderInfo" style="margin: 16px 0; padding: 12px; background: var(--alico-gold-10); border-left: 4px solid var(--alico-gold); border-radius: 6px; display: none;">
+          <p style="margin: 0; color: #333; font-weight: 600;">
+            📁 Carpeta seleccionada: <span id="selectedFolderName"></span>
+          </p>
+        </div>
+        <div style="display: flex; gap: 12px; margin-top: 24px;">
+          <button id="confirmMoveBtn" style="flex: 1; padding: 14px; background: linear-gradient(135deg, var(--alico-gold) 0%, var(--alico-gold-80) 100%); color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.3s; box-shadow: 0 2px 6px rgba(219, 149, 0, 0.3); display: none;">
+            ✅ Confirmar y mover
+          </button>
+          <button id="cancelMoveBtn" style="flex: 1; padding: 14px; background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%); color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.3s; box-shadow: 0 2px 6px rgba(108, 117, 125, 0.3);">
+            Cancelar
+          </button>
+        </div>
+        <div id="moveImagesResult" class="result" style="margin-top: 16px;"></div>
+      </div>
+    </div>
+
+    <!-- Modal for QR Code Upload -->
+    <div id="qrUploadModal" class="modal">
+      <div class="modal-content" style="max-width: 500px;">
+        <span class="modal-close">&times;</span>
+        <h2 style="text-align: center; margin-bottom: 16px;">📱 Subir desde el celular</h2>
+        <p style="text-align: center; color: #666; margin-bottom: 24px;">
+          Escanea este código QR con tu celular para subir fotos directamente a tu cuenta
+        </p>
+        <div id="qrCodeContainer" style="display: flex; justify-content: center; align-items: center; min-height: 280px; background: white; border-radius: 12px; padding: 20px; margin-bottom: 16px;">
+          <div style="text-align: center;">
+            <div id="qrCodeImage"></div>
+            <p id="qrCodeExpiry" style="margin-top: 16px; font-size: 13px; color: #666;"></p>
+          </div>
+        </div>
+        <div style="background: var(--alico-gold-10); border-left: 4px solid var(--alico-gold); border-radius: 8px; padding: 16px; margin-top: 16px;">
+          <p style="margin: 0; font-size: 14px; color: #333;">
+            <strong>💡 Instrucciones:</strong><br>
+            1. Abre la cámara de tu celular<br>
+            2. Escanea el código QR<br>
+            3. Se abrirá una página para subir fotos<br>
+            4. Las fotos se subirán automáticamente a tu cuenta
+          </p>
+        </div>
+        <div style="background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 8px; padding: 12px; margin-top: 12px;">
+          <p style="margin: 0; font-size: 13px; color: #856404;">
+            ⚠️ Este enlace expira en <strong>30 minutos</strong> por seguridad
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script>
       const token = localStorage.getItem('token');
       const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -217,9 +321,283 @@
         imageViewModal.style.display = 'flex';
       }
 
+      // Delete folder functions
+      let folderToDelete = null;
+      let imagesInFolder = [];
+      const deleteFolderModal = document.getElementById('deleteFolderModal');
+      const moveImagesModal = document.getElementById('moveImagesModal');
+
+      function showDeleteFolderModal(folderName, images) {
+        folderToDelete = folderName;
+        imagesInFolder = images;
+        document.getElementById('folderNameToDelete').textContent = folderName;
+        document.getElementById('folderImageCount').textContent = images.length;
+        document.getElementById('deleteFolderResult').textContent = '';
+        deleteFolderModal.style.display = 'flex';
+      }
+
+      // Add hover effects to delete folder modal buttons
+      const moveFolderBtn = document.getElementById('moveFolderImagesBtn');
+      const deleteAllBtn = document.getElementById('deleteAllImagesBtn');
+      const cancelDeleteBtn = document.getElementById('cancelDeleteFolderBtn');
+
+      moveFolderBtn.addEventListener('mouseenter', (e) => {
+        e.target.style.transform = 'translateY(-2px)';
+        e.target.style.boxShadow = '0 4px 12px rgba(219, 149, 0, 0.5)';
+      });
+      moveFolderBtn.addEventListener('mouseleave', (e) => {
+        e.target.style.transform = '';
+        e.target.style.boxShadow = '0 2px 6px rgba(219, 149, 0, 0.3)';
+      });
+
+      deleteAllBtn.addEventListener('mouseenter', (e) => {
+        e.target.style.transform = 'translateY(-2px)';
+        e.target.style.boxShadow = '0 4px 12px rgba(220, 53, 69, 0.5)';
+      });
+      deleteAllBtn.addEventListener('mouseleave', (e) => {
+        e.target.style.transform = '';
+        e.target.style.boxShadow = '0 2px 6px rgba(220, 53, 69, 0.3)';
+      });
+
+      cancelDeleteBtn.addEventListener('mouseenter', (e) => {
+        e.target.style.transform = 'translateY(-2px)';
+        e.target.style.boxShadow = '0 4px 12px rgba(0, 15, 159, 0.5)';
+      });
+      cancelDeleteBtn.addEventListener('mouseleave', (e) => {
+        e.target.style.transform = '';
+        e.target.style.boxShadow = '0 2px 6px rgba(0, 15, 159, 0.3)';
+      });
+
+      document.getElementById('moveFolderImagesBtn').addEventListener('click', () => {
+        showMoveImagesModal();
+      });
+
+      document.getElementById('deleteAllImagesBtn').addEventListener('click', async () => {
+        if (!confirm(`¿Estás seguro que deseas eliminar todas las ${imagesInFolder.length} imágenes de la carpeta "${folderToDelete}"?`)) {
+          return;
+        }
+
+        const resultEl = document.getElementById('deleteFolderResult');
+        resultEl.textContent = 'Eliminando imágenes...';
+        resultEl.style.color = '';
+
+        try {
+          let deletedCount = 0;
+          for (const image of imagesInFolder) {
+            const res = await fetch(`/api/uploads/${image.id}`, {
+              method: 'DELETE',
+              headers: { 'Authorization': 'Bearer ' + token }
+            });
+            if (res.ok) deletedCount++;
+          }
+
+          resultEl.textContent = `✅ ${deletedCount} imágenes eliminadas`;
+          resultEl.style.color = '#28a745';
+          
+          invalidateCache();
+          setTimeout(() => {
+            deleteFolderModal.style.display = 'none';
+            loadUploads(true);
+          }, 1500);
+        } catch (err) {
+          resultEl.textContent = '❌ Error: ' + err.message;
+          resultEl.style.color = '#dc3545';
+        }
+      });
+
+      document.getElementById('cancelDeleteFolderBtn').addEventListener('click', () => {
+        deleteFolderModal.style.display = 'none';
+      });
+
+      let selectedDestinationFolder = null;
+
+      function showMoveImagesModal() {
+        selectedDestinationFolder = null;
+        const availableFolders = allFolders.filter(f => f !== folderToDelete && f !== 'Sin carpeta');
+        availableFolders.push('Sin carpeta');
+        
+        const list = document.getElementById('destinationFolderList');
+        const confirmBtn = document.getElementById('confirmMoveBtn');
+        const selectedInfo = document.getElementById('selectedFolderInfo');
+        
+        list.innerHTML = '';
+        confirmBtn.style.display = 'none';
+        selectedInfo.style.display = 'none';
+        document.getElementById('moveImagesResult').textContent = '';
+        
+        if (availableFolders.length === 1 && availableFolders[0] === 'Sin carpeta') {
+          list.innerHTML = '<p style="color: #666;">No hay otras carpetas disponibles. Crea una nueva carpeta primero.</p>';
+        } else {
+          availableFolders.forEach(folder => {
+            const btn = document.createElement('button');
+            btn.className = 'folder-option';
+            btn.style.cssText = 'width: 100%; padding: 12px; margin: 8px 0; background: white; border: 2px solid #ddd; border-radius: 8px; cursor: pointer; font-size: 15px; transition: all 0.3s; text-align: left;';
+            btn.textContent = `📁 ${folder}`;
+            btn.onclick = (e) => {
+              // Remove selection from all buttons
+              document.querySelectorAll('#destinationFolderList .folder-option').forEach(b => {
+                b.style.background = 'white';
+                b.style.border = '2px solid #ddd';
+              });
+              // Mark this button as selected
+              e.target.style.background = 'var(--alico-gold-10)';
+              e.target.style.border = '2px solid var(--alico-gold)';
+              
+              // Store selected folder and show confirm button
+              selectedDestinationFolder = folder;
+              document.getElementById('selectedFolderName').textContent = folder;
+              selectedInfo.style.display = 'block';
+              confirmBtn.style.display = 'block';
+            };
+            btn.onmouseenter = (e) => {
+              if (e.target.style.border !== '2px solid var(--alico-gold)') {
+                e.target.style.background = '#f8f9fa';
+              }
+            };
+            btn.onmouseleave = (e) => {
+              if (e.target.style.border !== '2px solid var(--alico-gold)') {
+                e.target.style.background = 'white';
+              }
+            };
+            list.appendChild(btn);
+          });
+        }
+        
+        deleteFolderModal.style.display = 'none';
+        moveImagesModal.style.display = 'flex';
+      }
+
+      // Confirm move button handler
+      document.getElementById('confirmMoveBtn').addEventListener('click', () => {
+        if (selectedDestinationFolder) {
+          moveImagesToFolder(selectedDestinationFolder);
+        }
+      });
+
+      // Cancel move button handler
+      document.getElementById('cancelMoveBtn').addEventListener('click', () => {
+        moveImagesModal.style.display = 'none';
+      });
+
+      // Add hover effects to move modal buttons
+      const confirmMoveBtn = document.getElementById('confirmMoveBtn');
+      const cancelMoveBtn = document.getElementById('cancelMoveBtn');
+
+      confirmMoveBtn.addEventListener('mouseenter', (e) => {
+        e.target.style.transform = 'translateY(-2px)';
+        e.target.style.boxShadow = '0 4px 12px rgba(219, 149, 0, 0.5)';
+      });
+      confirmMoveBtn.addEventListener('mouseleave', (e) => {
+        e.target.style.transform = '';
+        e.target.style.boxShadow = '0 2px 6px rgba(219, 149, 0, 0.3)';
+      });
+
+      cancelMoveBtn.addEventListener('mouseenter', (e) => {
+        e.target.style.transform = 'translateY(-2px)';
+        e.target.style.boxShadow = '0 4px 12px rgba(108, 117, 125, 0.5)';
+      });
+      cancelMoveBtn.addEventListener('mouseleave', (e) => {
+        e.target.style.transform = '';
+        e.target.style.boxShadow = '0 2px 6px rgba(108, 117, 125, 0.3)';
+      });
+
+      async function moveImagesToFolder(destinationFolder) {
+        const resultEl = document.getElementById('moveImagesResult');
+        resultEl.textContent = `Moviendo ${imagesInFolder.length} imágenes a "${destinationFolder}"...`;
+        resultEl.style.color = '';
+
+        try {
+          let movedCount = 0;
+          for (const image of imagesInFolder) {
+            const res = await fetch(`/api/uploads/${image.id}`, {
+              method: 'PUT',
+              headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                folder: destinationFolder === 'Sin carpeta' ? null : destinationFolder
+              })
+            });
+            
+            if (res.ok) movedCount++;
+          }
+
+          resultEl.textContent = `✅ ${movedCount} imágenes movidas a "${destinationFolder}"`;
+          resultEl.style.color = '#28a745';
+          
+          invalidateCache();
+          setTimeout(() => {
+            moveImagesModal.style.display = 'none';
+            loadUploads(true);
+          }, 1500);
+        } catch (err) {
+          resultEl.textContent = '❌ Error: ' + err.message;
+          resultEl.style.color = '#dc3545';
+        }
+      }
+
       document.getElementById('uploadBtn').addEventListener('click', () => {
         updateFolderSelect();
         uploadModal.style.display = 'flex';
+      });
+
+      document.getElementById('qrUploadBtn').addEventListener('click', async () => {
+        const qrModal = document.getElementById('qrUploadModal');
+        const qrCodeImage = document.getElementById('qrCodeImage');
+        const qrCodeExpiry = document.getElementById('qrCodeExpiry');
+        
+        qrModal.style.display = 'flex';
+        qrCodeImage.innerHTML = '<p style="color: #666;">Generando código QR...</p>';
+        
+        try {
+          // Generar token temporal para subida desde móvil
+          const response = await fetch('/api/generate-upload-token', {
+            method: 'POST',
+            headers: {
+              'Authorization': 'Bearer ' + token,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          const data = await response.json();
+          
+          if (data.ok) {
+            // Construir URL completa
+            const uploadUrl = `${window.location.origin}/mobile-upload.html?token=${data.uploadToken}`;
+            
+            // Limpiar contenedor
+            qrCodeImage.innerHTML = '';
+            
+            // Verificar que la librería QRCode esté cargada
+            if (typeof QRCode !== 'undefined') {
+              // Generar código QR usando QRCode.js
+              new QRCode(qrCodeImage, {
+                text: uploadUrl,
+                width: 240,
+                height: 240,
+                colorDark: '#000F9F',  // Alico blue
+                colorLight: '#FFFFFF',
+                correctLevel: QRCode.CorrectLevel.H
+              });
+            } else {
+              // Fallback: usar API de Google Charts
+              const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(uploadUrl)}&color=000F9F&bgcolor=FFFFFF`;
+              qrCodeImage.innerHTML = `<img src="${qrUrl}" alt="QR Code" style="border-radius: 8px;" />`;
+            }
+            
+            // Mostrar tiempo de expiración
+            const expiryTime = new Date(Date.now() + 30 * 60 * 1000).toLocaleTimeString('es-ES', { 
+              hour: '2-digit', 
+              minute: '2-digit' 
+            });
+            qrCodeExpiry.textContent = `⏰ Válido hasta: ${expiryTime}`;
+          } else {
+            qrCodeImage.innerHTML = '<p style="color: #dc3545;">❌ Error al generar el código QR</p>';
+          }
+        } catch (err) {
+          qrCodeImage.innerHTML = '<p style="color: #dc3545;">❌ Error: ' + err.message + '</p>';
+        }
       });
 
       document.getElementById('createFolderBtn').addEventListener('click', () => {
@@ -254,10 +632,15 @@
           return;
         }
         allFolders.push(folderName);
+        
+        // Agregar acordeón vacío inmediatamente
+        addEmptyFolderAccordion(folderName);
+        
         document.getElementById('folderResult').textContent = 'Carpeta creada!';
         setTimeout(() => {
           folderModal.style.display = 'none';
           document.getElementById('newFolderSection').style.display = 'none';
+          document.getElementById('newFolderName').value = '';
         }, 800);
       });
 
@@ -394,6 +777,88 @@
         console.log('🗑️ Cache invalidated');
       }
 
+      function addEmptyFolderAccordion(folderName) {
+        const gallery = document.getElementById('gallery');
+        
+        // Si el gallery está vacío, limpiar el mensaje
+        if (gallery.querySelector('.empty')) {
+          gallery.innerHTML = '';
+        }
+        
+        // Crear estructura del acordeón
+        const accordion = document.createElement('div');
+        accordion.className = 'gallery-accordion';
+
+        const header = document.createElement('div');
+        header.className = 'gallery-accordion-header';
+        header.style.cssText = 'display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 20px 24px; cursor: pointer;';
+        
+        const leftSection = document.createElement('div');
+        leftSection.style.cssText = 'display: flex; align-items: center; gap: 16px;';
+        leftSection.innerHTML = `<span style="font-size: 20px; font-weight: 700;">${folderName}</span>`;
+        
+        const rightSection = document.createElement('div');
+        rightSection.style.cssText = 'display: flex; align-items: center; gap: 12px;';
+        
+        const photoCount = document.createElement('span');
+        photoCount.style.cssText = 'font-size: 14px; color: rgba(255,255,255,0.9);';
+        photoCount.textContent = '0 fotos';
+        
+        // Botón de eliminar carpeta
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'btn-delete-folder';
+        deleteBtn.innerHTML = '🗑️';
+        deleteBtn.title = 'Eliminar carpeta';
+        deleteBtn.style.cssText = 'background: #dc3545; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 16px; transition: all 0.3s; box-shadow: 0 2px 6px rgba(220, 53, 69, 0.4);';
+        deleteBtn.onclick = (e) => {
+          e.stopPropagation();
+          showDeleteFolderModal(folderName, []);
+        };
+        deleteBtn.onmouseenter = (e) => {
+          e.target.style.background = '#c82333';
+          e.target.style.boxShadow = '0 4px 10px rgba(220, 53, 69, 0.6)';
+          e.target.style.transform = 'translateY(-2px)';
+        };
+        deleteBtn.onmouseleave = (e) => {
+          e.target.style.background = '#dc3545';
+          e.target.style.boxShadow = '0 2px 6px rgba(220, 53, 69, 0.4)';
+          e.target.style.transform = '';
+        };
+        
+        const accordionIcon = document.createElement('span');
+        accordionIcon.className = 'accordion-icon';
+        accordionIcon.textContent = '▶';
+        
+        rightSection.appendChild(photoCount);
+        rightSection.appendChild(deleteBtn);
+        rightSection.appendChild(accordionIcon);
+        
+        header.appendChild(leftSection);
+        header.appendChild(rightSection);
+
+        const content = document.createElement('div');
+        content.className = 'gallery-accordion-content';
+        content.style.display = 'none'; // Cerrado por defecto
+        
+        const emptyMessage = document.createElement('p');
+        emptyMessage.className = 'empty';
+        emptyMessage.style.cssText = 'text-align: center; color: rgba(255,255,255,0.7); padding: 20px;';
+        emptyMessage.textContent = 'Esta carpeta está vacía';
+        content.appendChild(emptyMessage);
+
+        accordion.appendChild(header);
+        accordion.appendChild(content);
+        
+        // Toggle accordion
+        header.addEventListener('click', () => {
+          const isOpen = content.style.display === 'block';
+          content.style.display = isOpen ? 'none' : 'block';
+          accordionIcon.textContent = isOpen ? '▶' : '▼';
+        });
+        
+        gallery.appendChild(accordion);
+      }
+
       function renderGallery(uploads) {
         const gallery = document.getElementById('gallery');
         if (uploads.length === 0) {
@@ -415,16 +880,54 @@
           const accordion = document.createElement('div');
           accordion.className = 'gallery-accordion';
 
-          const header = document.createElement('button');
+          const header = document.createElement('div');
           header.className = 'gallery-accordion-header';
-          header.type = 'button';
-          header.innerHTML = `
-            <span style="font-size: 20px; font-weight: 700;">${folder}</span>
-            <span style="display: flex; align-items: center; gap: 12px;">
-              <span style="font-size: 14px; color: rgba(255,255,255,0.9);">${byFolder[folder].length} foto${byFolder[folder].length !== 1 ? 's' : ''}</span>
-              <span class="accordion-icon">▼</span>
-            </span>
-          `;
+          header.style.cssText = 'display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 20px 24px; cursor: pointer;';
+          
+          const leftSection = document.createElement('div');
+          leftSection.style.cssText = 'display: flex; align-items: center; gap: 16px;';
+          leftSection.innerHTML = `<span style="font-size: 20px; font-weight: 700;">${folder}</span>`;
+          
+          const rightSection = document.createElement('div');
+          rightSection.style.cssText = 'display: flex; align-items: center; gap: 12px;';
+          
+          const photoCount = document.createElement('span');
+          photoCount.style.cssText = 'font-size: 14px; color: rgba(255,255,255,0.9);';
+          photoCount.textContent = `${byFolder[folder].length} foto${byFolder[folder].length !== 1 ? 's' : ''}`;
+          
+          // Delete folder button (only if not "Sin carpeta")
+          if (folder !== 'Sin carpeta') {
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'btn-delete-folder';
+            deleteBtn.innerHTML = '🗑️';
+            deleteBtn.title = 'Eliminar carpeta';
+            deleteBtn.style.cssText = 'background: #dc3545; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 16px; transition: all 0.3s; box-shadow: 0 2px 6px rgba(220, 53, 69, 0.4);';
+            deleteBtn.onclick = (e) => {
+              e.stopPropagation();
+              showDeleteFolderModal(folder, byFolder[folder]);
+            };
+            deleteBtn.onmouseenter = (e) => {
+              e.target.style.background = '#c82333';
+              e.target.style.boxShadow = '0 4px 10px rgba(220, 53, 69, 0.6)';
+              e.target.style.transform = 'translateY(-2px)';
+            };
+            deleteBtn.onmouseleave = (e) => {
+              e.target.style.background = '#dc3545';
+              e.target.style.boxShadow = '0 2px 6px rgba(220, 53, 69, 0.4)';
+              e.target.style.transform = '';
+            };
+            rightSection.appendChild(deleteBtn);
+          }
+          
+          const accordionIcon = document.createElement('span');
+          accordionIcon.className = 'accordion-icon';
+          accordionIcon.textContent = '▼';
+          
+          rightSection.appendChild(photoCount);
+          rightSection.appendChild(accordionIcon);
+          
+          header.appendChild(leftSection);
+          header.appendChild(rightSection);
 
           const content = document.createElement('div');
           content.className = 'gallery-accordion-content';
@@ -493,6 +996,7 @@
             if (button.textContent === 'Cambiar nombre') {
               nameInput.disabled = false;
               nameInput.focus();
+              nameInput.select(); // Seleccionar todo el texto automáticamente
               button.textContent = 'Guardar nombre';
               button.classList.add('editing');
             } 
@@ -590,8 +1094,30 @@
         allFolders.forEach(folder => {
           const btn = document.createElement('button');
           btn.className = 'folder-option';
-          btn.textContent = folder;
-          btn.addEventListener('click', async () => {
+          btn.style.cssText = 'width: 100%; padding: 12px; margin: 8px 0; background: white; border: 2px solid #ddd; border-radius: 8px; cursor: pointer; font-size: 15px; transition: all 0.3s; text-align: left;';
+          btn.textContent = `📁 ${folder}`;
+          
+          btn.onmouseenter = (e) => {
+            if (e.target.style.border !== '2px solid var(--alico-gold)') {
+              e.target.style.background = '#f8f9fa';
+            }
+          };
+          btn.onmouseleave = (e) => {
+            if (e.target.style.border !== '2px solid var(--alico-gold)') {
+              e.target.style.background = 'white';
+            }
+          };
+          
+          btn.addEventListener('click', async (e) => {
+            // Remove selection from all buttons
+            document.querySelectorAll('#folderList .folder-option').forEach(b => {
+              b.style.background = 'white';
+              b.style.border = '2px solid #ddd';
+            });
+            // Mark this button as selected
+            e.target.style.background = 'var(--alico-gold-10)';
+            e.target.style.border = '2px solid var(--alico-gold)';
+            
             try {
               const res = await fetch(`/api/uploads/${currentPhotoId}`, {
                 method: 'PATCH',
@@ -600,9 +1126,11 @@
               });
               const data = await res.json();
               if (data.ok) {
-                selectFolderModal.style.display = 'none';
-                invalidateCache();
-                loadUploads(true);
+                setTimeout(() => {
+                  selectFolderModal.style.display = 'none';
+                  invalidateCache();
+                  loadUploads(true);
+                }, 300);
               } else {
                 alert('Error: ' + (data.error || ''));
               }
@@ -616,31 +1144,113 @@
         selectFolderModal.style.display = 'flex';
       }
 
+      // Preview de archivos seleccionados
+      document.getElementById('fileInputUpload').addEventListener('change', (e) => {
+        const files = e.target.files;
+        const preview = document.getElementById('uploadPreview');
+        const fileList = document.getElementById('uploadFileList');
+        
+        if (files.length > 0) {
+          preview.style.display = 'block';
+          let html = '<ul style="margin: 0; padding-left: 20px;">';
+          Array.from(files).forEach(file => {
+            const size = (file.size / 1024 / 1024).toFixed(2);
+            html += `<li>${file.name} (${size} MB)</li>`;
+          });
+          html += '</ul>';
+          fileList.innerHTML = html;
+        } else {
+          preview.style.display = 'none';
+        }
+      });
+
       document.getElementById('uploadForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const fd = new FormData(e.target);
+        
+        const fileInput = document.getElementById('fileInputUpload');
+        const files = fileInput.files;
         const resEl = document.getElementById('uploadResult');
-        resEl.textContent = 'Subiendo...';
-        try {
-          const res = await fetch('/api/upload', {
-            method: 'POST',
-            headers: { 'Authorization': 'Bearer ' + token },
-            body: fd
-          });
-          const data = await res.json();
-          if (data.ok) {
-            resEl.textContent = 'Subido!';
-            e.target.reset();
-            invalidateCache();
-            setTimeout(() => {
-              uploadModal.style.display = 'none';
-              loadUploads(true); // refresh gallery with force
-            }, 800);
-          } else {
-            resEl.textContent = data.error || 'Error al subir';
+        const submitBtn = document.getElementById('uploadSubmitBtn');
+        const folderSelect = document.getElementById('uploadFolderSelect');
+        
+        if (files.length === 0) {
+          resEl.textContent = 'Por favor selecciona al menos un archivo';
+          resEl.style.color = '#dc3545';
+          return;
+        }
+        
+        // Validar todos los archivos
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+        const maxSize = 5 * 1024 * 1024; // 5MB
+        
+        for (let file of files) {
+          if (!allowedTypes.includes(file.type)) {
+            resEl.textContent = `❌ ${file.name}: Solo se permiten JPG, JPEG o PNG`;
+            resEl.style.color = '#dc3545';
+            return;
           }
-        } catch (err) {
-          resEl.textContent = String(err);
+          if (file.size > maxSize) {
+            resEl.textContent = `❌ ${file.name}: Máximo 5 MB`;
+            resEl.style.color = '#dc3545';
+            return;
+          }
+        }
+        
+        // Subir archivos uno por uno
+        submitBtn.disabled = true;
+        let successCount = 0;
+        let errorCount = 0;
+        const folder = folderSelect.value === 'Sin carpeta' ? null : folderSelect.value;
+        
+        resEl.textContent = `Subiendo ${files.length} archivo${files.length > 1 ? 's' : ''}...`;
+        resEl.style.color = '';
+        
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          const fd = new FormData();
+          fd.append('file', file);
+          if (folder) fd.append('folder', folder);
+          
+          resEl.textContent = `Subiendo ${i + 1}/${files.length}: ${file.name}...`;
+          
+          try {
+            const res = await fetch('/api/upload', {
+              method: 'POST',
+              headers: { 'Authorization': 'Bearer ' + token },
+              body: fd
+            });
+            const data = await res.json();
+            if (data.ok) {
+              successCount++;
+            } else {
+              errorCount++;
+              console.error(`Error subiendo ${file.name}:`, data.error);
+            }
+          } catch (err) {
+            errorCount++;
+            console.error(`Error subiendo ${file.name}:`, err);
+          }
+        }
+        
+        submitBtn.disabled = false;
+        
+        if (errorCount === 0) {
+          resEl.textContent = `✅ ${successCount} archivo${successCount > 1 ? 's subidos' : ' subido'} correctamente!`;
+          resEl.style.color = '#28a745';
+          e.target.reset();
+          document.getElementById('uploadPreview').style.display = 'none';
+          invalidateCache();
+          setTimeout(() => {
+            uploadModal.style.display = 'none';
+            loadUploads(true);
+          }, 1500);
+        } else {
+          resEl.textContent = `⚠️ ${successCount} exitosos, ${errorCount} con errores`;
+          resEl.style.color = '#ffc107';
+          invalidateCache();
+          setTimeout(() => {
+            loadUploads(true);
+          }, 1000);
         }
       });
 

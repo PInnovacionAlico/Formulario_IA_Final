@@ -171,6 +171,44 @@ button[type="submit"]:hover {
   text-decoration: underline;
 }
 
+/* Password visibility toggle styles */
+.password-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-wrapper input {
+  width: 100%;
+  padding-right: 45px;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 20px;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  transition: color 0.2s;
+  user-select: none;
+}
+
+.password-toggle:hover {
+  color: var(--alico-gold);
+}
+
+.password-toggle:focus {
+  outline: none;
+}
+
 /* Dashboard styles */
 .dashboard-container {
   max-width: 1200px;
@@ -1550,14 +1588,6 @@ button[type="submit"]:hover {
   box-shadow: 0 4px 12px rgba(0, 15, 159, 0.3);
   position: relative;
   overflow: hidden;
-}
-
-.btn-submit::before {
-  content: '✓';
-  position: absolute;
-  left: 20px;
-  font-size: 20px;
-  opacity: 0.8;
 }
 
 .btn-submit:hover {

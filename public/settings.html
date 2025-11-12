@@ -126,17 +126,32 @@
                 <div style="display: flex; flex-direction: column; gap: 16px;">
                   <label>
                     Contraseña Actual
-                    <input type="password" id="oldPassword" name="oldPassword" required minlength="8" />
+                    <div class="password-wrapper">
+                      <input type="password" id="oldPassword" name="oldPassword" required minlength="8" />
+                      <button type="button" class="password-toggle" onclick="togglePasswordVisibility('oldPassword', this)">
+                        👁️
+                      </button>
+                    </div>
                   </label>
 
                   <label>
                     Nueva Contraseña
-                    <input type="password" id="newPassword" name="newPassword" required minlength="8" />
+                    <div class="password-wrapper">
+                      <input type="password" id="newPassword" name="newPassword" required minlength="8" />
+                      <button type="button" class="password-toggle" onclick="togglePasswordVisibility('newPassword', this)">
+                        👁️
+                      </button>
+                    </div>
                   </label>
 
                   <label>
                     Confirmar Nueva Contraseña
-                    <input type="password" id="confirmPassword" name="confirmPassword" required minlength="8" />
+                    <div class="password-wrapper">
+                      <input type="password" id="confirmPassword" name="confirmPassword" required minlength="8" />
+                      <button type="button" class="password-toggle" onclick="togglePasswordVisibility('confirmPassword', this)">
+                        👁️
+                      </button>
+                    </div>
                   </label>
 
                   <div style="margin-top: 16px;">
@@ -356,6 +371,18 @@
           alert('❌ Error al cambiar la contraseña: ' + error.message);
         }
       });
+
+      // Password visibility toggle function
+      function togglePasswordVisibility(inputId, button) {
+        const input = document.getElementById(inputId);
+        if (input.type === 'password') {
+          input.type = 'text';
+          button.textContent = '🙈';
+        } else {
+          input.type = 'password';
+          button.textContent = '👁️';
+        }
+      }
     </script>
   </body>
 </html>

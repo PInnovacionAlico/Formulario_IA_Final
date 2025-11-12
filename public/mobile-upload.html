@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Subir fotos - Formulario IA</title>
+    <link rel="stylesheet" href="/style.css" />
+    <style>
+      body {
+        background: linear-gradient(135deg, #000F9F 0%, #0a0a5c 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+      
+      .mobile-upload-container {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        max-width: 500px;
+        width: 100%;
+        padding: 32px 24px;
+      }
+      
+      .mobile-upload-header {
+        text-align: center;
+        margin-bottom: 32px;
+      }
+      
+      .mobile-upload-header h1 {
+        font-size: 28px;
+        color: #000F9F;
+        margin-bottom: 8px;
+      }
+      
+      .mobile-upload-header p {
+        color: #666;
+        font-size: 15px;
+      }
+      
+      .upload-zone {
+        border: 3px dashed var(--alico-gold);
+        border-radius: 12px;
+        padding: 40px 20px;
+        text-align: center;
+        background: var(--alico-gold-10);
+        cursor: pointer;
+        transition: all 0.3s;
+        margin-bottom: 24px;
+      }
+      
+      .upload-zone:hover {
+        background: var(--alico-gold-20);
+        border-color: var(--alico-gold-80);
+      }
+      
+      .upload-zone.dragover {
+        background: var(--alico-gold-30);
+        border-color: var(--alico-gold);
+        transform: scale(1.02);
+      }
+      
+      .upload-icon {
+        font-size: 48px;
+        margin-bottom: 16px;
+      }
+      
+      .upload-text {
+        font-size: 16px;
+        color: #333;
+        font-weight: 600;
+        margin-bottom: 8px;
+      }
+      
+      .upload-hint {
+        font-size: 13px;
+        color: #666;
+      }
+      
+      #fileInput {
+        display: none;
+      }
+      
+      .preview-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        gap: 12px;
+        margin-bottom: 24px;
+      }
+      
+      .preview-item {
+        position: relative;
+        aspect-ratio: 1;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+      
+      .preview-item img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      
+      .preview-remove {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        background: rgba(220, 53, 69, 0.9);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        font-size: 14px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s;
+      }
+      
+      .preview-remove:hover {
+        background: #c82333;
+        transform: scale(1.1);
+      }
+      
+      .preview-status {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        font-size: 11px;
+        padding: 4px;
+        text-align: center;
+      }
+      
+      .upload-button {
+        width: 100%;
+        padding: 16px;
+        background: linear-gradient(135deg, var(--alico-gold) 0%, var(--alico-gold-80) 100%);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-size: 16px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s;
+        box-shadow: 0 4px 12px rgba(219, 149, 0, 0.4);
+      }
+      
+      .upload-button:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(219, 149, 0, 0.5);
+      }
+      
+      .upload-button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+      
+      .status-message {
+        margin-top: 16px;
+        padding: 12px;
+        border-radius: 8px;
+        text-align: center;
+        font-size: 14px;
+        display: none;
+      }
+      
+      .status-message.success {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+      }
+      
+      .status-message.error {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+      }
+      
+      .folder-select {
+        margin-bottom: 16px;
+      }
+      
+      .folder-select label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #333;
+      }
+      
+      .folder-select select {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        font-size: 15px;
+        background: white;
+        cursor: pointer;
+        transition: all 0.3s;
+      }
+      
+      .folder-select select:focus {
+        outline: none;
+        border-color: var(--alico-gold);
+      }
+      
+      .session-expired {
+        text-align: center;
+        padding: 40px 20px;
+      }
+      
+      .session-expired-icon {
+        font-size: 64px;
+        margin-bottom: 16px;
+      }
+      
+      .session-expired h2 {
+        color: #dc3545;
+        margin-bottom: 12px;
+      }
+      
+      .session-expired p {
+        color: #666;
+        margin-bottom: 24px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="mobile-upload-container" id="mainContent">
+      <div class="mobile-upload-header">
+        <h1>📱 Subir fotos</h1>
+        <p>Selecciona las fotos que deseas subir a tu cuenta</p>
+      </div>
+      
+      <div class="folder-select">
+        <label for="folderSelect">📁 Carpeta de destino:</label>
+        <select id="folderSelect">
+          <option value="">Sin carpeta</option>
+        </select>
+      </div>
+      
+      <div class="upload-zone" id="uploadZone">
+        <div class="upload-icon">📸</div>
+        <div class="upload-text">Toca para seleccionar fotos</div>
+        <div class="upload-hint">o arrastra y suelta aquí</div>
+      </div>
+      
+      <input type="file" id="fileInput" accept="image/jpeg,image/jpg,image/png" multiple />
+      
+      <div class="preview-container" id="previewContainer"></div>
+      
+      <button class="upload-button" id="uploadButton" disabled>
+        Subir fotos
+      </button>
+      
+      <div class="status-message" id="statusMessage"></div>
+    </div>
+
+    <script>
+      // Get token from URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const uploadToken = urlParams.get('token');
+      
+      if (!uploadToken) {
+        showExpiredSession();
+      }
+      
+      let selectedFiles = [];
+      const uploadZone = document.getElementById('uploadZone');
+      const fileInput = document.getElementById('fileInput');
+      const previewContainer = document.getElementById('previewContainer');
+      const uploadButton = document.getElementById('uploadButton');
+      const statusMessage = document.getElementById('statusMessage');
+      const folderSelect = document.getElementById('folderSelect');
+      
+      // Load folders
+      loadFolders();
+      
+      async function loadFolders() {
+        try {
+          const response = await fetch('/api/folders', {
+            headers: {
+              'Authorization': 'Bearer ' + uploadToken
+            }
+          });
+          
+          if (!response.ok) {
+            if (response.status === 401) {
+              showExpiredSession();
+            }
+            return;
+          }
+          
+          const data = await response.json();
+          if (data.folders && data.folders.length > 0) {
+            data.folders.forEach(folder => {
+              if (folder !== 'Sin carpeta') {
+                const option = document.createElement('option');
+                option.value = folder;
+                option.textContent = folder;
+                folderSelect.appendChild(option);
+              }
+            });
+          }
+        } catch (err) {
+          console.error('Error loading folders:', err);
+        }
+      }
+      
+      function showExpiredSession() {
+        const mainContent = document.getElementById('mainContent');
+        mainContent.innerHTML = `
+          <div class="session-expired">
+            <div class="session-expired-icon">⏰</div>
+            <h2>Sesión expirada</h2>
+            <p>Este enlace ha expirado por seguridad. Por favor, genera un nuevo código QR desde tu dashboard.</p>
+          </div>
+        `;
+      }
+      
+      // Click to select files
+      uploadZone.addEventListener('click', () => {
+        fileInput.click();
+      });
+      
+      // File input change
+      fileInput.addEventListener('change', (e) => {
+        handleFiles(e.target.files);
+      });
+      
+      // Drag and drop
+      uploadZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadZone.classList.add('dragover');
+      });
+      
+      uploadZone.addEventListener('dragleave', () => {
+        uploadZone.classList.remove('dragover');
+      });
+      
+      uploadZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadZone.classList.remove('dragover');
+        handleFiles(e.dataTransfer.files);
+      });
+      
+      function handleFiles(files) {
+        const validFiles = Array.from(files).filter(file => {
+          const isImage = file.type.match(/^image\/(jpeg|jpg|png)$/);
+          const isValidSize = file.size <= 5 * 1024 * 1024; // 5MB
+          
+          if (!isImage) {
+            showStatus('Solo se permiten archivos JPG, JPEG o PNG', 'error');
+            return false;
+          }
+          if (!isValidSize) {
+            showStatus('Las imágenes deben ser menores a 5MB', 'error');
+            return false;
+          }
+          return true;
+        });
+        
+        validFiles.forEach(file => {
+          if (!selectedFiles.find(f => f.file.name === file.name && f.file.size === file.size)) {
+            const id = Date.now() + Math.random();
+            selectedFiles.push({ id, file, status: 'pending' });
+          }
+        });
+        
+        updatePreview();
+        uploadButton.disabled = selectedFiles.length === 0;
+      }
+      
+      function updatePreview() {
+        previewContainer.innerHTML = '';
+        
+        selectedFiles.forEach((item, index) => {
+          const previewItem = document.createElement('div');
+          previewItem.className = 'preview-item';
+          
+          const img = document.createElement('img');
+          img.src = URL.createObjectURL(item.file);
+          
+          const removeBtn = document.createElement('button');
+          removeBtn.className = 'preview-remove';
+          removeBtn.innerHTML = '×';
+          removeBtn.onclick = () => removeFile(item.id);
+          
+          const status = document.createElement('div');
+          status.className = 'preview-status';
+          status.textContent = item.status === 'pending' ? 'Pendiente' : 
+                              item.status === 'uploading' ? 'Subiendo...' :
+                              item.status === 'success' ? '✓ Subida' :
+                              '✗ Error';
+          
+          previewItem.appendChild(img);
+          if (item.status === 'pending') {
+            previewItem.appendChild(removeBtn);
+          }
+          previewItem.appendChild(status);
+          previewContainer.appendChild(previewItem);
+        });
+      }
+      
+      function removeFile(id) {
+        selectedFiles = selectedFiles.filter(f => f.id !== id);
+        updatePreview();
+        uploadButton.disabled = selectedFiles.length === 0;
+      }
+      
+      function showStatus(message, type) {
+        statusMessage.textContent = message;
+        statusMessage.className = 'status-message ' + type;
+        statusMessage.style.display = 'block';
+        
+        setTimeout(() => {
+          statusMessage.style.display = 'none';
+        }, 5000);
+      }
+      
+      uploadButton.addEventListener('click', async () => {
+        uploadButton.disabled = true;
+        uploadButton.textContent = 'Subiendo...';
+        
+        const folder = folderSelect.value || null;
+        let successCount = 0;
+        let errorCount = 0;
+        
+        for (let item of selectedFiles) {
+          if (item.status !== 'pending') continue;
+          
+          item.status = 'uploading';
+          updatePreview();
+          
+          const formData = new FormData();
+          formData.append('file', item.file);
+          if (folder) formData.append('folder', folder);
+          formData.append('token', uploadToken);
+          
+          try {
+            const response = await fetch(`/api/mobile-upload?token=${uploadToken}`, {
+              method: 'POST',
+              body: formData
+            });
+            
+            if (response.ok) {
+              item.status = 'success';
+              successCount++;
+            } else {
+              if (response.status === 401) {
+                showExpiredSession();
+                return;
+              }
+              item.status = 'error';
+              errorCount++;
+            }
+          } catch (err) {
+            console.error('Upload error:', err);
+            item.status = 'error';
+            errorCount++;
+          }
+          
+          updatePreview();
+        }
+        
+        uploadButton.textContent = 'Subir fotos';
+        
+        if (errorCount === 0) {
+          showStatus(`✅ ${successCount} foto${successCount !== 1 ? 's' : ''} subida${successCount !== 1 ? 's' : ''} correctamente`, 'success');
+          setTimeout(() => {
+            selectedFiles = [];
+            updatePreview();
+            uploadButton.disabled = true;
+          }, 2000);
+        } else {
+          showStatus(`⚠️ ${successCount} exitosas, ${errorCount} con errores`, 'error');
+          selectedFiles = selectedFiles.filter(f => f.status !== 'success');
+          updatePreview();
+          uploadButton.disabled = selectedFiles.length === 0;
+        }
+      });
+    </script>
+  </body>
+</html>

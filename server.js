@@ -55,6 +55,13 @@ function getWebhookUrlFromReq(req) {
   return req.headers['x-webhook-url'] || process.env.WEBHOOK_URL;
 }
 
+function getPasswordResetWebhookUrl(req) {
+  // Allow global disable via env var for easy testing/rollback
+  if (process.env.DISABLE_WEBHOOK && process.env.DISABLE_WEBHOOK.toLowerCase() === 'true') return null;
+  // Use specific password reset webhook if configured, otherwise fall back to general webhook
+  return req.headers['x-webhook-url'] || process.env.PASSWORD_RESET_WEBHOOK_URL || process.env.WEBHOOK_URL;
+}
+
 async function postToWebhook(webhookUrl, payload, headers = {}) {
   if (!webhookUrl) throw new Error('No webhook URL configured');
   const res = await axios.post(webhookUrl, payload, { headers });
@@ -153,6 +160,240 @@ app.post('/api/change-password', async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error('change-password error', err.message || err);
+    res.status(500).json({ error: err.message || String(err) });
+  }
+});
+
+// Forgot password: generates reset token and sends to webhook
+app.post('/api/forgot-password', async (req, res) => {
+  const { email } = req.body || {};
+  if (!email) return res.status(400).json({ error: 'email is required' });
+
+  try {
+    // Check if user exists
+    const { data: user, error: fetchErr } = await supabase.from('users').select('*').eq('email', email).maybeSingle();
+    if (fetchErr) throw fetchErr;
+    
+    // Don't reveal if user exists or not (security best practice)
+    if (!user) {
+      return res.json({ ok: true, message: 'If the email exists, a reset link will be sent' });
+    }
+
+    // Generate reset token (valid for 1 hour)
+    const resetToken = uuidv4();
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour from now
+
+    // Store token in database
+    const { error: tokenErr } = await supabase.from('password_reset_tokens').insert([{
+      user_id: user.id,
+      token: resetToken,
+      expires_at: expiresAt,
+      used: false
+    }]);
+    if (tokenErr) throw tokenErr;
+
+    // Construct reset link
+    const resetLink = `${req.protocol}://${req.get('host')}/reset-password.html?token=${resetToken}`;
+
+    // Send to webhook for email delivery
+    const webhookUrl = getPasswordResetWebhookUrl(req);
+    const payload = {
+      action: 'forgot-password',
+      data: {
+        email: user.email,
+        name: user.name,
+        resetLink: resetLink,
+        expiresAt: expiresAt
+      }
+    };
+
+    if (webhookUrl) {
+      try {
+        await postToWebhook(webhookUrl, payload, { 'Content-Type': 'application/json' });
+      } catch (err) {
+        console.error('webhook error', err.message);
+        // Continue even if webhook fails
+      }
+    }
+
+    res.json({ ok: true, message: 'If the email exists, a reset link will be sent' });
+  } catch (err) {
+    console.error('forgot-password error', err.message || err);
+    res.status(500).json({ error: err.message || String(err) });
+  }
+});
+
+// Reset password: validates token and updates password
+app.post('/api/reset-password', async (req, res) => {
+  const { token, newPassword } = req.body || {};
+  if (!token || !newPassword) return res.status(400).json({ error: 'token and newPassword are required' });
+
+  if (newPassword.length < 8) return res.status(400).json({ error: 'newPassword must be at least 8 characters' });
+
+  try {
+    // Find valid token
+    const { data: resetToken, error: tokenErr } = await supabase
+      .from('password_reset_tokens')
+      .select('*')
+      .eq('token', token)
+      .eq('used', false)
+      .gt('expires_at', new Date().toISOString())
+      .maybeSingle();
+
+    if (tokenErr) throw tokenErr;
+    if (!resetToken) return res.status(400).json({ error: 'Invalid or expired token' });
+
+    // Update password
+    const newHash = bcrypt.hashSync(newPassword, 10);
+    const { error: updateErr } = await supabase
+      .from('users')
+      .update({ password_hash: newHash })
+      .eq('id', resetToken.user_id);
+    
+    if (updateErr) throw updateErr;
+
+    // Mark token as used
+    const { error: markErr } = await supabase
+      .from('password_reset_tokens')
+      .update({ used: true })
+      .eq('id', resetToken.id);
+    
+    if (markErr) throw markErr;
+
+    // Send webhook notification
+    const { data: user } = await supabase.from('users').select('*').eq('id', resetToken.user_id).single();
+    const webhookUrl = getWebhookUrlFromReq(req);
+    const payload = {
+      action: 'password-reset-completed',
+      data: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        reset_at: new Date().toISOString()
+      }
+    };
+
+    if (webhookUrl) {
+      try {
+        await postToWebhook(webhookUrl, payload, { 'Content-Type': 'application/json' });
+      } catch (err) {
+        console.error('webhook error', err.message);
+      }
+    }
+
+    res.json({ ok: true, message: 'Password reset successful' });
+  } catch (err) {
+    console.error('reset-password error', err.message || err);
+    res.status(500).json({ error: err.message || String(err) });
+  }
+});
+
+// Generate temporary upload token for mobile QR upload
+app.post('/api/generate-upload-token', authenticate, async (req, res) => {
+  try {
+    // Generate a temporary token that expires in 30 minutes
+    const uploadToken = jwt.sign(
+      { 
+        userId: req.userId,
+        type: 'mobile-upload'
+      }, 
+      process.env.JWT_SECRET, 
+      { expiresIn: '30m' }
+    );
+    
+    res.json({ 
+      ok: true, 
+      uploadToken,
+      expiresIn: 30 * 60 // 30 minutes in seconds
+    });
+  } catch (err) {
+    console.error('Error generating upload token:', err);
+    res.status(500).json({ error: err.message || String(err) });
+  }
+});
+
+// Mobile upload endpoint: uses temporary token from QR code
+app.post('/api/mobile-upload', upload.single('file'), async (req, res) => {
+  const file = req.file;
+  if (!file) return res.status(400).json({ error: 'file is required' });
+  
+  // Get token from query or body
+  const uploadToken = req.query.token || req.body.token;
+  if (!uploadToken) {
+    return res.status(401).json({ error: 'Upload token required' });
+  }
+  
+  try {
+    // Verify the upload token
+    const decoded = jwt.verify(uploadToken, process.env.JWT_SECRET);
+    if (decoded.type !== 'mobile-upload') {
+      return res.status(401).json({ error: 'Invalid token type' });
+    }
+    
+    const userId = decoded.userId;
+    
+    // Same upload logic as regular upload
+    const safeName = sanitizeFilename(file.originalname);
+    const unique = uuidv4();
+    const prefix = String(userId);
+    const pathInBucket = `uploads/${prefix}/${unique}-${safeName}`;
+    const thumbnailPath = `uploads/${prefix}/thumb-${unique}-${safeName}`;
+    
+    const fileBuffer = fs.readFileSync(file.path);
+
+    const { data: uploadData, error: uploadErr } = await supabase.storage.from('uploads').upload(pathInBucket, fileBuffer, {
+      contentType: file.mimetype,
+      upsert: false
+    });
+    if (uploadErr) throw uploadErr;
+
+    const thumbnailBuffer = await sharp(fileBuffer)
+      .resize(400, null, { withoutEnlargement: true, fit: 'inside' })
+      .jpeg({ quality: 70 })
+      .toBuffer();
+
+    const { error: thumbErr } = await supabase.storage.from('uploads').upload(thumbnailPath, thumbnailBuffer, {
+      contentType: 'image/jpeg',
+      upsert: false
+    });
+    if (thumbErr) console.warn('thumbnail upload warning', thumbErr.message);
+
+    const { data: urlData, error: urlErr } = await supabase.storage.from('uploads').createSignedUrl(pathInBucket, 24 * 60 * 60);
+    if (urlErr) throw urlErr;
+    
+    const { data: thumbUrlData } = await supabase.storage.from('uploads').createSignedUrl(thumbnailPath, 24 * 60 * 60);
+
+    const folder = req.body.folder || null;
+    const customName = req.body.customName || file.originalname;
+
+    const { data: dbData, error: dbErr } = await supabase.from('uploads').insert({
+      user_id: userId,
+      filename: safeName,
+      path: pathInBucket,
+      thumbnail_path: thumbnailPath,
+      folder: folder,
+      custom_name: customName
+    }).select().single();
+    if (dbErr) throw dbErr;
+
+    fs.unlinkSync(file.path);
+
+    res.json({ 
+      ok: true, 
+      upload: {
+        id: dbData.id,
+        filename: dbData.filename,
+        customName: dbData.custom_name,
+        folder: dbData.folder,
+        signedUrl: urlData.signedUrl,
+        thumbnailUrl: thumbUrlData?.signedUrl
+      }
+    });
+  } catch (err) {
+    console.error('Mobile upload error:', err);
+    if (file && fs.existsSync(file.path)) {
+      fs.unlinkSync(file.path);
+    }
     res.status(500).json({ error: err.message || String(err) });
   }
 });
@@ -267,6 +508,36 @@ app.get('/api/uploads', authenticate, async (req, res) => {
   }
 });
 
+// Get user folders (works with both regular auth and mobile upload token)
+app.get('/api/folders', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Unauthorized: No token provided' });
+  }
+  
+  const token = authHeader.substring(7);
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userId = decoded.userId;
+    
+    const { data, error } = await supabase
+      .from('uploads')
+      .select('folder')
+      .eq('owner_id', userId);
+    
+    if (error) throw error;
+    
+    // Extract unique folders
+    const folders = [...new Set(data.map(u => u.folder).filter(Boolean))];
+    folders.sort();
+    
+    res.json({ ok: true, folders });
+  } catch (err) {
+    console.error('Get folders error:', err);
+    res.status(401).json({ error: 'Invalid token' });
+  }
+});
+
 // Update upload metadata (rename/folder) (protected)
 app.patch('/api/uploads/:id', authenticate, async (req, res) => {
   const { id } = req.params;
@@ -286,6 +557,44 @@ app.patch('/api/uploads/:id', authenticate, async (req, res) => {
 
     const { data, error: upErr } = await supabase.from('uploads').update(updates).eq('id', id).select('*').single();
     if (upErr) throw upErr;
+
+    res.json({ ok: true, upload: data });
+  } catch (err) {
+    console.error('update upload error', err.message || err);
+    res.status(500).json({ error: err.message || String(err) });
+  }
+});
+
+// Update upload (protected) - for changing folder or custom_name
+app.put('/api/uploads/:id', authenticate, async (req, res) => {
+  const { id } = req.params;
+  const { folder, custom_name } = req.body || {};
+
+  try {
+    // verify ownership
+    const { data: upload, error: fetchErr } = await supabase.from('uploads').select('*').eq('id', id).maybeSingle();
+    if (fetchErr) throw fetchErr;
+    if (!upload) return res.status(404).json({ error: 'Upload not found' });
+    if (upload.owner_id !== req.userId) return res.status(403).json({ error: 'Forbidden: not owner' });
+
+    // build update object
+    const updates = {};
+    if (folder !== undefined) updates.folder = folder;
+    if (custom_name !== undefined) updates.custom_name = custom_name;
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    // update in DB
+    const { data, error: updateErr } = await supabase
+      .from('uploads')
+      .update(updates)
+      .eq('id', id)
+      .select('*')
+      .single();
+    
+    if (updateErr) throw updateErr;
 
     res.json({ ok: true, upload: data });
   } catch (err) {
