@@ -889,6 +889,11 @@
           }
         });
         
+        // Prevenir que clicks dentro del dropdown lo cierren (pero permitir scroll)
+        dropdown.addEventListener('click', (e) => {
+          e.stopPropagation();
+        });
+        
         // Cerrar al hacer click fuera
         document.addEventListener('click', (e) => {
           if (!trigger.contains(e.target) && !dropdown.contains(e.target)) {

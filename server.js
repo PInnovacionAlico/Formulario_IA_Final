@@ -1129,12 +1129,16 @@ app.post('/api/submit-form', authenticate, async (req, res) => {
 
     // Get product info and public image URL if product_id is provided
     let productInfo = null;
+    console.log('🔍 product_id recibido:', product_id, 'tipo:', typeof product_id);
     if (product_id) {
       const { data: product, error: productErr } = await supabase
         .from('products')
-        .select('id, name, category, image_path, description')
+        .select('id, name, category, image_path')
         .eq('id', product_id)
         .single();
+      
+      console.log('📦 Producto encontrado:', product);
+      console.log('❌ Error al buscar producto:', productErr);
       
       if (!productErr && product) {
         // Get public URL for product image (5 minutes validity)
@@ -1146,7 +1150,6 @@ app.post('/api/submit-form', authenticate, async (req, res) => {
           id: product.id,
           name: product.name,
           category: product.category,
-          description: product.description,
           image_url: productUrlData?.signedUrl || null
         };
       }

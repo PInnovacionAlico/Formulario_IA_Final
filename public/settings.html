@@ -79,86 +79,58 @@
           <div class="form-section" style="margin-bottom: 32px;">
             <h3>👤 Información de Usuario</h3>
             <div class="form-section-content">
-              <form id="updateProfileForm">
-                <div style="display: flex; flex-direction: column; gap: 16px;">
-                  <div>
-                    <label style="font-weight: 600; color: #666; margin-bottom: 8px; display: block;">
-                      Nombre
-                      <span style="color: #999; font-weight: 400; font-size: 13px; margin-left: 8px;">(Editable)</span>
-                    </label>
-                    <input 
-                      type="text" 
-                      id="userNameInput" 
-                      name="name"
-                      required
-                      style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 15px; transition: border-color 0.3s;"
-                      onfocus="this.style.borderColor='var(--alico-gold)'"
-                      onblur="this.style.borderColor='#e0e0e0'"
-                      placeholder="Tu nombre"
-                    />
+              <div style="display: flex; flex-direction: column; gap: 16px;">
+                <div>
+                  <label style="font-weight: 600; color: #666; margin-bottom: 8px; display: block;">Nombre</label>
+                  <div style="padding: 12px; background: #f8f9fa; border-radius: 8px; font-size: 15px; color: #333;" id="userNameDisplay">
+                    Cargando...
                   </div>
-                  
-                  <div>
-                    <label style="font-weight: 600; color: #666; margin-bottom: 8px; display: block;">
-                      Email
-                      <span style="color: #999; font-weight: 400; font-size: 13px; margin-left: 8px;">(Editable)</span>
-                    </label>
-                    <input 
-                      type="email" 
-                      id="userEmailInput" 
-                      name="email"
-                      required
-                      style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 15px; transition: border-color 0.3s;"
-                      onfocus="this.style.borderColor='var(--alico-gold)'"
-                      onblur="this.style.borderColor='#e0e0e0'"
-                      placeholder="tu@email.com"
-                    />
+                </div>
+                
+                <div>
+                  <label style="font-weight: 600; color: #666; margin-bottom: 8px; display: block;">Email</label>
+                  <div style="padding: 12px; background: #f8f9fa; border-radius: 8px; font-size: 15px; color: #333;" id="userEmailDisplay">
+                    Cargando...
                   </div>
+                </div>
 
-                  <div>
-                    <label style="font-weight: 600; color: #666; margin-bottom: 8px; display: block;">ID de Usuario</label>
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                      <div style="flex: 1; padding: 12px; background: #f8f9fa; border-radius: 8px; font-family: monospace; font-size: 14px; color: #333;" id="userIdDisplay">
-                        Cargando...
-                      </div>
-                      <button 
-                        type="button"
-                        id="copyUserIdBtn"
-                        onclick="copyUserId()"
-                        style="background: linear-gradient(135deg, var(--alico-gold) 0%, var(--alico-gold-80) 100%); 
-                               color: white; 
-                               border: none; 
-                               padding: 12px 20px; 
-                               border-radius: 8px; 
-                               cursor: pointer; 
-                               font-size: 14px; 
-                               font-weight: 600;
-                               transition: all 0.3s;
-                               display: flex;
-                               align-items: center;
-                               gap: 6px;
-                               white-space: nowrap;"
-                        onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(219, 149, 0, 0.4)';"
-                        onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
-                        📋 Copiar ID
-                      </button>
+                <div>
+                  <label style="font-weight: 600; color: #666; margin-bottom: 8px; display: block;">ID de Usuario</label>
+                  <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="flex: 1; padding: 12px; background: #f8f9fa; border-radius: 8px; font-family: monospace; font-size: 14px; color: #333;" id="userIdDisplay">
+                      Cargando...
                     </div>
-                  </div>
-
-                  <div>
-                    <label style="font-weight: 600; color: #666; margin-bottom: 8px; display: block;">Créditos Disponibles</label>
-                    <div style="padding: 12px; background: linear-gradient(135deg, var(--alico-gold-10) 0%, var(--alico-gold-20) 100%); border-radius: 8px; font-size: 18px; font-weight: 700; color: var(--alico-gold); text-align: center;" id="userCreditsDisplay">
-                      ... créditos
-                    </div>
-                  </div>
-
-                  <div style="margin-top: 16px;">
-                    <button type="submit" class="btn-submit" style="width: 100%;">
-                      💾 Guardar Cambios
+                    <button 
+                      type="button"
+                      id="copyUserIdBtn"
+                      onclick="copyUserId()"
+                      style="background: linear-gradient(135deg, var(--alico-gold) 0%, var(--alico-gold-80) 100%); 
+                             color: white; 
+                             border: none; 
+                             padding: 12px 20px; 
+                             border-radius: 8px; 
+                             cursor: pointer; 
+                             font-size: 14px; 
+                             font-weight: 600;
+                             transition: all 0.3s;
+                             display: flex;
+                             align-items: center;
+                             gap: 6px;
+                             white-space: nowrap;"
+                      onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(219, 149, 0, 0.4)';"
+                      onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
+                      📋 Copiar ID
                     </button>
                   </div>
                 </div>
-              </form>
+
+                <div>
+                  <label style="font-weight: 600; color: #666; margin-bottom: 8px; display: block;">Créditos Disponibles</label>
+                  <div style="padding: 12px; background: linear-gradient(135deg, var(--alico-gold-10) 0%, var(--alico-gold-20) 100%); border-radius: 8px; font-size: 18px; font-weight: 700; color: var(--alico-gold); text-align: center;" id="userCreditsDisplay">
+                    ... créditos
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -240,7 +212,15 @@
 
     <script>
       const token = localStorage.getItem('token') || localStorage.getItem('authToken');
-      const user = JSON.parse(localStorage.getItem('user') || localStorage.getItem('userInfo') || '{}');
+      let user;
+      
+      try {
+        const userStr = localStorage.getItem('user') || localStorage.getItem('userInfo');
+        user = userStr ? JSON.parse(userStr) : {};
+      } catch (e) {
+        console.error('Error parsing user data:', e);
+        user = {};
+      }
       
       if (!token) {
         window.location.href = '/login.html';
@@ -309,8 +289,8 @@
 
       // Display user information
       document.getElementById('mobileUserName').textContent = user.name || user.email || 'Usuario';
-      document.getElementById('userNameInput').value = user.name || '';
-      document.getElementById('userEmailInput').value = user.email || '';
+      document.getElementById('userNameDisplay').textContent = user.name || 'No disponible';
+      document.getElementById('userEmailDisplay').textContent = user.email || 'No disponible';
       document.getElementById('userIdDisplay').textContent = user.id || 'No disponible';
 
       // Load user credits
@@ -334,7 +314,12 @@
 
       // Copy user ID to clipboard
       function copyUserId() {
-        const userId = user.id;
+        const userId = user?.id || document.getElementById('userIdDisplay').textContent;
+        
+        if (!userId || userId === 'No disponible' || userId === 'Cargando...') {
+          alert('❌ ID de usuario no disponible');
+          return;
+        }
         
         if (navigator.clipboard && window.isSecureContext) {
           navigator.clipboard.writeText(userId).then(() => {
@@ -426,67 +411,6 @@
         }
       `;
       document.head.appendChild(style);
-
-      // Handle profile update
-      document.getElementById('updateProfileForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-
-        const name = document.getElementById('userNameInput').value.trim();
-        const email = document.getElementById('userEmailInput').value.trim();
-
-        // Validate inputs
-        if (!name) {
-          alert('❌ El nombre no puede estar vacío');
-          return;
-        }
-
-        if (!email) {
-          alert('❌ El email no puede estar vacío');
-          return;
-        }
-
-        // Validate email format
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-          alert('❌ El formato del email no es válido');
-          return;
-        }
-
-        try {
-          const response = await fetch('/api/update-profile', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer ' + token
-            },
-            body: JSON.stringify({ name, email })
-          });
-
-          const result = await response.json();
-
-          if (response.ok && result.ok) {
-            // Update localStorage with new user data
-            const updatedUser = result.user;
-            const storageKey = localStorage.getItem('user') ? 'user' : 'userInfo';
-            localStorage.setItem(storageKey, JSON.stringify(updatedUser));
-            
-            // Update user object in memory
-            user.name = updatedUser.name;
-            user.email = updatedUser.email;
-            
-            // Update displayed values
-            document.getElementById('userName').textContent = updatedUser.name;
-            document.getElementById('mobileUserName').textContent = updatedUser.name;
-            
-            showNotification('✅ Perfil actualizado exitosamente');
-          } else {
-            alert('❌ Error: ' + (result.error || 'No se pudo actualizar el perfil'));
-          }
-        } catch (error) {
-          console.error('Error updating profile:', error);
-          alert('❌ Error al actualizar el perfil: ' + error.message);
-        }
-      });
 
       // Handle password change
       document.getElementById('changePasswordForm').addEventListener('submit', async (e) => {

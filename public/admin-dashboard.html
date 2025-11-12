@@ -656,7 +656,8 @@
                 <button class="btn-small primary" onclick="editUserCredits('${user.id}', ${user.credits})" ${user.banned ? 'disabled' : ''}>Editar Créditos</button>
                 ${!user.is_admin ? `<button class="btn-small danger" onclick="toggleAdminStatus('${user.id}', true)" ${user.banned ? 'disabled' : ''}>Hacer Admin</button>` : `<button class="btn-small danger" onclick="toggleAdminStatus('${user.id}', false)" ${user.banned ? 'disabled' : ''}>Quitar Admin</button>`}
                 ${banButton}
-                <button class="btn-small" style="background: linear-gradient(135dx, var(--alico-blue) 0%, var(--alico-blue-70) 100%);" onclick="exportUserDataAdmin('${user.id}', '${user.name}')">📥 Exportar Datos</button>
+                <button class="btn-small" style="background: linear-gradient(135deg, var(--alico-blue) 0%, var(--alico-blue-70) 100%);" onclick="exportUserDataAdmin('${user.id}', '${user.name}')">📥 Exportar</button>
+                <button class="btn-small" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white;" onclick="deleteUser('${user.id}', '${user.name}')">🗑️ Eliminar</button>
               </td>
             </tr>
           `;
@@ -944,6 +945,41 @@
           loadUsers(); // Reload users table
         } catch (err) {
           alert('❌ Error al desbanear usuario: ' + err.message);
+        }
+      }
+
+      // Delete user completely
+      async function deleteUser(userId, userName) {
+        // First confirmation
+        if (!confirm(`⚠️ ADVERTENCIA: ¿Estás seguro de que quieres ELIMINAR PERMANENTEMENTE a ${userName}?\n\nEsto eliminará:\n• El usuario de la base de datos\n• Todos sus formularios enviados\n• Todas sus imágenes subidas\n• Todos sus datos en los buckets de almacenamiento\n\nEsta acción NO se puede deshacer.`)) {
+          return;
+        }
+
+        // Second confirmation (extra safety)
+        const confirmation = prompt(`Para confirmar, escribe el nombre del usuario: "${userName}"`);
+        if (confirmation !== userName) {
+          alert('❌ Nombre incorrecto. Eliminación cancelada.');
+          return;
+        }
+
+        try {
+          const response = await fetch(`/api/admin/users/${userId}`, {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+
+          const data = await response.json();
+          
+          if (!data.ok) {
+            throw new Error(data.error || 'Error al eliminar usuario');
+          }
+
+          alert(`✅ Usuario ${userName} eliminado exitosamente.\n\nEliminado:\n• ${data.deleted.formSubmissions} formularios\n• ${data.deleted.uploads} registros de imágenes\n• ${data.deleted.mobileTokens} tokens móviles`);
+          loadUsers(); // Reload users table
+        } catch (err) {
+          alert('❌ Error al eliminar usuario: ' + err.message);
         }
       }
 

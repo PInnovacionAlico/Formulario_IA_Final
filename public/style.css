@@ -1896,6 +1896,7 @@ button[type="submit"]:hover {
   position: relative;
   width: 100%;
   margin-bottom: 15px;
+  z-index: 100; /* Asegurar que esté por encima de otros elementos */
 }
 
 .custom-select-trigger {
@@ -1952,18 +1953,17 @@ button[type="submit"]:hover {
   border: 2px solid var(--alico-blue);
   border-top: none;
   border-radius: 0 0 8px 8px;
-  max-height: 0;
-  overflow: hidden;
-  opacity: 0;
-  transition: all 0.3s ease;
+  max-height: 400px;
+  display: none;
   z-index: 1000;
   box-shadow: 0 4px 12px rgba(0, 15, 159, 0.15);
 }
 
 .custom-select-dropdown.active {
-  max-height: 400px;
-  opacity: 1;
-  overflow-y: auto;
+  display: block;
+  overflow-y: auto !important;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 .custom-select-search {
@@ -1992,6 +1992,8 @@ button[type="submit"]:hover {
 .custom-select-options {
   max-height: 340px;
   overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch; /* Para mejor scroll en iOS */
 }
 
 .custom-select-option {
