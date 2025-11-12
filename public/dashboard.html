@@ -1255,6 +1255,69 @@
       });
 
       loadUploads();
+
+      // Auto-refresh: Check for new uploads every 10 seconds
+      let autoRefreshInterval = null;
+      let lastUploadCount = 0;
+
+      async function checkForNewUploads() {
+        try {
+          const response = await fetch('/api/uploads', {
+            headers: { 'Authorization': 'Bearer ' + token }
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            const currentCount = data.uploads?.length || 0;
+            
+            // Si hay cambios en el número de fotos, recargar
+            if (currentCount !== lastUploadCount && lastUploadCount !== 0) {
+              console.log('📸 Nuevas fotos detectadas, actualizando...');
+              invalidateCache();
+              await loadUploads(true);
+            }
+            
+            lastUploadCount = currentCount;
+          }
+        } catch (err) {
+          console.error('Error checking for updates:', err);
+        }
+      }
+
+      // Iniciar auto-refresh cuando la página está visible
+      function startAutoRefresh() {
+        if (!autoRefreshInterval) {
+          autoRefreshInterval = setInterval(checkForNewUploads, 10000); // cada 10 segundos
+          console.log('🔄 Auto-refresh activado');
+        }
+      }
+
+      // Detener auto-refresh cuando la página no está visible
+      function stopAutoRefresh() {
+        if (autoRefreshInterval) {
+          clearInterval(autoRefreshInterval);
+          autoRefreshInterval = null;
+          console.log('⏸️ Auto-refresh pausado');
+        }
+      }
+
+      // Detectar cuando la pestaña está visible/oculta
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+          stopAutoRefresh();
+        } else {
+          checkForNewUploads(); // Verificar inmediatamente al volver
+          startAutoRefresh();
+        }
+      });
+
+      // Iniciar auto-refresh
+      startAutoRefresh();
+
+      // Limpiar al cerrar la página
+      window.addEventListener('beforeunload', () => {
+        stopAutoRefresh();
+      });
     </script>
   </body>
 </html>
