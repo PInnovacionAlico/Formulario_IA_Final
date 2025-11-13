@@ -2219,13 +2219,41 @@ app.get('/api/admin/submissions', authenticateAdmin, async (req, res) => {
     
     if (error) throw error;
 
-    const submissionsWithInfo = submissions.map(sub => ({
-      ...sub,
-      user_name: sub.users?.name || 'Desconocido',
-      user_email: sub.users?.email || 'N/A',
-      photo_filename: sub.uploads?.custom_name || sub.uploads?.filename || 'Foto eliminada',
-      product_name: sub.products?.name || null,
-      product_category: sub.products?.category || null
+    // Enrich submissions with AI image data
+    const submissionsWithInfo = await Promise.all(submissions.map(async (sub) => {
+      // Find AI-generated image for this user and form submission
+      let aiImageUrl = null;
+      
+      if (sub.user_id && sub.created_at) {
+        const { data: aiImages, error: aiError } = await supabase
+          .from('uploads')
+          .select('filename, path, bucket_name')
+          .eq('owner_id', sub.user_id)
+          .eq('bucket_name', 'generated')
+          .gte('created_at', new Date(new Date(sub.created_at).getTime() - 60000).toISOString()) // 1 min before
+          .lte('created_at', new Date(new Date(sub.created_at).getTime() + 300000).toISOString()) // 5 min after
+          .order('created_at', { ascending: false })
+          .limit(1);
+        
+        if (!aiError && aiImages && aiImages.length > 0) {
+          const aiImage = aiImages[0];
+          const { data: publicUrl } = supabase.storage
+            .from('generated')
+            .getPublicUrl(aiImage.path);
+          
+          aiImageUrl = publicUrl?.publicUrl || null;
+        }
+      }
+
+      return {
+        ...sub,
+        user_name: sub.users?.name || 'Desconocido',
+        user_email: sub.users?.email || 'N/A',
+        photo_filename: sub.uploads?.custom_name || sub.uploads?.filename || 'Foto eliminada',
+        product_name: sub.products?.name || null,
+        product_category: sub.products?.category || null,
+        ai_image_url: aiImageUrl
+      };
     }));
 
     res.json({ ok: true, submissions: submissionsWithInfo });
