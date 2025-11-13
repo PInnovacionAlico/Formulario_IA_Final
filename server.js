@@ -1037,7 +1037,7 @@ app.get('/api/credits', authenticate, async (req, res) => {
 // ⚠️ IMPORTANT: URL expires in 5 minutes to minimize Supabase bandwidth usage
 // The webhook receiver MUST download the image immediately upon receiving this payload
 app.post('/api/submit-form', authenticate, async (req, res) => {
-  const { photo_id, form_type, product_id, ...formData } = req.body || {};
+  const { photo_id, form_type, product_id, market_sector, product_description, logo_display_preference, ...formData } = req.body || {};
   
   if (!photo_id) {
     return res.status(400).json({ error: 'photo_id is required' });
@@ -1179,6 +1179,9 @@ app.post('/api/submit-form', authenticate, async (req, res) => {
         size: upload.size,
         created_at: upload.created_at
       },
+      market_sector: market_sector || null,
+      product_description: product_description || null,
+      logo_display_preference: logo_display_preference || null,
       form_data: formData // Additional form fields
     };
 
@@ -1241,6 +1244,9 @@ app.post('/api/submit-form', authenticate, async (req, res) => {
           photo_id: photo_id,
           form_type: form_type || null,
           product_id: product_id || null,
+          market_sector: market_sector || null,
+          product_description: product_description || null,
+          logo_display_preference: logo_display_preference || null,
           success: false,
           error_message: 'La generación de la imagen falló en el servidor de IA',
           webhook_sent: true,
@@ -1335,6 +1341,9 @@ app.post('/api/submit-form', authenticate, async (req, res) => {
         photo_id: photo_id,
         form_type: form_type || null,
         product_id: product_id || null,
+        market_sector: market_sector || null,
+        product_description: product_description || null,
+        logo_display_preference: logo_display_preference || null,
         success: true,
         webhook_sent: true,
         webhook_url: webhookUrl,
@@ -1365,6 +1374,9 @@ app.post('/api/submit-form', authenticate, async (req, res) => {
         photo_id: photo_id,
         form_type: form_type || null,
         product_id: product_id || null,
+        market_sector: market_sector || null,
+        product_description: product_description || null,
+        logo_display_preference: logo_display_preference || null,
         success: true, // Form was processed successfully
         error_message: `Webhook failed: ${webhookErr.message}`,
         webhook_sent: false,
@@ -1394,6 +1406,9 @@ app.post('/api/submit-form', authenticate, async (req, res) => {
         photo_id: req.body.photo_id || null,
         form_type: req.body.form_type || null,
         product_id: req.body.product_id || null,
+        market_sector: req.body.market_sector || null,
+        product_description: req.body.product_description || null,
+        logo_display_preference: req.body.logo_display_preference || null,
         success: false,
         error_message: err.message || String(err),
         webhook_sent: false,

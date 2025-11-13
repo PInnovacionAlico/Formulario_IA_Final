@@ -88,25 +88,150 @@
           <div class="wizard-progress">
             <div class="wizard-step active" data-step="1">
               <div class="step-circle">1</div>
-              <div class="step-label">Producto</div>
+              <div class="step-label">Mercado</div>
             </div>
             <div class="wizard-line"></div>
             <div class="wizard-step" data-step="2">
               <div class="step-circle">2</div>
-              <div class="step-label">Foto</div>
+              <div class="step-label">Descripción</div>
             </div>
             <div class="wizard-line"></div>
             <div class="wizard-step" data-step="3">
               <div class="step-circle">3</div>
+              <div class="step-label">Empaque</div>
+            </div>
+            <div class="wizard-line"></div>
+            <div class="wizard-step" data-step="4">
+              <div class="step-circle">4</div>
+              <div class="step-label">Foto</div>
+            </div>
+            <div class="wizard-line"></div>
+            <div class="wizard-step" data-step="5">
+              <div class="step-circle">5</div>
+              <div class="step-label">Logo</div>
+            </div>
+            <div class="wizard-line"></div>
+            <div class="wizard-step" data-step="6">
+              <div class="step-circle">6</div>
               <div class="step-label">Confirmar</div>
             </div>
           </div>
 
           <form id="mainForm">
-            <!-- Step 1: Selección de Producto -->
+            <!-- Step 1: Mercado del producto -->
             <div class="form-step active" data-step="1">
               <div class="form-section">
-                <h3>📦 Paso 1: Selecciona el tipo de producto</h3>
+                <h3>🏪 Paso 1: ¿A qué mercado pertenece tu producto?</h3>
+                
+                <div class="form-section-content">
+                  <div class="radio-options-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; margin-top: 20px;">
+                    <label class="radio-option">
+                      <input type="radio" name="marketSector" value="Cárnicos" required>
+                      <span class="radio-label">🥩 Cárnicos</span>
+                    </label>
+                    <label class="radio-option">
+                      <input type="radio" name="marketSector" value="Café y chocolate" required>
+                      <span class="radio-label">☕ Café y chocolate</span>
+                    </label>
+                    <label class="radio-option">
+                      <input type="radio" name="marketSector" value="Snacks, cereales y polvos" required>
+                      <span class="radio-label">🍿 Snacks, cereales y polvos</span>
+                    </label>
+                    <label class="radio-option">
+                      <input type="radio" name="marketSector" value="Cosméticos" required>
+                      <span class="radio-label">💄 Cosméticos</span>
+                    </label>
+                    <label class="radio-option">
+                      <input type="radio" name="marketSector" value="Farmacéutico" required>
+                      <span class="radio-label">💊 Farmacéutico</span>
+                    </label>
+                    <label class="radio-option">
+                      <input type="radio" name="marketSector" value="Cuidado del hogar" required>
+                      <span class="radio-label">🧹 Cuidado del hogar</span>
+                    </label>
+                    <label class="radio-option">
+                      <input type="radio" name="marketSector" value="Industrial y agroindustrial" required>
+                      <span class="radio-label">🏭 Industrial y agroindustrial</span>
+                    </label>
+                    <label class="radio-option">
+                      <input type="radio" name="marketSector" value="Lácteos" required>
+                      <span class="radio-label">🥛 Lácteos</span>
+                    </label>
+                    <label class="radio-option">
+                      <input type="radio" name="marketSector" value="Mascotas" required>
+                      <span class="radio-label">🐾 Mascotas</span>
+                    </label>
+                    <label class="radio-option">
+                      <input type="radio" name="marketSector" value="Panadería y repostería" required>
+                      <span class="radio-label">🍰 Panadería y repostería</span>
+                    </label>
+                    <label class="radio-option">
+                      <input type="radio" name="marketSector" value="Salsas y aderezos" required>
+                      <span class="radio-label">🍅 Salsas y aderezos</span>
+                    </label>
+                    <label class="radio-option">
+                      <input type="radio" name="marketSector" value="Alimentos preparados" required>
+                      <span class="radio-label">🍱 Alimentos preparados</span>
+                    </label>
+                    <label class="radio-option">
+                      <input type="radio" name="marketSector" value="Fruver" required>
+                      <span class="radio-label">🥗 Fruver (frutas y verduras)</span>
+                    </label>
+                  </div>
+                </div>
+                
+                <!-- Navigation buttons for Step 1 -->
+                <div style="display: flex; gap: 12px; justify-content: center; margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 10px;">
+                  <button type="button" id="step1Next" class="btn-submit" style="padding: 14px 40px; font-size: 16px; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                    <span style="font-size: 20px;">→</span>
+                    <span>Siguiente</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 2: Descripción del producto -->
+            <div class="form-step" data-step="2">
+              <div class="form-section">
+                <h3>📝 Paso 2: ¿Qué producto vas a empacar?</h3>
+                
+                <div class="form-section-content">
+                  <div style="margin-top: 20px;">
+                    <label for="productDescription" style="display: block; margin-bottom: 8px; font-weight: 600;">Descripción del producto</label>
+                    <textarea 
+                      id="productDescription" 
+                      name="productDescription" 
+                      rows="4" 
+                      maxlength="120"
+                      placeholder="Describe brevemente tu producto (máximo 120 caracteres)"
+                      required
+                      style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 15px; font-family: inherit; resize: vertical;"
+                    ></textarea>
+                    <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 13px;">
+                      <span id="charCountWarning" style="color: #dc3545; display: none;">⚠️ Has alcanzado el límite de caracteres</span>
+                      <span id="charCount" style="color: #666;">0 / 120 caracteres</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Navigation buttons for Step 2 -->
+                <div style="display: flex; gap: 12px; justify-content: center; margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 10px;">
+                  <button type="button" id="step2Prev" class="btn-secondary" style="padding: 14px 40px; font-size: 16px; font-weight: 700; flex: 1; max-width: 200px; display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                    <span style="font-size: 20px;">←</span>
+                    <span>Anterior</span>
+                  </button>
+                  <button type="button" id="step2Next" class="btn-submit" style="padding: 14px 40px; font-size: 16px; font-weight: 700; flex: 1; max-width: 200px; display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                    <span style="font-size: 20px;">→</span>
+                    <span>Siguiente</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 3: Selección de Producto -->
+            <div class="form-step" data-step="3">
+              <div class="form-section">
+                <h3>📦 Paso 3: Selecciona el tipo de empaque</h3>
                 
                 <div class="form-section-content">
                   <div id="productsLoading" style="text-align: center; padding: 40px; color: #666;">
@@ -122,9 +247,13 @@
                   <div id="productsContainer"></div>
                 </div>
                 
-                <!-- Navigation buttons for Step 1 -->
+                <!-- Navigation buttons for Step 3 -->
                 <div style="display: flex; gap: 12px; justify-content: center; margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 10px;">
-                  <button type="button" id="step1Next" class="btn-submit" style="padding: 14px 40px; font-size: 16px; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                  <button type="button" id="step3Prev" class="btn-secondary" style="padding: 14px 40px; font-size: 16px; font-weight: 700; flex: 1; max-width: 200px; display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                    <span style="font-size: 20px;">←</span>
+                    <span>Anterior</span>
+                  </button>
+                  <button type="button" id="step3Next" class="btn-submit" style="padding: 14px 40px; font-size: 16px; font-weight: 700; flex: 1; max-width: 200px; display: flex; flex-direction: column; align-items: center; gap: 5px;">
                     <span style="font-size: 20px;">→</span>
                     <span>Siguiente</span>
                   </button>
@@ -132,10 +261,10 @@
               </div>
             </div>
 
-            <!-- Step 2: Seleccionar foto -->
-            <div class="form-step" data-step="2">
+            <!-- Step 4: Seleccionar foto -->
+            <div class="form-step" data-step="4">
               <div class="form-section">
-                <h3>📷 Paso 2: Selecciona una foto</h3>
+                <h3>📷 Paso 4: Selecciona una foto</h3>
                 
                 <div class="form-section-content">
                   <div class="photo-selector-container">
@@ -176,13 +305,13 @@
                   </div>
                 </div>
                 
-                <!-- Navigation buttons for Step 2 -->
+                <!-- Navigation buttons for Step 4 -->
                 <div style="display: flex; gap: 12px; justify-content: center; margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 10px;">
-                  <button type="button" id="step2Prev" class="btn-secondary" style="padding: 14px 40px; font-size: 16px; font-weight: 700; flex: 1; max-width: 200px; display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                  <button type="button" id="step4Prev" class="btn-secondary" style="padding: 14px 40px; font-size: 16px; font-weight: 700; flex: 1; max-width: 200px; display: flex; flex-direction: column; align-items: center; gap: 5px;">
                     <span style="font-size: 20px;">←</span>
                     <span>Anterior</span>
                   </button>
-                  <button type="button" id="step2Next" class="btn-submit" style="padding: 14px 40px; font-size: 16px; font-weight: 700; flex: 1; max-width: 200px; display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                  <button type="button" id="step4Next" class="btn-submit" style="padding: 14px 40px; font-size: 16px; font-weight: 700; flex: 1; max-width: 200px; display: flex; flex-direction: column; align-items: center; gap: 5px;">
                     <span style="font-size: 20px;">→</span>
                     <span>Siguiente</span>
                   </button>
@@ -190,31 +319,79 @@
               </div>
             </div>
 
-            <!-- Step 3: Confirmar -->
-            <div class="form-step" data-step="3">
+            <!-- Step 5: Mostrar logo -->
+            <div class="form-step" data-step="5">
               <div class="form-section">
-                <h3>✅ Paso 3: Confirmar y enviar</h3>
+                <h3>🏷️ Paso 5: ¿De qué forma te gustaría mostrar tu logo en el empaque?</h3>
+                
+                <div class="form-section-content">
+                  <div class="radio-options-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin-top: 20px;">
+                    <label class="radio-option">
+                      <input type="radio" name="logoDisplay" value="Con una etiqueta" required>
+                      <span class="radio-label">🏷️ Con una etiqueta</span>
+                    </label>
+                    <label class="radio-option">
+                      <input type="radio" name="logoDisplay" value="Grabado en el empaque" required>
+                      <span class="radio-label">✨ Grabado en el empaque</span>
+                    </label>
+                    <label class="radio-option">
+                      <input type="radio" name="logoDisplay" value="No quiero mostrar mi logo" required>
+                      <span class="radio-label">❌ No quiero mostrar mi logo</span>
+                    </label>
+                  </div>
+                </div>
+                
+                <!-- Navigation buttons for Step 5 -->
+                <div style="display: flex; gap: 12px; justify-content: center; margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 10px;">
+                  <button type="button" id="step5Prev" class="btn-secondary" style="padding: 14px 40px; font-size: 16px; font-weight: 700; flex: 1; max-width: 200px; display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                    <span style="font-size: 20px;">←</span>
+                    <span>Anterior</span>
+                  </button>
+                  <button type="button" id="step5Next" class="btn-submit" style="padding: 14px 40px; font-size: 16px; font-weight: 700; flex: 1; max-width: 200px; display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                    <span style="font-size: 20px;">→</span>
+                    <span>Siguiente</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 6: Confirmar -->
+            <div class="form-step" data-step="6">
+              <div class="form-section">
+                <h3>✅ Paso 6: Confirmar y enviar</h3>
                 
                 <div class="form-section-content">
                   <div class="confirmation-summary">
                     <div class="summary-item">
-                      <strong>Producto seleccionado:</strong>
+                      <strong>Mercado del producto:</strong>
+                      <div id="confirmMarketSector" style="margin-top: 8px;"></div>
+                    </div>
+                    <div class="summary-item">
+                      <strong>Descripción del producto:</strong>
+                      <div id="confirmProductDescription" style="margin-top: 8px;"></div>
+                    </div>
+                    <div class="summary-item">
+                      <strong>Tipo de empaque seleccionado:</strong>
                       <div id="confirmProduct" style="margin-top: 8px;"></div>
                     </div>
                     <div class="summary-item">
                       <strong>Foto seleccionada:</strong>
                       <div id="confirmPhoto" style="margin-top: 8px;"></div>
                     </div>
+                    <div class="summary-item">
+                      <strong>Forma de mostrar el logo:</strong>
+                      <div id="confirmLogoDisplay" style="margin-top: 8px;"></div>
+                    </div>
                   </div>
                 </div>
                 
-                <!-- Navigation buttons for Step 3 -->
+                <!-- Navigation buttons for Step 6 -->
                 <div style="display: flex; gap: 12px; justify-content: center; margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 10px;">
-                  <button type="button" id="step3Prev" class="btn-secondary" style="padding: 14px 40px; font-size: 16px; font-weight: 700; flex: 1; max-width: 200px; display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                  <button type="button" id="step6Prev" class="btn-secondary" style="padding: 14px 40px; font-size: 16px; font-weight: 700; flex: 1; max-width: 200px; display: flex; flex-direction: column; align-items: center; gap: 5px;">
                     <span style="font-size: 20px;">←</span>
                     <span>Anterior</span>
                   </button>
-                  <button type="button" id="step3Submit" class="btn-submit" style="padding: 14px 40px; font-size: 16px; font-weight: 700; flex: 1; max-width: 200px; display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                  <button type="button" id="step6Submit" class="btn-submit" style="padding: 14px 40px; font-size: 16px; font-weight: 700; flex: 1; max-width: 200px; display: flex; flex-direction: column; align-items: center; gap: 5px;">
                     <span style="font-size: 20px;">✓</span>
                     <span>Enviar formulario</span>
                   </button>
@@ -512,15 +689,37 @@
 
       function validateStep(step) {
         if (step === 1) {
-          const selectedProduct = document.querySelector('input[name="product_type"]:checked');
-          if (!selectedProduct) {
-            alert('Por favor selecciona un producto');
+          const selectedMarket = document.querySelector('input[name="marketSector"]:checked');
+          if (!selectedMarket) {
+            alert('Por favor selecciona el mercado de tu producto');
             return false;
           }
         } else if (step === 2) {
+          const productDesc = document.getElementById('productDescription').value.trim();
+          if (!productDesc || productDesc.length === 0) {
+            alert('Por favor describe tu producto');
+            return false;
+          }
+          if (productDesc.length > 120) {
+            alert('La descripción no puede exceder los 120 caracteres');
+            return false;
+          }
+        } else if (step === 3) {
+          const selectedProduct = document.querySelector('input[name="product_type"]:checked');
+          if (!selectedProduct) {
+            alert('Por favor selecciona un tipo de empaque');
+            return false;
+          }
+        } else if (step === 4) {
           const photoId = document.getElementById('photoSelect').value;
           if (!photoId) {
             alert('Por favor selecciona una foto');
+            return false;
+          }
+        } else if (step === 5) {
+          const selectedLogo = document.querySelector('input[name="logoDisplay"]:checked');
+          if (!selectedLogo) {
+            alert('Por favor selecciona cómo mostrar tu logo');
             return false;
           }
         }
@@ -528,6 +727,19 @@
       }
 
       function updateConfirmation() {
+        // Update market sector confirmation
+        const selectedMarket = document.querySelector('input[name="marketSector"]:checked');
+        if (selectedMarket) {
+          const marketLabel = selectedMarket.nextElementSibling.textContent;
+          document.getElementById('confirmMarketSector').innerHTML = `<div style="font-weight: 600; font-size: 16px; color: var(--alico-blue);">${marketLabel}</div>`;
+        }
+
+        // Update product description confirmation
+        const productDesc = document.getElementById('productDescription').value.trim();
+        if (productDesc) {
+          document.getElementById('confirmProductDescription').innerHTML = `<div style="padding: 12px; background: #f8f9fa; border-left: 4px solid var(--alico-gold); border-radius: 6px; font-size: 15px; color: #333;">${productDesc}</div>`;
+        }
+
         // Update product confirmation
         const selectedProduct = document.querySelector('input[name="product_type"]:checked');
         if (selectedProduct) {
@@ -566,7 +778,34 @@
             document.getElementById('confirmPhoto').innerHTML = html;
           }
         }
+
+        // Update logo display confirmation
+        const selectedLogo = document.querySelector('input[name="logoDisplay"]:checked');
+        if (selectedLogo) {
+          const logoLabel = selectedLogo.nextElementSibling.textContent;
+          document.getElementById('confirmLogoDisplay').innerHTML = `<div style="font-weight: 600; font-size: 16px; color: var(--alico-blue);">${logoLabel}</div>`;
+        }
       }
+
+      // Character counter for product description
+      const productDescTextarea = document.getElementById('productDescription');
+      const charCountEl = document.getElementById('charCount');
+      const charCountWarning = document.getElementById('charCountWarning');
+      
+      productDescTextarea.addEventListener('input', () => {
+        const length = productDescTextarea.value.length;
+        charCountEl.textContent = `${length} / 120 caracteres`;
+        
+        if (length >= 120) {
+          charCountWarning.style.display = 'inline';
+          charCountEl.style.color = '#dc3545';
+          charCountEl.style.fontWeight = '700';
+        } else {
+          charCountWarning.style.display = 'none';
+          charCountEl.style.color = '#666';
+          charCountEl.style.fontWeight = '400';
+        }
+      });
 
       // Step 1 navigation
       document.getElementById('step1Next').addEventListener('click', () => {
@@ -585,7 +824,6 @@
       document.getElementById('step2Next').addEventListener('click', () => {
         if (validateStep(2)) {
           currentStep = 3;
-          updateConfirmation();
           showStep(currentStep);
         }
       });
@@ -596,14 +834,57 @@
         showStep(currentStep);
       });
 
-      document.getElementById('step3Submit').addEventListener('click', async (e) => {
+      document.getElementById('step3Next').addEventListener('click', () => {
+        if (validateStep(3)) {
+          currentStep = 4;
+          showStep(currentStep);
+        }
+      });
+
+      // Step 4 navigation
+      document.getElementById('step4Prev').addEventListener('click', () => {
+        currentStep = 3;
+        showStep(currentStep);
+      });
+
+      document.getElementById('step4Next').addEventListener('click', () => {
+        if (validateStep(4)) {
+          currentStep = 5;
+          showStep(currentStep);
+        }
+      });
+
+      // Step 5 navigation
+      document.getElementById('step5Prev').addEventListener('click', () => {
+        currentStep = 4;
+        showStep(currentStep);
+      });
+
+      document.getElementById('step5Next').addEventListener('click', () => {
+        if (validateStep(5)) {
+          currentStep = 6;
+          updateConfirmation();
+          showStep(currentStep);
+        }
+      });
+
+      // Step 6 navigation
+      document.getElementById('step6Prev').addEventListener('click', () => {
+        currentStep = 5;
+        showStep(currentStep);
+      });
+
+      document.getElementById('step6Submit').addEventListener('click', async (e) => {
         e.preventDefault();
         console.log('🚀 Enviando formulario...');
         
         const photoId = document.getElementById('photoSelect').value;
         const selectedProduct = document.querySelector('input[name="product_type"]:checked');
+        const selectedMarket = document.querySelector('input[name="marketSector"]:checked');
+        const productDesc = document.getElementById('productDescription').value.trim();
+        const selectedLogo = document.querySelector('input[name="logoDisplay"]:checked');
 
-        if (!selectedProduct || !photoId) {
+        if (!selectedMarket || !productDesc || !selectedProduct || !photoId || !selectedLogo) {
           alert('Por favor completa todos los campos requeridos');
           return;
         }
@@ -628,6 +909,9 @@
             photo_id: photoId,
             form_type: 'termoformado',
             product_id: selectedProduct.value,
+            market_sector: selectedMarket.value,
+            product_description: productDesc,
+            logo_display_preference: selectedLogo.value
           };
 
           console.log('📤 Datos a enviar:', formData);
