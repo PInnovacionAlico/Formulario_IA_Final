@@ -2159,19 +2159,35 @@ app.get('/api/admin/users', authenticateAdmin, async (req, res) => {
     
     if (error) throw error;
 
-    // Get upload stats for each user
+    // Get upload stats for each user (including AI-generated images)
     const usersWithStats = await Promise.all(users.map(async (user) => {
       const { data: uploads, error: uploadsError } = await supabase
         .from('uploads')
-        .select('size')
+        .select('size, bucket_name')
         .eq('owner_id', user.id);
       
       let totalPhotos = 0;
       let totalSize = 0;
+      let userPhotos = 0;
+      let userPhotosSize = 0;
+      let aiPhotos = 0;
+      let aiPhotosSize = 0;
       
       if (!uploadsError && uploads) {
         totalPhotos = uploads.length;
         totalSize = uploads.reduce((sum, upload) => sum + (upload.size || 0), 0);
+        
+        // Separate user uploads from AI-generated images
+        uploads.forEach(upload => {
+          const size = upload.size || 0;
+          if (upload.bucket_name === 'generated') {
+            aiPhotos++;
+            aiPhotosSize += size;
+          } else {
+            userPhotos++;
+            userPhotosSize += size;
+          }
+        });
       }
 
       // Get banned_by user name if applicable
@@ -2193,6 +2209,10 @@ app.get('/api/admin/users', authenticateAdmin, async (req, res) => {
         total_photos: totalPhotos,
         total_size_bytes: totalSize,
         total_size_mb: (totalSize / (1024 * 1024)).toFixed(2),
+        user_photos: userPhotos,
+        user_photos_size_mb: (userPhotosSize / (1024 * 1024)).toFixed(2),
+        ai_photos: aiPhotos,
+        ai_photos_size_mb: (aiPhotosSize / (1024 * 1024)).toFixed(2),
         banned_by_name
       };
     }));

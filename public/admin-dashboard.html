@@ -700,7 +700,10 @@
               <td>${user.email}</td>
               <td>${user.credits || 0}</td>
               <td><strong>${user.total_photos || 0}</strong></td>
-              <td>${user.total_size_mb || '0.00'} MB</td>
+              <td title="Usuario: ${user.user_photos_size_mb || '0.00'} MB | IA: ${user.ai_photos_size_mb || '0.00'} MB">
+                ${user.total_size_mb || '0.00'} MB
+                ${user.ai_photos > 0 ? `<br><span style="font-size: 10px; color: #666;">📸 ${user.user_photos || 0} (${user.user_photos_size_mb || '0.00'} MB) | 🤖 ${user.ai_photos || 0} (${user.ai_photos_size_mb || '0.00'} MB)</span>` : ''}
+              </td>
               <td>${new Date(user.created_at).toLocaleDateString('es-ES')}</td>
               <td>${adminBadge}</td>
               <td>${statusBadge}</td>
