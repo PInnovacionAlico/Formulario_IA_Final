@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Formulario Flow-Pack - Transforma tu empaque</title>
+    <title>Formulario Termoformado - Transforma tu empaque</title>
     <link rel="icon" type="image/png" href="/favicon/favicon-96x96.png" sizes="96x96" />
     <link rel="icon" type="image/svg+xml" href="/favicon/favicon.svg" />
     <link rel="shortcut icon" href="/favicon/favicon.ico" />
@@ -15,22 +15,56 @@
   <body>
     <div class="dashboard-container">
       <header class="dashboard-header">
-        <h1>📄 Formulario Flow-Pack</h1>
+        <h1>🔲 Formulario Termoformado</h1>
+        
+        <!-- Desktop menu -->
         <div class="user-info">
           <span id="userName"></span>
+          <div id="creditsDisplay" style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; background: linear-gradient(135deg, var(--alico-gold-20) 0%, var(--alico-gold-30) 100%); border-radius: 8px; margin-right: 12px; border: 2px solid var(--alico-gold);">
+            <span style="font-size: 20px;">💳</span>
+            <span style="font-weight: 700; color: var(--alico-gold); font-size: 18px;" id="creditsCount">...</span>
+            <span style="font-size: 13px; color: var(--alico-gold-80);">créditos</span>
+          </div>
           <button id="adminDashboardBtn" onclick="location.href='/admin-dashboard.html'" class="btn-secondary" style="display: none; background: linear-gradient(135deg, var(--alico-gold) 0%, #d4a017 100%); color: white;">🛡️ Panel Admin</button>
           <button type="button" onclick="location.href='/dashboard.html'" class="btn-secondary">Dashboard</button>
           <button id="logoutBtn" class="btn-secondary">Cerrar sesión</button>
         </div>
+
+        <!-- Mobile hamburger button -->
+        <button class="mobile-menu-toggle" id="mobileMenuToggle">
+          ☰
+        </button>
       </header>
+
+      <!-- Mobile menu overlay and sidebar -->
+      <div class="mobile-menu-overlay" id="mobileMenuOverlay"></div>
+      <div class="mobile-menu" id="mobileMenu">
+        <div class="mobile-menu-header">
+          <h2>Menú</h2>
+          <button class="mobile-menu-close" id="mobileMenuClose">×</button>
+        </div>
+        <div class="mobile-menu-content">
+          <div class="mobile-menu-user">
+            <span id="mobileUserName"></span>
+            <div class="mobile-menu-credits">
+              <span class="mobile-menu-credits-icon">💳</span>
+              <span class="mobile-menu-credits-count" id="mobileCreditsCount">...</span>
+              <span class="mobile-menu-credits-label">créditos</span>
+            </div>
+          </div>
+          <div class="mobile-menu-buttons">
+            <button id="mobileAdminDashboardBtn" onclick="location.href='/admin-dashboard.html'" class="btn-secondary" style="display: none; background: linear-gradient(135deg, var(--alico-gold) 0%, #d4a017 100%); color: white;">🛡️ Panel Admin</button>
+            <button type="button" onclick="location.href='/dashboard.html'" class="btn-secondary">🏠 Dashboard</button>
+            <button type="button" onclick="location.href='/forms.html'" class="btn-secondary active-page">📋 Formularios</button>
+            <button type="button" onclick="location.href='/history.html'" class="btn-secondary">📊 Historial</button>
+            <button type="button" onclick="location.href='/settings.html'" class="btn-secondary">⚙️ Configuración</button>
+            <button id="mobileLogoutBtn" class="btn-secondary">🚪 Cerrar sesión</button>
+          </div>
+        </div>
+      </div>
 
       <div class="dashboard-content">
         <div class="gallery-section">
-          <div class="form-page-header">
-            <h2>📄 Formulario Flow-Pack</h2>
-            <p class="form-page-description">Empaque horizontal con sellado continuo - Alta velocidad de producción</p>
-          </div>
-
           <!-- Breadcrumb -->
           <div class="breadcrumb-container">
             <nav aria-label="breadcrumb">
@@ -44,65 +78,329 @@
                 </li>
                 <li class="breadcrumb-separator">›</li>
                 <li class="breadcrumb-item active" aria-current="page">
-                  📄 Flow-Pack
+                  🔲 Termoformado
                 </li>
               </ol>
             </nav>
           </div>
           
-          <form id="mainForm">
-            <!-- Sección 1: Seleccionar foto -->
-            <div class="form-section">
-              <h3>📷 1. Selecciona una foto</h3>
-              
-              <div class="form-section-content">
-                <div class="photo-selector-layout">
-                <!-- Menú lateral de carpetas -->
-                <div class="folder-menu">
-                  <div class="folder-menu-header">
-                    <h4>📁 Filtrar por carpeta</h4>
-                  </div>
-                  <div id="folderFilters" class="folder-filters">
-                    <p style="color: #999; font-size: 14px; padding: 12px;">Cargando carpetas...</p>
-                  </div>
-                </div>
+          <!-- Progress indicator -->
+          <div class="wizard-progress">
+            <div class="wizard-step active" data-step="1">
+              <div class="step-circle">1</div>
+              <div class="step-label">Mercado</div>
+            </div>
+            <div class="wizard-line"></div>
+            <div class="wizard-step" data-step="2">
+              <div class="step-circle">2</div>
+              <div class="step-label">Descripción</div>
+            </div>
+            <div class="wizard-line"></div>
+            <div class="wizard-step" data-step="3">
+              <div class="step-circle">3</div>
+              <div class="step-label">Empaque</div>
+            </div>
+            <div class="wizard-line"></div>
+            <div class="wizard-step" data-step="4">
+              <div class="step-circle">4</div>
+              <div class="step-label">Foto</div>
+            </div>
+            <div class="wizard-line"></div>
+            <div class="wizard-step" data-step="5">
+              <div class="step-circle">5</div>
+              <div class="step-label">Logo</div>
+            </div>
+            <div class="wizard-line"></div>
+            <div class="wizard-step" data-step="6">
+              <div class="step-circle">6</div>
+              <div class="step-label">Confirmar</div>
+            </div>
+          </div>
 
-                <!-- Contenedor principal -->
-                <div class="photo-selector-container">
-                  <!-- Dropdown selector -->
-                  <label>
-                    Foto
-                    <select id="photoSelect" name="photo_id" required>
-                      <option value="">Cargando fotos...</option>
-                    </select>
-                  </label>
-                  
-                  <!-- Preview de la foto seleccionada -->
-                  <div id="photoPreview" class="photo-preview-container" style="display: none;">
-                    <div class="preview-header">
-                      <span class="preview-title">🖼️ Vista previa</span>
-                      <span class="preview-hint">(Click para ampliar)</span>
-                    </div>
-                    <div class="preview-image-wrapper">
-                      <img 
-                        id="previewImage" 
-                        src="" 
-                        alt="Vista previa" 
-                        class="preview-image"
-                      />
-                    </div>
-                    <p id="previewInfo" class="preview-info"></p>
+          <form id="mainForm">
+            <!-- Step 1: Mercado del producto -->
+            <div class="form-step active" data-step="1">
+              <div class="form-section">
+                <h3>🏪 Paso 1: ¿A qué mercado pertenece tu producto?</h3>
+                
+                <div class="form-section-content">
+                  <div class="radio-options-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; margin-top: 20px;">
+                    <label class="radio-option">
+                      <input type="radio" name="marketSector" value="Cárnicos" required>
+                      <span class="radio-label">🥩 Cárnicos</span>
+                    </label>
+                    <label class="radio-option">
+                      <input type="radio" name="marketSector" value="Café y chocolate" required>
+                      <span class="radio-label">☕ Café y chocolate</span>
+                    </label>
+                    <label class="radio-option">
+                      <input type="radio" name="marketSector" value="Snacks, cereales y polvos" required>
+                      <span class="radio-label">🍿 Snacks, cereales y polvos</span>
+                    </label>
+                    <label class="radio-option">
+                      <input type="radio" name="marketSector" value="Cosméticos" required>
+                      <span class="radio-label">💄 Cosméticos</span>
+                    </label>
+                    <label class="radio-option">
+                      <input type="radio" name="marketSector" value="Farmacéutico" required>
+                      <span class="radio-label">💊 Farmacéutico</span>
+                    </label>
+                    <label class="radio-option">
+                      <input type="radio" name="marketSector" value="Cuidado del hogar" required>
+                      <span class="radio-label">🧹 Cuidado del hogar</span>
+                    </label>
+                    <label class="radio-option">
+                      <input type="radio" name="marketSector" value="Industrial y agroindustrial" required>
+                      <span class="radio-label">🏭 Industrial y agroindustrial</span>
+                    </label>
+                    <label class="radio-option">
+                      <input type="radio" name="marketSector" value="Lácteos" required>
+                      <span class="radio-label">🥛 Lácteos</span>
+                    </label>
+                    <label class="radio-option">
+                      <input type="radio" name="marketSector" value="Mascotas" required>
+                      <span class="radio-label">🐾 Mascotas</span>
+                    </label>
+                    <label class="radio-option">
+                      <input type="radio" name="marketSector" value="Panadería y repostería" required>
+                      <span class="radio-label">🍰 Panadería y repostería</span>
+                    </label>
+                    <label class="radio-option">
+                      <input type="radio" name="marketSector" value="Salsas y aderezos" required>
+                      <span class="radio-label">🍅 Salsas y aderezos</span>
+                    </label>
+                    <label class="radio-option">
+                      <input type="radio" name="marketSector" value="Alimentos preparados" required>
+                      <span class="radio-label">🍱 Alimentos preparados</span>
+                    </label>
+                    <label class="radio-option">
+                      <input type="radio" name="marketSector" value="Fruver" required>
+                      <span class="radio-label">🥗 Fruver (frutas y verduras)</span>
+                    </label>
                   </div>
                 </div>
-              </div>
+                
+                <!-- Navigation buttons for Step 1 -->
+                <div style="display: flex; gap: 12px; justify-content: center; margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 10px;">
+                  <button type="button" id="step1Next" class="btn-submit" style="padding: 14px 40px; font-size: 16px; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                    <span style="font-size: 20px;">→</span>
+                    <span>Siguiente</span>
+                  </button>
+                </div>
               </div>
             </div>
 
-            <!-- Más secciones se agregarán aquí -->
+            <!-- Step 2: Descripción del producto -->
+            <div class="form-step" data-step="2">
+              <div class="form-section">
+                <h3>📝 Paso 2: ¿Qué producto vas a empacar?</h3>
+                
+                <div class="form-section-content">
+                  <div style="margin-top: 20px;">
+                    <label for="productDescription" style="display: block; margin-bottom: 8px; font-weight: 600;">Descripción del producto</label>
+                    <textarea 
+                      id="productDescription" 
+                      name="productDescription" 
+                      rows="4" 
+                      maxlength="120"
+                      placeholder="Describe brevemente tu producto (máximo 120 caracteres)"
+                      required
+                      style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 15px; font-family: inherit; resize: vertical;"
+                    ></textarea>
+                    <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 13px;">
+                      <span id="charCountWarning" style="color: #dc3545; display: none;">⚠️ Has alcanzado el límite de caracteres</span>
+                      <span id="charCount" style="color: #666;">0 / 120 caracteres</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Navigation buttons for Step 2 -->
+                <div style="display: flex; gap: 12px; justify-content: center; margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 10px;">
+                  <button type="button" id="step2Prev" class="btn-secondary" style="padding: 14px 40px; font-size: 16px; font-weight: 700; flex: 1; max-width: 200px; display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                    <span style="font-size: 20px;">←</span>
+                    <span>Anterior</span>
+                  </button>
+                  <button type="button" id="step2Next" class="btn-submit" style="padding: 14px 40px; font-size: 16px; font-weight: 700; flex: 1; max-width: 200px; display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                    <span style="font-size: 20px;">→</span>
+                    <span>Siguiente</span>
+                  </button>
+                </div>
+              </div>
+            </div>
 
-            <div class="form-actions">
-              <button type="submit" class="btn-submit">Enviar formulario</button>
-              <button type="button" onclick="location.href='/dashboard.html'" class="btn-secondary">Cancelar</button>
+            <!-- Step 3: Selección de Producto -->
+            <div class="form-step" data-step="3">
+              <div class="form-section">
+                <h3>📦 Paso 3: Selecciona el tipo de empaque</h3>
+                
+                <div class="form-section-content">
+                  <div id="productsLoading" style="text-align: center; padding: 40px; color: #666;">
+                    <div style="font-size: 48px; margin-bottom: 16px;">⏳</div>
+                    <p>Cargando productos...</p>
+                  </div>
+                  
+                  <!-- Category navigation buttons -->
+                  <div id="categoryNavigation" style="display: none; margin-bottom: 20px; gap: 12px; flex-wrap: wrap; justify-content: center;">
+                    <!-- Buttons will be generated dynamically -->
+                  </div>
+                  
+                  <div id="productsContainer"></div>
+                </div>
+                
+                <!-- Navigation buttons for Step 3 -->
+                <div style="display: flex; gap: 12px; justify-content: center; margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 10px;">
+                  <button type="button" id="step3Prev" class="btn-secondary" style="padding: 14px 40px; font-size: 16px; font-weight: 700; flex: 1; max-width: 200px; display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                    <span style="font-size: 20px;">←</span>
+                    <span>Anterior</span>
+                  </button>
+                  <button type="button" id="step3Next" class="btn-submit" style="padding: 14px 40px; font-size: 16px; font-weight: 700; flex: 1; max-width: 200px; display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                    <span style="font-size: 20px;">→</span>
+                    <span>Siguiente</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 4: Seleccionar foto -->
+            <div class="form-step" data-step="4">
+              <div class="form-section">
+                <h3>📷 Paso 4: Selecciona una foto</h3>
+                
+                <div class="form-section-content">
+                  <div class="photo-selector-container">
+                    <!-- Dropdown selector personalizado -->
+                    <label>Foto</label>
+                    <div class="custom-select-wrapper">
+                      <div class="custom-select-trigger" id="photoSelectTrigger">
+                        <span class="custom-select-text">Cargando fotos...</span>
+                        <span class="custom-select-arrow">▼</span>
+                      </div>
+                      <div class="custom-select-dropdown" id="photoSelectDropdown">
+                        <div class="custom-select-search">
+                          <input type="text" id="photoSearchInput" placeholder="🔍 Buscar foto...">
+                        </div>
+                        <div class="custom-select-options" id="photoSelectOptions">
+                          <!-- Las opciones se cargarán dinámicamente -->
+                        </div>
+                      </div>
+                    </div>
+                    <input type="hidden" id="photoSelect" name="photo_id" required>
+                    
+                    <!-- Preview de la foto seleccionada -->
+                    <div id="photoPreview" class="photo-preview-container" style="display: none;">
+                      <div class="preview-header">
+                        <span class="preview-title">🖼️ Vista previa</span>
+                        <span class="preview-hint">(Click para ampliar)</span>
+                      </div>
+                      <div class="preview-image-wrapper">
+                        <img 
+                          id="previewImage" 
+                          src="" 
+                          alt="Vista previa" 
+                          class="preview-image"
+                        />
+                      </div>
+                      <p id="previewInfo" class="preview-info"></p>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Navigation buttons for Step 4 -->
+                <div style="display: flex; gap: 12px; justify-content: center; margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 10px;">
+                  <button type="button" id="step4Prev" class="btn-secondary" style="padding: 14px 40px; font-size: 16px; font-weight: 700; flex: 1; max-width: 200px; display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                    <span style="font-size: 20px;">←</span>
+                    <span>Anterior</span>
+                  </button>
+                  <button type="button" id="step4Next" class="btn-submit" style="padding: 14px 40px; font-size: 16px; font-weight: 700; flex: 1; max-width: 200px; display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                    <span style="font-size: 20px;">→</span>
+                    <span>Siguiente</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 5: Mostrar logo -->
+            <div class="form-step" data-step="5">
+              <div class="form-section">
+                <h3>🏷️ Paso 5: ¿De qué forma te gustaría mostrar tu logo en el empaque?</h3>
+                
+                <div class="form-section-content">
+                  <div class="radio-options-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin-top: 20px;">
+                    <label class="radio-option">
+                      <input type="radio" name="logoDisplay" value="Con una etiqueta" required>
+                      <span class="radio-label">🏷️ Con una etiqueta</span>
+                    </label>
+                    <label class="radio-option">
+                      <input type="radio" name="logoDisplay" value="Grabado en el empaque" required>
+                      <span class="radio-label">✨ Grabado en el empaque</span>
+                    </label>
+                    <label class="radio-option">
+                      <input type="radio" name="logoDisplay" value="Impreso en el empaque" required>
+                      <span class="radio-label">🖨️ Impreso en el empaque</span>
+                    </label>
+                    <label class="radio-option">
+                      <input type="radio" name="logoDisplay" value="No quiero mostrar mi logo" required>
+                      <span class="radio-label">❌ No quiero mostrar mi logo</span>
+                    </label>
+                  </div>
+                </div>
+                
+                <!-- Navigation buttons for Step 5 -->
+                <div style="display: flex; gap: 12px; justify-content: center; margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 10px;">
+                  <button type="button" id="step5Prev" class="btn-secondary" style="padding: 14px 40px; font-size: 16px; font-weight: 700; flex: 1; max-width: 200px; display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                    <span style="font-size: 20px;">←</span>
+                    <span>Anterior</span>
+                  </button>
+                  <button type="button" id="step5Next" class="btn-submit" style="padding: 14px 40px; font-size: 16px; font-weight: 700; flex: 1; max-width: 200px; display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                    <span style="font-size: 20px;">→</span>
+                    <span>Siguiente</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 6: Confirmar -->
+            <div class="form-step" data-step="6">
+              <div class="form-section">
+                <h3>✅ Paso 6: Confirmar y enviar</h3>
+                
+                <div class="form-section-content">
+                  <div class="confirmation-summary">
+                    <div class="summary-item">
+                      <strong>Mercado del producto:</strong>
+                      <div id="confirmMarketSector" style="margin-top: 8px;"></div>
+                    </div>
+                    <div class="summary-item">
+                      <strong>Descripción del producto:</strong>
+                      <div id="confirmProductDescription" style="margin-top: 8px;"></div>
+                    </div>
+                    <div class="summary-item">
+                      <strong>Tipo de empaque seleccionado:</strong>
+                      <div id="confirmProduct" style="margin-top: 8px;"></div>
+                    </div>
+                    <div class="summary-item">
+                      <strong>Foto seleccionada:</strong>
+                      <div id="confirmPhoto" style="margin-top: 8px;"></div>
+                    </div>
+                    <div class="summary-item">
+                      <strong>Forma de mostrar el logo:</strong>
+                      <div id="confirmLogoDisplay" style="margin-top: 8px;"></div>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Navigation buttons for Step 6 -->
+                <div style="display: flex; gap: 12px; justify-content: center; margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 10px;">
+                  <button type="button" id="step6Prev" class="btn-secondary" style="padding: 14px 40px; font-size: 16px; font-weight: 700; flex: 1; max-width: 200px; display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                    <span style="font-size: 20px;">←</span>
+                    <span>Anterior</span>
+                  </button>
+                  <button type="button" id="step6Submit" class="btn-submit" style="padding: 14px 40px; font-size: 16px; font-weight: 700; flex: 1; max-width: 200px; display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                    <span style="font-size: 20px;">✓</span>
+                    <span>Enviar formulario</span>
+                  </button>
+                </div>
+              </div>
             </div>
           </form>
         </div>
@@ -122,21 +420,46 @@
       const token = localStorage.getItem('token') || localStorage.getItem('authToken');
       const user = JSON.parse(localStorage.getItem('user') || localStorage.getItem('userInfo') || '{}');
       let allPhotos = [];
-      let allFolders = [];
-      let selectedFolders = new Set();
+      let currentFullImageUrl = '';
+      let allProducts = {};
       
       if (!token) {
         window.location.href = '/login.html';
       }
 
-      document.getElementById('userName').textContent = user.name || user.email || 'Usuario';
+      const userName = user.name || user.email || 'Usuario';
+      document.getElementById('userName').textContent = userName;
+      document.getElementById('mobileUserName').textContent = userName;
 
       // Check if user is admin and show admin button
       if (user.is_admin) {
         document.getElementById('adminDashboardBtn').style.display = 'inline-block';
+        document.getElementById('mobileAdminDashboardBtn').style.display = 'block';
       }
 
-      document.getElementById('logoutBtn').addEventListener('click', () => {
+      // Mobile menu handlers
+      const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+      const mobileMenu = document.getElementById('mobileMenu');
+      const mobileMenuOverlay = document.getElementById('mobileMenuOverlay');
+      const mobileMenuClose = document.getElementById('mobileMenuClose');
+
+      function openMobileMenu() {
+        mobileMenu.classList.add('active');
+        mobileMenuOverlay.classList.add('active');
+        document.body.style.overflow = 'hidden';
+      }
+
+      function closeMobileMenu() {
+        mobileMenu.classList.remove('active');
+        mobileMenuOverlay.classList.remove('active');
+        document.body.style.overflow = '';
+      }
+
+      mobileMenuToggle.addEventListener('click', openMobileMenu);
+      mobileMenuClose.addEventListener('click', closeMobileMenu);
+      mobileMenuOverlay.addEventListener('click', closeMobileMenu);
+
+      document.getElementById('mobileLogoutBtn').addEventListener('click', () => {
         if (confirm('¿Estás seguro que deseas cerrar sesión?')) {
           localStorage.removeItem('token');
           localStorage.removeItem('authToken');
@@ -146,192 +469,431 @@
         }
       });
 
-      // Cargar fotos del usuario
-      async function loadPhotos() {
+      // Load user credits
+      async function loadCredits() {
         try {
-          const res = await fetch('/api/uploads', {
+          const res = await fetch('/api/credits', {
             headers: { 'Authorization': 'Bearer ' + token }
           });
           const data = await res.json();
           
-          if (data.ok && data.uploads) {
-            allPhotos = data.uploads;
+          if (data.ok) {
+            // Update desktop credits
+            const creditsCount = document.getElementById('creditsCount');
+            creditsCount.textContent = data.credits;
             
-            // Extract folders
-            const folders = new Set();
-            data.uploads.forEach(photo => {
-              folders.add(photo.folder || 'Sin carpeta');
-            });
-            allFolders = Array.from(folders).sort();
+            // Update mobile credits
+            const mobileCreditsCount = document.getElementById('mobileCreditsCount');
+            mobileCreditsCount.textContent = data.credits;
             
-            // Initialize all folders as selected
-            allFolders.forEach(folder => selectedFolders.add(folder));
-            
-            populateFolderFilters();
-            populatePhotoSelect(data.uploads);
-          } else {
-            document.getElementById('photoSelect').innerHTML = '<option value="">Error al cargar fotos</option>';
+            // Change color based on credits remaining
+            const creditsDisplay = document.getElementById('creditsDisplay');
+            if (data.credits === 0) {
+              creditsDisplay.style.background = 'linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%)';
+              creditsDisplay.style.borderColor = '#dc3545';
+              creditsCount.style.color = '#dc3545';
+              
+              // Show next reset date
+              const nextReset = new Date(data.nextReset);
+              creditsDisplay.title = `Se recargarán el ${nextReset.toLocaleDateString('es-ES')}`;
+            } else if (data.credits === 1) {
+              creditsDisplay.style.background = 'linear-gradient(135deg, #fff3cd 0%, #ffe69c 100%)';
+              creditsDisplay.style.borderColor = '#ffc107';
+              creditsCount.style.color = '#856404';
+            }
           }
         } catch (err) {
-          console.error('Error loading photos:', err);
-          document.getElementById('photoSelect').innerHTML = '<option value="">Error al cargar fotos</option>';
+          console.error('Error loading credits:', err);
         }
       }
 
-      function populateFolderFilters() {
-        const container = document.getElementById('folderFilters');
-        container.innerHTML = '';
+      loadCredits();
 
-        allFolders.forEach(folder => {
-          const label = document.createElement('label');
-          label.className = 'folder-checkbox-label';
-          
-          const checkbox = document.createElement('input');
-          checkbox.type = 'checkbox';
-          checkbox.value = folder;
-          checkbox.checked = selectedFolders.has(folder);
-          checkbox.addEventListener('change', handleFolderFilter);
-          
-          const icon = document.createElement('span');
-          icon.textContent = '📁 ';
-          
-          const text = document.createElement('span');
-          text.textContent = folder;
-          
-          label.appendChild(checkbox);
-          label.appendChild(icon);
-          label.appendChild(text);
-          
-          container.appendChild(label);
-        });
-      }
+      // Category icons and labels
+      const categoryConfig = {
+        'estuches': { icon: '🎁', label: 'Estuches' },
+        'base-tapa': { icon: '🔄', label: 'Base y Tapa' },
+        'bandejas': { icon: '🍱', label: 'Bandejas' },
+        'domos': { icon: '🔮', label: 'Domos' }
+      };
 
-      function handleFolderFilter(e) {
-        const folder = e.target.value;
+      // Load products from API with cache
+      async function loadProducts() {
+        console.log('🔄 Iniciando carga de productos...');
+        console.log('Token:', token ? 'Existe ✓' : 'No existe ✗');
         
-        if (e.target.checked) {
-          selectedFolders.add(folder);
-        } else {
-          selectedFolders.delete(folder);
-        }
-        
-        // Filter photos and repopulate select
-        const filteredPhotos = allPhotos.filter(photo => 
-          selectedFolders.has(photo.folder || 'Sin carpeta')
-        );
-        
-        populatePhotoSelect(filteredPhotos);
-      }
+        try {
+          // Check cache first (5 minutes)
+          const cacheKey = 'products_termoformado';
+          const cacheTimeKey = 'products_termoformado_time';
+          const cacheData = localStorage.getItem(cacheKey);
+          const cacheTime = localStorage.getItem(cacheTimeKey);
+          const now = Date.now();
+          const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
-      function populatePhotoSelect(photos) {
-        const select = document.getElementById('photoSelect');
-        const currentValue = select.value;
-        
-        if (photos.length === 0) {
-          select.innerHTML = '<option value="">No hay fotos en las carpetas seleccionadas</option>';
-          document.getElementById('photoPreview').style.display = 'none';
-          return;
-        }
+          // Use cache if available and not expired
+          if (cacheData && cacheTime && (now - parseInt(cacheTime)) < CACHE_DURATION) {
+            console.log('📦 Usando caché...');
+            const data = JSON.parse(cacheData);
+            allProducts = data.groupedProducts;
+            renderProducts(data.groupedProducts);
+            document.getElementById('productsLoading').style.display = 'none';
+            console.log('✅ Productos cargados desde caché:', Object.keys(data.groupedProducts).length, 'categorías');
+            return;
+          }
 
-        select.innerHTML = '<option value="">-- Selecciona una foto --</option>';
-        
-        // Agrupar por carpeta
-        const byFolder = {};
-        photos.forEach(photo => {
-          const folder = photo.folder || 'Sin carpeta';
-          if (!byFolder[folder]) byFolder[folder] = [];
-          byFolder[folder].push(photo);
-        });
-
-        // Crear opciones agrupadas solo para carpetas seleccionadas
-        Object.keys(byFolder).sort().forEach(folder => {
-          if (!selectedFolders.has(folder)) return;
-          
-          const optgroup = document.createElement('optgroup');
-          optgroup.label = `📁 ${folder}`;
-          
-          byFolder[folder].forEach(photo => {
-            const option = document.createElement('option');
-            option.value = photo.id;
-            option.textContent = photo.custom_name || photo.filename;
-            option.dataset.url = photo.thumbnailUrl || photo.signedUrl;
-            option.dataset.filename = photo.filename;
-            option.dataset.folder = photo.folder;
-            optgroup.appendChild(option);
+          // Fetch from API
+          console.log('🌐 Llamando a /api/products/termoformado...');
+          const res = await fetch('/api/products/termoformado', {
+            headers: { 'Authorization': 'Bearer ' + token }
           });
           
-          select.appendChild(optgroup);
-        });
-
-        // Restore selection if still available
-        if (currentValue) {
-          const option = Array.from(select.options).find(opt => opt.value === currentValue);
-          if (option) {
-            select.value = currentValue;
+          console.log('📡 Respuesta recibida:', res.status, res.statusText);
+          const data = await res.json();
+          console.log('📦 Datos recibidos:', data);
+          
+          if (data.ok && data.groupedProducts) {
+            allProducts = data.groupedProducts;
+            renderProducts(data.groupedProducts);
+            document.getElementById('productsLoading').style.display = 'none';
+            
+            // Save to cache
+            localStorage.setItem(cacheKey, JSON.stringify(data));
+            localStorage.setItem(cacheTimeKey, now.toString());
+            console.log('✅ Productos cargados desde API:', Object.keys(data.groupedProducts).length, 'categorías');
           } else {
-            document.getElementById('photoPreview').style.display = 'none';
+            throw new Error(data.error || 'Error al cargar productos');
+          }
+        } catch (err) {
+          console.error('❌ Error loading products:', err);
+          document.getElementById('productsLoading').innerHTML = `
+            <div style="color: #721c24; text-align: center; padding: 40px;">
+              <div style="font-size: 48px; margin-bottom: 16px;">❌</div>
+              <p><strong>Error al cargar productos</strong></p>
+              <p style="font-size: 14px; margin-top: 12px;">${err.message}</p>
+              <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px; background: #dc3545; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                Recargar página
+              </button>
+            </div>
+          `;
+        }
+      }
+
+      // Render products grouped by category
+      function renderProducts(groupedProducts) {
+        const container = document.getElementById('productsContainer');
+        container.innerHTML = '';
+
+        Object.keys(groupedProducts).forEach(category => {
+          const config = categoryConfig[category] || { icon: '📦', label: category };
+          const products = groupedProducts[category];
+
+          const accordion = document.createElement('div');
+          accordion.className = 'product-accordion';
+
+          const header = document.createElement('button');
+          header.type = 'button';
+          header.className = 'accordion-header';
+          header.onclick = () => toggleAccordion(header);
+          header.innerHTML = `
+            <span>${config.icon} ${config.label}</span>
+            <span class="accordion-icon">▼</span>
+          `;
+
+          const content = document.createElement('div');
+          content.className = 'accordion-content';
+
+          const grid = document.createElement('div');
+          grid.className = 'product-grid';
+
+          products.forEach(product => {
+            const card = document.createElement('label');
+            card.className = 'product-card';
+            card.htmlFor = `product-${product.id}`;
+
+            const radio = document.createElement('input');
+            radio.type = 'radio';
+            radio.name = 'product_type';
+            radio.id = `product-${product.id}`;
+            radio.value = product.id;
+            radio.className = 'product-radio';
+            radio.addEventListener('change', handleProductSelection);
+
+            const imageDiv = document.createElement('div');
+            imageDiv.className = 'product-image';
+            
+            if (product.imageUrl && !product.imageError) {
+              const img = document.createElement('img');
+              img.src = product.imageUrl;
+              img.alt = product.name;
+              img.style.width = '100%';
+              img.style.height = '100%';
+              img.style.objectFit = 'cover';
+              img.style.borderRadius = '8px';
+              img.onerror = function() {
+                this.parentElement.innerHTML = '📦';
+              };
+              imageDiv.appendChild(img);
+            } else {
+              imageDiv.textContent = config.icon;
+            }
+
+            const name = document.createElement('p');
+            name.className = 'product-name';
+            name.textContent = product.name;
+
+            card.appendChild(radio);
+            card.appendChild(imageDiv);
+            card.appendChild(name);
+
+            grid.appendChild(card);
+          });
+
+          content.appendChild(grid);
+          accordion.appendChild(header);
+          accordion.appendChild(content);
+          container.appendChild(accordion);
+        });
+      }
+
+      // Handle product selection
+      function handleProductSelection() {
+        // Remove selected class from all cards
+        document.querySelectorAll('.product-card').forEach(card => {
+          card.classList.remove('selected');
+        });
+        
+        // Add selected class to the clicked card
+        if (this.checked) {
+          this.closest('.product-card').classList.add('selected');
+        }
+      }
+
+      // === WIZARD NAVIGATION ===
+      let currentStep = 1;
+      const totalSteps = 3;
+
+      function showStep(step) {
+        // Hide all steps
+        document.querySelectorAll('.form-step').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.wizard-step').forEach(el => el.classList.remove('active', 'completed'));
+        
+        // Show current step
+        document.querySelector(`.form-step[data-step="${step}"]`).classList.add('active');
+        document.querySelector(`.wizard-step[data-step="${step}"]`).classList.add('active');
+        
+        // Mark previous steps as completed
+        for (let i = 1; i < step; i++) {
+          document.querySelector(`.wizard-step[data-step="${i}"]`).classList.add('completed');
+        }
+        
+        // Scroll to top
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      function validateStep(step) {
+        if (step === 1) {
+          const selectedMarket = document.querySelector('input[name="marketSector"]:checked');
+          if (!selectedMarket) {
+            alert('Por favor selecciona el mercado de tu producto');
+            return false;
+          }
+        } else if (step === 2) {
+          const productDesc = document.getElementById('productDescription').value.trim();
+          if (!productDesc || productDesc.length === 0) {
+            alert('Por favor describe tu producto');
+            return false;
+          }
+          if (productDesc.length > 120) {
+            alert('La descripción no puede exceder los 120 caracteres');
+            return false;
+          }
+        } else if (step === 3) {
+          const selectedProduct = document.querySelector('input[name="product_type"]:checked');
+          if (!selectedProduct) {
+            alert('Por favor selecciona un tipo de empaque');
+            return false;
+          }
+        } else if (step === 4) {
+          const photoId = document.getElementById('photoSelect').value;
+          if (!photoId) {
+            alert('Por favor selecciona una foto');
+            return false;
+          }
+        } else if (step === 5) {
+          const selectedLogo = document.querySelector('input[name="logoDisplay"]:checked');
+          if (!selectedLogo) {
+            alert('Por favor selecciona cómo mostrar tu logo');
+            return false;
           }
         }
+        return true;
       }
 
-      // Modal for full image view
-      const formImageViewModal = document.getElementById('formImageViewModal');
-      let currentFullImageUrl = '';
+      function updateConfirmation() {
+        // Update market sector confirmation
+        const selectedMarket = document.querySelector('input[name="marketSector"]:checked');
+        if (selectedMarket) {
+          const marketLabel = selectedMarket.nextElementSibling.textContent;
+          document.getElementById('confirmMarketSector').innerHTML = `<div style="font-weight: 600; font-size: 16px; color: var(--alico-blue);">${marketLabel}</div>`;
+        }
 
-      document.querySelectorAll('.modal-close').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          e.target.closest('.modal').style.display = 'none';
-        });
-      });
+        // Update product description confirmation
+        const productDesc = document.getElementById('productDescription').value.trim();
+        if (productDesc) {
+          document.getElementById('confirmProductDescription').innerHTML = `<div style="padding: 12px; background: #f8f9fa; border-left: 4px solid var(--alico-gold); border-radius: 6px; font-size: 15px; color: #333;">${productDesc}</div>`;
+        }
 
-      window.addEventListener('click', (e) => {
-        if (e.target.classList.contains('modal')) {
-          e.target.style.display = 'none';
+        // Update product confirmation
+        const selectedProduct = document.querySelector('input[name="product_type"]:checked');
+        if (selectedProduct) {
+          const productCard = selectedProduct.closest('.product-card');
+          const productName = productCard.querySelector('.product-name').textContent;
+          const productImg = productCard.querySelector('.product-image img');
+          
+          let html = `<div style="display: flex; align-items: center; gap: 16px;">`;
+          if (productImg) {
+            html += `<img src="${productImg.src}" alt="${productName}" style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 2px solid var(--alico-gold);">`;
+          }
+          html += `<div><div style="font-weight: 600; font-size: 16px;">${productName}</div></div></div>`;
+          
+          document.getElementById('confirmProduct').innerHTML = html;
+        }
+        
+        // Update photo confirmation
+        const photoSelect = document.getElementById('photoSelect');
+        const photoId = photoSelect.value;
+        
+        if (photoId) {
+          // Buscar la foto en allPhotos
+          const selectedPhoto = allPhotos.find(p => p.id === photoId);
+          
+          if (selectedPhoto) {
+            const photoName = selectedPhoto.custom_name || selectedPhoto.filename;
+            const photoUrl = selectedPhoto.thumbnailUrl || selectedPhoto.signedUrl;
+            const photoFolder = selectedPhoto.folder || 'Sin carpeta';
+            
+            let html = `<div style="display: flex; align-items: center; gap: 16px;">`;
+            if (photoUrl) {
+              html += `<img src="${photoUrl}" alt="${photoName}" style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 2px solid var(--alico-gold);">`;
+            }
+            html += `<div><div style="font-weight: 600; font-size: 16px;">${photoName}</div><div style="color: #666; font-size: 14px; margin-top: 4px;">📁 ${photoFolder}</div></div></div>`;
+            
+            document.getElementById('confirmPhoto').innerHTML = html;
+          }
+        }
+
+        // Update logo display confirmation
+        const selectedLogo = document.querySelector('input[name="logoDisplay"]:checked');
+        if (selectedLogo) {
+          const logoLabel = selectedLogo.nextElementSibling.textContent;
+          document.getElementById('confirmLogoDisplay').innerHTML = `<div style="font-weight: 600; font-size: 16px; color: var(--alico-blue);">${logoLabel}</div>`;
+        }
+      }
+
+      // Character counter for product description
+      const productDescTextarea = document.getElementById('productDescription');
+      const charCountEl = document.getElementById('charCount');
+      const charCountWarning = document.getElementById('charCountWarning');
+      
+      productDescTextarea.addEventListener('input', () => {
+        const length = productDescTextarea.value.length;
+        charCountEl.textContent = `${length} / 120 caracteres`;
+        
+        if (length >= 120) {
+          charCountWarning.style.display = 'inline';
+          charCountEl.style.color = '#dc3545';
+          charCountEl.style.fontWeight = '700';
+        } else {
+          charCountWarning.style.display = 'none';
+          charCountEl.style.color = '#666';
+          charCountEl.style.fontWeight = '400';
         }
       });
 
-      function viewFormFullImage(url, title) {
-        document.getElementById('formFullImageView').src = url;
-        document.getElementById('formImageViewTitle').textContent = title;
-        formImageViewModal.style.display = 'flex';
-      }
-
-      // Preview de la foto seleccionada
-      document.getElementById('photoSelect').addEventListener('change', (e) => {
-        const selectedOption = e.target.options[e.target.selectedIndex];
-        const photoId = e.target.value;
-        
-        if (!photoId) {
-          document.getElementById('photoPreview').style.display = 'none';
-          return;
+      // Step 1 navigation
+      document.getElementById('step1Next').addEventListener('click', () => {
+        if (validateStep(1)) {
+          currentStep = 2;
+          showStep(currentStep);
         }
-
-        const photoUrl = selectedOption.dataset.url; // This is thumbnail
-        const photoName = selectedOption.textContent;
-        const photoFolder = selectedOption.dataset.folder;
-        
-        // Find the full photo object to get the full image URL
-        const selectedPhoto = allPhotos.find(p => p.id === photoId);
-        currentFullImageUrl = selectedPhoto ? selectedPhoto.signedUrl : photoUrl;
-        
-        document.getElementById('previewImage').src = photoUrl; // Show thumbnail
-        document.getElementById('previewImage').onclick = () => viewFormFullImage(currentFullImageUrl, photoName);
-        document.getElementById('previewInfo').textContent = `Carpeta: ${photoFolder}`;
-        document.getElementById('photoPreview').style.display = 'block';
       });
 
-      // Enviar formulario
-      document.getElementById('mainForm').addEventListener('submit', async (e) => {
+      // Step 2 navigation
+      document.getElementById('step2Prev').addEventListener('click', () => {
+        currentStep = 1;
+        showStep(currentStep);
+      });
+
+      document.getElementById('step2Next').addEventListener('click', () => {
+        if (validateStep(2)) {
+          currentStep = 3;
+          showStep(currentStep);
+        }
+      });
+
+      // Step 3 navigation
+      document.getElementById('step3Prev').addEventListener('click', () => {
+        currentStep = 2;
+        showStep(currentStep);
+      });
+
+      document.getElementById('step3Next').addEventListener('click', () => {
+        if (validateStep(3)) {
+          currentStep = 4;
+          showStep(currentStep);
+        }
+      });
+
+      // Step 4 navigation
+      document.getElementById('step4Prev').addEventListener('click', () => {
+        currentStep = 3;
+        showStep(currentStep);
+      });
+
+      document.getElementById('step4Next').addEventListener('click', () => {
+        if (validateStep(4)) {
+          currentStep = 5;
+          showStep(currentStep);
+        }
+      });
+
+      // Step 5 navigation
+      document.getElementById('step5Prev').addEventListener('click', () => {
+        currentStep = 4;
+        showStep(currentStep);
+      });
+
+      document.getElementById('step5Next').addEventListener('click', () => {
+        if (validateStep(5)) {
+          currentStep = 6;
+          updateConfirmation();
+          showStep(currentStep);
+        }
+      });
+
+      // Step 6 navigation
+      document.getElementById('step6Prev').addEventListener('click', () => {
+        currentStep = 5;
+        showStep(currentStep);
+      });
+
+      document.getElementById('step6Submit').addEventListener('click', async (e) => {
         e.preventDefault();
+        console.log('🚀 Enviando formulario...');
         
         const photoId = document.getElementById('photoSelect').value;
-        
-        if (!photoId) {
-          alert('Por favor selecciona una foto');
+        const selectedProduct = document.querySelector('input[name="product_type"]:checked');
+        const selectedMarket = document.querySelector('input[name="marketSector"]:checked');
+        const productDesc = document.getElementById('productDescription').value.trim();
+        const selectedLogo = document.querySelector('input[name="logoDisplay"]:checked');
+
+        if (!selectedMarket || !productDesc || !selectedProduct || !photoId || !selectedLogo) {
+          alert('Por favor completa todos los campos requeridos');
           return;
         }
 
-        const submitButton = e.target.querySelector('.btn-submit');
+        const submitButton = e.target;
         const originalButtonText = submitButton.textContent;
         
         try {
@@ -349,12 +911,18 @@
           
           const formData = {
             photo_id: photoId,
-            form_type: 'flowpack'
+            form_type: 'termoformado',
+            product_id: selectedProduct.value,
+            market_sector: selectedMarket.value,
+            product_description: productDesc,
+            logo_display_preference: selectedLogo.value
           };
+
+          console.log('📤 Datos a enviar:', formData);
 
           // Fetch con timeout de 70 segundos
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 70000);
+          const timeoutId = setTimeout(() => controller.abort(), 70000); // 70 segundos
 
           const response = await fetch('/api/submit-form', {
             method: 'POST',
@@ -370,11 +938,33 @@
           clearInterval(progressInterval);
 
           const result = await response.json();
+          console.log('📥 Respuesta recibida:', result);
+
+          if (response.status === 403 && result.credits !== undefined) {
+            // No credits available
+            const nextReset = new Date(result.nextReset);
+            alert(`❌ No tienes créditos disponibles\n\n` +
+                  `Tus créditos se recargarán el ${nextReset.toLocaleDateString('es-ES', { 
+                    day: 'numeric', 
+                    month: 'long', 
+                    year: 'numeric' 
+                  })}\n\n` +
+                  `Cada mes recibes 3 créditos nuevos.`);
+            
+            submitButton.disabled = false;
+            submitButton.textContent = originalButtonText;
+            submitButton.style.opacity = '1';
+            return;
+          }
 
           if (response.ok && result.ok) {
-            console.log('Formulario enviado exitosamente:', result);
+            console.log('✅ Formulario enviado exitosamente:', result);
             
-            let message = '✅ ¡Formulario enviado correctamente!\n\n';
+            // Update credits display
+            loadCredits();
+            
+            let message = '✅ ¡Formulario enviado correctamente!\n';
+            message += '💳 Se ha descontado 1 crédito\n\n';
             
             if (result.webhook_sent) {
               message += '🎯 Webhook enviado a Alico exitosamente';
@@ -394,7 +984,7 @@
             console.log('⚠️ Generación falló, crédito reembolsado');
             
             // Actualizar créditos
-            if (typeof loadCredits === 'function') loadCredits();
+            loadCredits();
             
             let message = '⚠️ La generación de la imagen falló\n\n';
             message += '✅ Tu crédito ha sido reembolsado automáticamente\n';
@@ -409,7 +999,7 @@
             throw new Error(result.error || result.message || 'Error al enviar formulario');
           }
         } catch (error) {
-          console.error('Error al enviar formulario:', error);
+          console.error('❌ Error al enviar formulario:', error);
           
           // Limpiar interval si existe
           if (typeof progressInterval !== 'undefined') {
@@ -434,7 +1024,367 @@
         }
       });
 
-      // Cargar fotos al iniciar
+      // Initialize wizard
+      showStep(1);
+
+      document.getElementById('logoutBtn').addEventListener('click', () => {
+        if (confirm('¿Estás seguro que deseas cerrar sesión?')) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('user');
+          localStorage.removeItem('userInfo');
+          window.location.href = '/login.html';
+        }
+      });
+
+      // Cargar fotos del usuario
+      async function loadPhotos() {
+        try {
+          const res = await fetch('/api/uploads', {
+            headers: { 'Authorization': 'Bearer ' + token }
+          });
+          const data = await res.json();
+          
+          if (data.ok && data.uploads) {
+            allPhotos = data.uploads;
+            
+            populatePhotoSelect(data.uploads);
+          } else {
+            document.getElementById('photoSelect').innerHTML = '<option value="">Error al cargar fotos</option>';
+          }
+        } catch (err) {
+          console.error('Error loading photos:', err);
+          document.getElementById('photoSelect').innerHTML = '<option value="">Error al cargar fotos</option>';
+        }
+      }
+
+      function populatePhotoSelect(photos) {
+        const trigger = document.getElementById('photoSelectTrigger');
+        const triggerText = trigger.querySelector('.custom-select-text');
+        const optionsContainer = document.getElementById('photoSelectOptions');
+        const hiddenInput = document.getElementById('photoSelect');
+        
+        if (photos.length === 0) {
+          triggerText.textContent = 'No hay fotos disponibles';
+          triggerText.classList.add('placeholder');
+          optionsContainer.innerHTML = '<div class="custom-select-no-results">No hay fotos disponibles</div>';
+          document.getElementById('photoPreview').style.display = 'none';
+          return;
+        }
+
+        // Agrupar por carpeta
+        const byFolder = {};
+        photos.forEach(photo => {
+          const folder = photo.folder || 'Sin carpeta';
+          if (!byFolder[folder]) byFolder[folder] = [];
+          byFolder[folder].push(photo);
+        });
+
+        // Crear opciones agrupadas
+        optionsContainer.innerHTML = '';
+        Object.keys(byFolder).sort().forEach(folder => {
+          // Etiqueta de grupo
+          const groupLabel = document.createElement('div');
+          groupLabel.className = 'custom-select-group-label';
+          groupLabel.textContent = `📁 ${folder}`;
+          optionsContainer.appendChild(groupLabel);
+          
+          // Opciones del grupo
+          byFolder[folder].forEach(photo => {
+            const option = document.createElement('div');
+            option.className = 'custom-select-option';
+            option.dataset.value = photo.id;
+            option.dataset.name = photo.custom_name || photo.filename;
+            option.dataset.url = photo.thumbnailUrl || photo.signedUrl;
+            option.dataset.fullUrl = photo.signedUrl;
+            option.dataset.filename = photo.filename;
+            option.dataset.folder = photo.folder;
+            
+            option.innerHTML = `
+              <img src="${photo.thumbnailUrl || photo.signedUrl}" 
+                   alt="${photo.custom_name || photo.filename}" 
+                   class="custom-select-option-thumbnail"
+                   loading="lazy">
+              <div class="custom-select-option-info">
+                <div class="custom-select-option-name">${photo.custom_name || photo.filename}</div>
+                <div class="custom-select-option-folder">📁 ${photo.folder || 'Sin carpeta'}</div>
+              </div>
+            `;
+            
+            option.addEventListener('click', () => selectPhoto(photo, option));
+            optionsContainer.appendChild(option);
+          });
+        });
+
+        // Resetear texto del trigger
+        triggerText.textContent = '-- Selecciona una foto --';
+        triggerText.classList.add('placeholder');
+      }
+
+      function selectPhoto(photo, optionElement) {
+        const trigger = document.getElementById('photoSelectTrigger');
+        const triggerText = trigger.querySelector('.custom-select-text');
+        const dropdown = document.getElementById('photoSelectDropdown');
+        const hiddenInput = document.getElementById('photoSelect');
+        
+        // Actualizar valor
+        hiddenInput.value = photo.id;
+        
+        // Actualizar texto del trigger
+        triggerText.textContent = photo.custom_name || photo.filename;
+        triggerText.classList.remove('placeholder');
+        
+        // Actualizar selección visual
+        document.querySelectorAll('.custom-select-option').forEach(opt => {
+          opt.classList.remove('selected');
+        });
+        optionElement.classList.add('selected');
+        
+        // Cerrar dropdown
+        trigger.classList.remove('active');
+        dropdown.classList.remove('active');
+        
+        // Mostrar preview
+        showPhotoPreview(photo);
+      }
+
+      function showPhotoPreview(photo) {
+        const previewContainer = document.getElementById('photoPreview');
+        const previewImage = document.getElementById('previewImage');
+        const previewInfo = document.getElementById('previewInfo');
+        
+        previewImage.src = photo.signedUrl;
+        previewImage.onclick = () => viewFormFullImage(photo.signedUrl, photo.custom_name || photo.filename);
+        previewInfo.textContent = `📁 ${photo.folder || 'Sin carpeta'}`;
+        previewContainer.style.display = 'block';
+        
+        currentFullImageUrl = photo.signedUrl;
+      }
+
+      // Inicializar dropdown personalizado
+      function initCustomSelect() {
+        const trigger = document.getElementById('photoSelectTrigger');
+        const dropdown = document.getElementById('photoSelectDropdown');
+        const searchInput = document.getElementById('photoSearchInput');
+        
+        // Toggle dropdown
+        trigger.addEventListener('click', (e) => {
+          e.stopPropagation();
+          trigger.classList.toggle('active');
+          dropdown.classList.toggle('active');
+          if (dropdown.classList.contains('active')) {
+            searchInput.focus();
+          }
+        });
+        
+        // Prevenir que clicks dentro del dropdown lo cierren (pero permitir scroll)
+        dropdown.addEventListener('click', (e) => {
+          e.stopPropagation();
+        });
+        
+        // Cerrar al hacer click fuera
+        document.addEventListener('click', (e) => {
+          if (!trigger.contains(e.target) && !dropdown.contains(e.target)) {
+            trigger.classList.remove('active');
+            dropdown.classList.remove('active');
+          }
+        });
+        
+        // Búsqueda
+        searchInput.addEventListener('input', (e) => {
+          const searchTerm = e.target.value.toLowerCase();
+          const options = document.querySelectorAll('.custom-select-option');
+          const groupLabels = document.querySelectorAll('.custom-select-group-label');
+          
+          let hasVisibleOptions = false;
+          let currentGroupHasVisible = false;
+          let currentGroupLabel = null;
+          
+          document.querySelectorAll('.custom-select-group-label, .custom-select-option').forEach(el => {
+            if (el.classList.contains('custom-select-group-label')) {
+              // Mostrar/ocultar grupo anterior
+              if (currentGroupLabel) {
+                currentGroupLabel.style.display = currentGroupHasVisible ? 'block' : 'none';
+              }
+              currentGroupLabel = el;
+              currentGroupHasVisible = false;
+            } else {
+              const name = el.dataset.name.toLowerCase();
+              const folder = (el.dataset.folder || 'Sin carpeta').toLowerCase();
+              const matches = name.includes(searchTerm) || folder.includes(searchTerm);
+              
+              el.style.display = matches ? 'flex' : 'none';
+              if (matches) {
+                hasVisibleOptions = true;
+                currentGroupHasVisible = true;
+              }
+            }
+          });
+          
+          // Último grupo
+          if (currentGroupLabel) {
+            currentGroupLabel.style.display = currentGroupHasVisible ? 'block' : 'none';
+          }
+          
+          // Mostrar mensaje si no hay resultados
+          const noResults = document.querySelector('.custom-select-no-results');
+          if (!hasVisibleOptions && !noResults) {
+            const msg = document.createElement('div');
+            msg.className = 'custom-select-no-results';
+            msg.textContent = '🔍 No se encontraron resultados';
+            document.getElementById('photoSelectOptions').appendChild(msg);
+          } else if (hasVisibleOptions && noResults) {
+            noResults.remove();
+          }
+        });
+      }
+
+      // Modal for full image view
+      const formImageViewModal = document.getElementById('formImageViewModal');
+
+      document.querySelectorAll('.modal-close').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.target.closest('.modal').style.display = 'none';
+        });
+      });
+
+      window.addEventListener('click', (e) => {
+        if (e.target.classList.contains('modal')) {
+          e.target.style.display = 'none';
+        }
+      });
+
+      function viewFormFullImage(url, title) {
+        document.getElementById('formFullImageView').src = url;
+        document.getElementById('formImageViewTitle').textContent = title;
+        formImageViewModal.style.display = 'flex';
+      }
+
+      // Preview de la foto seleccionada
+      // Enviar formulario - DESHABILITADO (ahora se maneja en step3Submit)
+      /* document.getElementById('mainForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const photoId = document.getElementById('photoSelect').value;
+        const selectedProduct = document.querySelector('input[name="product_type"]:checked');
+
+        const submitButton = document.getElementById('submitBtn');
+        const originalButtonText = submitButton.textContent;
+        
+        try {
+          // Disable button and show loading state
+          submitButton.disabled = true;
+          submitButton.textContent = 'Enviando...';
+          submitButton.style.opacity = '0.6';
+          
+          const formData = {
+            photo_id: photoId,
+            form_type: 'termoformado',
+            product_id: selectedProduct.value,
+            // Aquí se agregarán más campos cuando se añadan más secciones
+          };
+
+          const response = await fetch('/api/submit-form', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify(formData)
+          });
+
+          const result = await response.json();
+
+          if (response.status === 403 && result.credits !== undefined) {
+            // No credits available
+            const nextReset = new Date(result.nextReset);
+            alert(`❌ No tienes créditos disponibles\n\n` +
+                  `Tus créditos se recargarán el ${nextReset.toLocaleDateString('es-ES', { 
+                    day: 'numeric', 
+                    month: 'long', 
+                    year: 'numeric' 
+                  })}\n\n` +
+                  `Cada mes recibes 3 créditos nuevos.`);
+            
+            submitButton.disabled = false;
+            submitButton.textContent = originalButtonText;
+            submitButton.style.opacity = '1';
+            return;
+          }
+
+          if (response.ok && result.ok) {
+            console.log('Formulario enviado exitosamente:', result);
+            
+            // Update credits display
+            loadCredits();
+            
+            let message = '✅ ¡Formulario enviado correctamente!\n';
+            message += '💳 Se ha descontado 1 crédito\n\n';
+            
+            if (result.webhook_sent) {
+              message += '🎯 Webhook enviado a Alico exitosamente';
+            } else {
+              message += '⚠️ Advertencia: El webhook no pudo ser enviado\n';
+              message += `Error: ${result.webhook_error || 'Desconocido'}`;
+            }
+            
+            alert(message);
+            
+            // Redirect to dashboard after success
+            setTimeout(() => {
+              window.location.href = '/dashboard.html';
+            }, 2000);
+          } else {
+            throw new Error(result.error || 'Error al enviar formulario');
+          }
+        } catch (error) {
+          console.error('Error al enviar formulario:', error);
+          alert('❌ Error al enviar el formulario:\n' + error.message);
+          
+          // Re-enable button
+          submitButton.disabled = false;
+          submitButton.textContent = originalButtonText;
+          submitButton.style.opacity = '1';
+        }
+      }); */
+
+      // Toggle accordion function (permite múltiples abiertos)
+      function toggleAccordion(button) {
+        const content = button.nextElementSibling;
+        const icon = button.querySelector('.accordion-icon');
+        
+        // Toggle the clicked accordion
+        button.classList.toggle('active');
+        content.classList.toggle('active');
+        
+        // Update icon
+        if (button.classList.contains('active')) {
+          icon.textContent = '▲';
+        } else {
+          icon.textContent = '▼';
+        }
+      }
+
+      // Handle product selection
+      document.querySelectorAll('.product-radio').forEach(radio => {
+        radio.addEventListener('change', function() {
+          // Remove selected class from all cards
+          document.querySelectorAll('.product-card').forEach(card => {
+            card.classList.remove('selected');
+          });
+          
+          // Add selected class to the clicked card
+          if (this.checked) {
+            this.closest('.product-card').classList.add('selected');
+          }
+        });
+      });
+
+      // Inicializar dropdown personalizado
+      initCustomSelect();
+
+      // Cargar productos y fotos al iniciar
+      loadProducts();
       loadPhotos();
     </script>
   </body>
