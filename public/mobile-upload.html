@@ -433,6 +433,39 @@
       
       uploadButton.addEventListener('click', async () => {
         uploadButton.disabled = true;
+        uploadButton.textContent = 'Verificando límite...';
+        
+        // Check current photo count before uploading
+        try {
+          const checkResponse = await fetch('/api/uploads', {
+            headers: {
+              'Authorization': 'Bearer ' + uploadToken
+            }
+          });
+          
+          if (checkResponse.ok) {
+            const checkData = await checkResponse.json();
+            const currentCount = checkData.userPhotosCount || 0;
+            const photosToUpload = selectedFiles.filter(f => f.status === 'pending').length;
+            
+            if (currentCount >= 4) {
+              showStatus('🚫 Ya tienes 4 fotos subidas. Elimina algunas desde el dashboard para poder subir nuevas. (Las imágenes generadas por IA no cuentan)', 'error');
+              uploadButton.textContent = 'Subir fotos';
+              uploadButton.disabled = false;
+              return;
+            }
+            
+            if (currentCount + photosToUpload > 4) {
+              showStatus(`🚫 Solo puedes subir ${4 - currentCount} foto${4 - currentCount !== 1 ? 's' : ''} más (actualmente tienes ${currentCount}/4)`, 'error');
+              uploadButton.textContent = 'Subir fotos';
+              uploadButton.disabled = false;
+              return;
+            }
+          }
+        } catch (err) {
+          console.error('Error checking photo count:', err);
+        }
+        
         uploadButton.textContent = 'Subiendo...';
         
         const folder = folderSelect.value || null;
@@ -464,6 +497,25 @@
                 showExpiredSession();
                 return;
               }
+              
+              // Check if it's a limit error
+              if (response.status === 400) {
+                try {
+                  const errorData = await response.json();
+                  if (errorData.error === 'Límite de fotos alcanzado') {
+                    showStatus(`🚫 ${errorData.message || 'Has alcanzado el límite de 4 fotos'}`, 'error');
+                    item.status = 'error';
+                    errorCount++;
+                    // Stop uploading more files
+                    uploadButton.textContent = 'Subir fotos';
+                    uploadButton.disabled = false;
+                    return;
+                  }
+                } catch (e) {
+                  console.error('Error parsing response:', e);
+                }
+              }
+              
               item.status = 'error';
               errorCount++;
             }
