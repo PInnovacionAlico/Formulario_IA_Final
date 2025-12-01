@@ -11,6 +11,134 @@
     <meta name="apple-mobile-web-app-title" content="Transforma tu empaque" />
     <link rel="manifest" href="/favicon/site.webmanifest" />
     <link rel="stylesheet" href="/style.css" />
+    <style>
+      /* Modal de imagen completa */
+      .image-preview-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+        animation: fadeIn 0.3s ease;
+      }
+
+      .image-preview-content {
+        background: white;
+        border-radius: 12px;
+        max-width: 90%;
+        max-height: 90vh;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        overflow: hidden;
+      }
+
+      .image-preview-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px;
+        background: linear-gradient(135deg, var(--alico-blue) 0%, var(--alico-gold) 100%);
+        color: white;
+      }
+
+      .image-preview-header h3 {
+        margin: 0;
+        font-size: 20px;
+      }
+
+      .close-preview {
+        background: rgba(255, 255, 255, 0.2);
+        border: none;
+        color: white;
+        font-size: 24px;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+      }
+
+      .close-preview:hover {
+        background: rgba(255, 255, 255, 0.3);
+        transform: rotate(90deg);
+      }
+
+      .image-preview-body {
+        padding: 20px;
+        flex: 1;
+        overflow: auto;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: #f5f5f5;
+      }
+
+      .image-preview-img {
+        max-width: 100%;
+        max-height: 60vh;
+        border-radius: 8px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+      }
+
+      .image-preview-footer {
+        padding: 20px;
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+        border-top: 1px solid #e0e0e0;
+      }
+
+      .btn-download-preview {
+        background: var(--alico-gold);
+        color: var(--text-dark);
+        padding: 10px 20px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .btn-download-preview:hover {
+        background: var(--alico-gold-80);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(219, 149, 0, 0.3);
+      }
+
+      .btn-close-preview {
+        background: #e0e0e0;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.3s ease;
+      }
+
+      .btn-close-preview:hover {
+        background: #d0d0d0;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+    </style>
   </head>
   <body>
     <div class="dashboard-container">
@@ -137,6 +265,10 @@
         <span class="modal-close">&times;</span>
         <h2>Seleccionar carpeta</h2>
         <div id="folderList"></div>
+        <div style="margin-top: 20px; display: flex; gap: 12px; justify-content: flex-end;">
+          <button id="cancelFolderChangeBtn" class="btn-secondary" style="padding: 12px 24px;">Cancelar</button>
+          <button id="confirmFolderChangeBtn" class="btn-action" style="padding: 12px 24px; background: linear-gradient(135deg, var(--alico-gold) 0%, var(--alico-gold-80) 100%); color: white; font-weight: 600;" disabled>Confirmar</button>
+        </div>
       </div>
     </div>
 
@@ -398,30 +530,70 @@
         }
 
         const resultEl = document.getElementById('deleteFolderResult');
+        const deleteBtn = document.getElementById('deleteAllImagesBtn');
+        const moveBtn = document.getElementById('moveFolderImagesBtn');
+        const cancelBtn = document.getElementById('cancelDeleteFolderBtn');
+        
         resultEl.textContent = 'Eliminando imágenes...';
         resultEl.style.color = '';
+        deleteBtn.disabled = true;
+        moveBtn.disabled = true;
+        cancelBtn.disabled = true;
 
         try {
           let deletedCount = 0;
-          for (const image of imagesInFolder) {
-            const res = await fetch(`/api/uploads/${image.id}`, {
-              method: 'DELETE',
-              headers: { 'Authorization': 'Bearer ' + token }
-            });
-            if (res.ok) deletedCount++;
+          let failedCount = 0;
+          const totalImages = imagesInFolder.length;
+          
+          for (let i = 0; i < imagesInFolder.length; i++) {
+            const image = imagesInFolder[i];
+            resultEl.textContent = `Eliminando imagen ${i + 1} de ${totalImages}...`;
+            
+            try {
+              const res = await fetch(`/api/uploads/${image.id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': 'Bearer ' + token }
+              });
+              
+              const data = await res.json();
+              
+              if (res.ok && data.ok) {
+                deletedCount++;
+              } else {
+                console.error(`Error deleting image ${image.id}:`, data.error);
+                failedCount++;
+              }
+            } catch (err) {
+              console.error(`Error deleting image ${image.id}:`, err);
+              failedCount++;
+            }
+            
+            // Small delay to avoid overwhelming the server
+            await new Promise(resolve => setTimeout(resolve, 100));
           }
 
-          resultEl.textContent = `✅ ${deletedCount} imágenes eliminadas`;
-          resultEl.style.color = '#28a745';
+          if (failedCount === 0) {
+            resultEl.textContent = `✅ ${deletedCount} imágenes eliminadas correctamente`;
+            resultEl.style.color = '#28a745';
+          } else {
+            resultEl.textContent = `⚠️ ${deletedCount} eliminadas, ${failedCount} fallaron`;
+            resultEl.style.color = '#ff9800';
+          }
           
           invalidateCache();
           setTimeout(() => {
             deleteFolderModal.style.display = 'none';
+            deleteBtn.disabled = false;
+            moveBtn.disabled = false;
+            cancelBtn.disabled = false;
             loadUploads(true);
-          }, 1500);
+          }, 2000);
         } catch (err) {
           resultEl.textContent = '❌ Error: ' + err.message;
           resultEl.style.color = '#dc3545';
+          deleteBtn.disabled = false;
+          moveBtn.disabled = false;
+          cancelBtn.disabled = false;
         }
       });
 
@@ -523,37 +695,72 @@
 
       async function moveImagesToFolder(destinationFolder) {
         const resultEl = document.getElementById('moveImagesResult');
+        const confirmBtn = document.getElementById('confirmMoveBtn');
+        const cancelBtn = document.getElementById('cancelMoveBtn');
+        
         resultEl.textContent = `Moviendo ${imagesInFolder.length} imágenes a "${destinationFolder}"...`;
         resultEl.style.color = '';
+        confirmBtn.disabled = true;
+        cancelBtn.disabled = true;
 
         try {
           let movedCount = 0;
-          for (const image of imagesInFolder) {
-            const res = await fetch(`/api/uploads/${image.id}`, {
-              method: 'PUT',
-              headers: {
-                'Authorization': 'Bearer ' + token,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                folder: destinationFolder === 'Sin carpeta' ? null : destinationFolder
-              })
-            });
+          let failedCount = 0;
+          const totalImages = imagesInFolder.length;
+          
+          for (let i = 0; i < imagesInFolder.length; i++) {
+            const image = imagesInFolder[i];
+            resultEl.textContent = `Moviendo imagen ${i + 1} de ${totalImages}...`;
             
-            if (res.ok) movedCount++;
+            try {
+              const res = await fetch(`/api/uploads/${image.id}`, {
+                method: 'PATCH',
+                headers: {
+                  'Authorization': 'Bearer ' + token,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  folder: destinationFolder === 'Sin carpeta' ? null : destinationFolder
+                })
+              });
+              
+              const data = await res.json();
+              
+              if (res.ok && data.ok) {
+                movedCount++;
+              } else {
+                console.error(`Error moving image ${image.id}:`, data.error);
+                failedCount++;
+              }
+            } catch (err) {
+              console.error(`Error moving image ${image.id}:`, err);
+              failedCount++;
+            }
+            
+            // Small delay to avoid overwhelming the server
+            await new Promise(resolve => setTimeout(resolve, 100));
           }
 
-          resultEl.textContent = `✅ ${movedCount} imágenes movidas a "${destinationFolder}"`;
-          resultEl.style.color = '#28a745';
+          if (failedCount === 0) {
+            resultEl.textContent = `✅ ${movedCount} imágenes movidas a "${destinationFolder}"`;
+            resultEl.style.color = '#28a745';
+          } else {
+            resultEl.textContent = `⚠️ ${movedCount} movidas, ${failedCount} fallaron`;
+            resultEl.style.color = '#ff9800';
+          }
           
           invalidateCache();
           setTimeout(() => {
             moveImagesModal.style.display = 'none';
+            confirmBtn.disabled = false;
+            cancelBtn.disabled = false;
             loadUploads(true);
-          }, 1500);
+          }, 2000);
         } catch (err) {
           resultEl.textContent = '❌ Error: ' + err.message;
           resultEl.style.color = '#dc3545';
+          confirmBtn.disabled = false;
+          cancelBtn.disabled = false;
         }
       }
 
@@ -669,7 +876,7 @@
         // Agregar acordeón vacío inmediatamente
         addEmptyFolderAccordion(folderName);
         
-        document.getElementById('folderResult').textContent = 'Carpeta creada!';
+        document.getElementById('folderResult').textContent = '¡Carpeta creada!';
         setTimeout(() => {
           folderModal.style.display = 'none';
           document.getElementById('newFolderSection').style.display = 'none';
@@ -1049,7 +1256,7 @@
                 </div>
                 <div class="photo-actions">
                   <button class="btn-update" data-id="${upload.id}">Cambiar nombre</button>
-                  <a href="${upload.signedUrl}" download="${upload.custom_name || upload.filename}" class="btn-download" title="Descargar imagen">📥 Descargar</a>
+                  <button onclick="downloadImage('${upload.signedUrl}', '${upload.custom_name || upload.filename}')" class="btn-download" title="Descargar imagen">📥 Descargar</button>
                   <button class="btn-delete" data-id="${upload.id}">Eliminar</button>
                 </div>
               </div>
@@ -1129,7 +1336,7 @@
               });
               const data = await res.json();
               if (data.ok) {
-                alert('Eliminado!');
+                alert('¡La imagen ha sido eliminada con éxito!');
                 invalidateCache();
                 loadUploads(true); // refresh with force
               } else {
@@ -1183,9 +1390,14 @@
         folderModal.style.display = 'flex';
       }
 
+      let selectedFolder = null;
+
       function showFolderSelector() {
         const folderList = document.getElementById('folderList');
+        const confirmBtn = document.getElementById('confirmFolderChangeBtn');
         folderList.innerHTML = '';
+        selectedFolder = null;
+        confirmBtn.disabled = true;
         
         allFolders.forEach(folder => {
           const btn = document.createElement('button');
@@ -1204,7 +1416,7 @@
             }
           };
           
-          btn.addEventListener('click', async (e) => {
+          btn.addEventListener('click', (e) => {
             // Remove selection from all buttons
             document.querySelectorAll('#folderList .folder-option').forEach(b => {
               b.style.background = 'white';
@@ -1214,31 +1426,112 @@
             e.target.style.background = 'var(--alico-gold-10)';
             e.target.style.border = '2px solid var(--alico-gold)';
             
-            try {
-              const res = await fetch(`/api/uploads/${currentPhotoId}`, {
-                method: 'PATCH',
-                headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ folder })
-              });
-              const data = await res.json();
-              if (data.ok) {
-                setTimeout(() => {
-                  selectFolderModal.style.display = 'none';
-                  invalidateCache();
-                  loadUploads(true);
-                }, 300);
-              } else {
-                alert('Error: ' + (data.error || ''));
-              }
-            } catch (err) {
-              alert('Error: ' + err);
-            }
+            // Store selected folder and enable confirm button
+            selectedFolder = folder;
+            confirmBtn.disabled = false;
           });
           folderList.appendChild(btn);
         });
 
         selectFolderModal.style.display = 'flex';
       }
+
+      // Confirm folder change
+      document.getElementById('confirmFolderChangeBtn').addEventListener('click', async () => {
+        if (!selectedFolder) return;
+        
+        const confirmBtn = document.getElementById('confirmFolderChangeBtn');
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = 'Moviendo...';
+        
+        try {
+          const res = await fetch(`/api/uploads/${currentPhotoId}`, {
+            method: 'PATCH',
+            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ folder: selectedFolder })
+          });
+          const data = await res.json();
+          if (data.ok) {
+            selectFolderModal.style.display = 'none';
+            showNotification('✅ Foto movida exitosamente a "' + selectedFolder + '"');
+            invalidateCache();
+            loadUploads(true);
+          } else {
+            showNotification('❌ Error: ' + (data.error || 'No se pudo mover la foto'), true);
+          }
+        } catch (err) {
+          showNotification('❌ Error: ' + err, true);
+        } finally {
+          confirmBtn.disabled = false;
+          confirmBtn.textContent = 'Confirmar';
+        }
+      });
+
+      // Cancel folder change
+      document.getElementById('cancelFolderChangeBtn').addEventListener('click', () => {
+        selectFolderModal.style.display = 'none';
+        selectedFolder = null;
+      });
+
+      // Show notification function
+      function showNotification(message, isError = false) {
+        const existingNotification = document.getElementById('folderChangeNotification');
+        if (existingNotification) {
+          existingNotification.remove();
+        }
+
+        const notification = document.createElement('div');
+        notification.id = 'folderChangeNotification';
+        notification.textContent = message;
+        notification.style.cssText = `
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          background: ${isError ? 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)' : 'linear-gradient(135deg, #28a745 0%, #20c997 100%)'};
+          color: white;
+          padding: 16px 24px;
+          border-radius: 8px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+          z-index: 10001;
+          font-weight: 600;
+          font-size: 14px;
+          animation: slideInRight 0.3s ease-out;
+        `;
+
+        document.body.appendChild(notification);
+
+        // Remove after 4 seconds
+        setTimeout(() => {
+          notification.style.animation = 'slideOutRight 0.3s ease-out';
+          setTimeout(() => notification.remove(), 300);
+        }, 4000);
+      }
+
+      // Add notification animations
+      const notificationStyles = document.createElement('style');
+      notificationStyles.textContent = `
+        @keyframes slideInRight {
+          from {
+            transform: translateX(400px);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+        @keyframes slideOutRight {
+          from {
+            transform: translateX(0);
+            opacity: 1;
+          }
+          to {
+            transform: translateX(400px);
+            opacity: 0;
+          }
+        }
+      `;
+      document.head.appendChild(notificationStyles);
 
       // Preview de archivos seleccionados
       document.getElementById('fileInputUpload').addEventListener('change', (e) => {
@@ -1422,6 +1715,60 @@
       window.addEventListener('beforeunload', () => {
         stopAutoRefresh();
       });
+
+      // Descargar imagen sin redirigir
+      async function downloadImage(imageUrl, fileName) {
+        try {
+          const response = await fetch(imageUrl);
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.style.display = 'none';
+          a.href = url;
+          a.download = fileName;
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+        } catch (error) {
+          console.error('Error al descargar imagen:', error);
+          alert('Error al descargar la imagen. Por favor, intenta nuevamente.');
+        }
+      }
+
+      // Ver imagen en tamaño completo con modal
+      function viewFullImage(imageUrl, imageName) {
+        const modal = document.createElement('div');
+        modal.className = 'image-preview-modal';
+        modal.innerHTML = `
+          <div class="image-preview-content">
+            <div class="image-preview-header">
+              <h3>📷 ${imageName}</h3>
+              <button class="close-preview" onclick="this.closest('.image-preview-modal').remove()">✕</button>
+            </div>
+            <div class="image-preview-body">
+              <img src="${imageUrl}" alt="${imageName}" class="image-preview-img" />
+            </div>
+            <div class="image-preview-footer">
+              <button onclick="downloadImage('${imageUrl}', '${imageName}')" class="btn-download-preview">
+                📥 Descargar imagen
+              </button>
+              <button class="btn-close-preview" onclick="this.closest('.image-preview-modal').remove()">
+                Cerrar
+              </button>
+            </div>
+          </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Cerrar al hacer click fuera del contenido
+        modal.addEventListener('click', (e) => {
+          if (e.target === modal) {
+            modal.remove();
+          }
+        });
+      }
     </script>
   </body>
 </html>

@@ -1099,6 +1099,26 @@
         }, 3000);
       }
 
+      // Descargar imagen sin redirigir
+      async function downloadImage(imageUrl, fileName) {
+        try {
+          const response = await fetch(imageUrl);
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.style.display = 'none';
+          a.href = url;
+          a.download = fileName;
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+        } catch (error) {
+          console.error('Error al descargar imagen:', error);
+          alert('Error al descargar la imagen. Por favor, intenta nuevamente.');
+        }
+      }
+
       // Ver imagen generada por IA
       function viewGeneratedImage(submissionId, imageUrl) {
         // Crear modal para mostrar la imagen generada
@@ -1114,9 +1134,9 @@
               <img src="${imageUrl}" alt="Imagen generada" class="generated-image-preview" />
             </div>
             <div class="generated-image-footer">
-              <a href="${imageUrl}" download="imagen_generada.png" class="btn-download-generated">
+              <button onclick="downloadImage('${imageUrl}', 'imagen_generada_${submissionId}.png')" class="btn-download-generated">
                 📥 Descargar imagen
-              </a>
+              </button>
               <button class="btn-close-modal" onclick="this.closest('.generated-image-modal').remove()">
                 Cerrar
               </button>
