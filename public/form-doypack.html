@@ -84,17 +84,52 @@
             </nav>
           </div>
         
-          <!-- Wizard navigation bar -->
-          <div class="wizard-bar" style="display: flex; justify-content: center; gap: 8px; margin-bottom: 32px;">
-            <div class="wizard-step" data-step="1">1</div>
-            <div class="wizard-step" data-step="2">2</div>
-            <div class="wizard-step" data-step="3">3</div>
-            <div class="wizard-step" data-step="4">4</div>
-            <div class="wizard-step" data-step="5">5</div>
-            <div class="wizard-step" data-step="6">6</div>
-            <div class="wizard-step" data-step="7">7</div>
-            <div class="wizard-step" data-step="8">8</div>
-            <div class="wizard-step" data-step="9">9</div>
+          <!-- Progress indicator -->
+          <div class="wizard-progress">
+            <div class="wizard-step active" data-step="1">
+              <div class="step-circle">1</div>
+              <div class="step-label">Mercado</div>
+            </div>
+            <div class="wizard-line"></div>
+            <div class="wizard-step" data-step="2">
+              <div class="step-circle">2</div>
+              <div class="step-label">Descripción</div>
+            </div>
+            <div class="wizard-line"></div>
+            <div class="wizard-step" data-step="3">
+              <div class="step-circle">3</div>
+              <div class="step-label">Colores</div>
+            </div>
+            <div class="wizard-line"></div>
+            <div class="wizard-step" data-step="4">
+              <div class="step-circle">4</div>
+              <div class="step-label">Estilo</div>
+            </div>
+            <div class="wizard-line"></div>
+            <div class="wizard-step" data-step="5">
+              <div class="step-circle">5</div>
+              <div class="step-label">Acabado</div>
+            </div>
+            <div class="wizard-line"></div>
+            <div class="wizard-step" data-step="6">
+              <div class="step-circle">6</div>
+              <div class="step-label">Aditamentos</div>
+            </div>
+            <div class="wizard-line"></div>
+            <div class="wizard-step" data-step="7">
+              <div class="step-circle">7</div>
+              <div class="step-label">Selección</div>
+            </div>
+            <div class="wizard-line"></div>
+            <div class="wizard-step" data-step="8">
+              <div class="step-circle">8</div>
+              <div class="step-label">Foto</div>
+            </div>
+            <div class="wizard-line"></div>
+            <div class="wizard-step" data-step="9">
+              <div class="step-circle">9</div>
+              <div class="step-label">Confirmar</div>
+            </div>
           </div>
           <form id="mainForm">
             <!-- Step 1: Mercado del producto -->
@@ -882,45 +917,42 @@
             });
             </script>
 
+
             <!-- Step 8: Seleccionar foto -->
             <div class="form-step" data-step="8">
               <div class="form-section">
-                <h3>📷 Paso 8: Selecciona una foto</h3>
+                <h3>📸 Paso 8: Selecciona la foto de tu producto o logo</h3>
+                
                 <div class="form-section-content">
-                  <div class="photo-selector-container">
-                    <!-- Dropdown selector personalizado -->
-                    <label>Foto</label>
-                    <div class="custom-select-wrapper">
-                      <div class="custom-select-trigger" id="photoSelectTriggerDoypack">
-                        <span class="custom-select-text">Cargando fotos...</span>
-                        <span class="custom-select-arrow">▼</span>
+                  <p style="text-align: center; color: #666; margin-bottom: 24px;">
+                    Elige una foto que ya hayas subido anteriormente en el dashboard.
+                  </p>
+                  
+                  <!-- Custom Select Dropdown -->
+                  <div class="custom-select-container">
+                    <div class="custom-select-trigger" id="photoSelectTriggerDoypack">
+                      <span class="custom-select-text placeholder">-- Selecciona una foto --</span>
+                      <span class="custom-select-arrow">▼</span>
+                    </div>
+                    <div class="custom-select-dropdown" id="photoSelectDropdownDoypack">
+                      <div class="custom-select-search">
+                        <input type="text" id="photoSearchInputDoypack" placeholder="Buscar foto..." />
                       </div>
-                      <div class="custom-select-dropdown" id="photoSelectDropdownDoypack">
-                        <div class="custom-select-search">
-                          <input type="text" id="photoSearchInputDoypack" placeholder="🔍 Buscar foto...">
-                        </div>
-                        <div class="custom-select-options" id="photoSelectOptionsDoypack">
-                          <!-- Las opciones se cargarán dinámicamente -->
-                        </div>
+                      <div class="custom-select-options" id="photoSelectOptionsDoypack">
+                        <!-- Options will be populated by JavaScript -->
                       </div>
                     </div>
-                    <input type="hidden" id="photoSelectDoypack" name="photo_id" required>
-                    <!-- Preview de la foto seleccionada -->
-                    <div id="photoPreviewDoypack" class="photo-preview-container" style="display: none;">
-                      <div class="preview-header">
-                        <span class="preview-title">🖼️ Vista previa</span>
-                        <span class="preview-hint">(Click para ampliar)</span>
-                      </div>
-                      <div class="preview-image-wrapper">
-                        <img 
-                          id="previewImageDoypack" 
-                          src="" 
-                          alt="Vista previa" 
-                          class="preview-image"
-                        />
-                      </div>
-                      <p id="previewInfoDoypack" class="preview-info"></p>
+                    <input type="hidden" id="photoSelectDoypack" name="photo_id" required />
+                  </div>
+                  
+                  <!-- Photo Preview -->
+                  <div id="photoPreviewDoypack" class="photo-preview" style="display: none;">
+                    <h4>Vista previa:</h4>
+                    <div class="preview-image-container">
+                      <img id="previewImageDoypack" src="" alt="Preview" class="preview-image" />
+                      <div class="preview-zoom-hint">🔍 Click para ver tamaño completo</div>
                     </div>
+                    <p id="previewInfoDoypack" class="preview-info"></p>
                   </div>
                 </div>
                 
@@ -1016,10 +1048,11 @@
             document.getElementById('step8Next').addEventListener('click', () => {
               if (validateStep8()) {
                 currentStep = 9;
-                updateConfirmationSummary();
                 showStep(currentStep);
               }
             });
+
+
 
             // Función para actualizar el resumen de confirmación
             function updateConfirmationSummary() {
@@ -1120,26 +1153,42 @@
                 return;
               }
 
-              // Recopilar colores
+              // Recopilar colores (incluyendo "Otro" con el texto personalizado)
               const selectedColors = Array.from(document.querySelectorAll('.color-checkbox:checked')).map(cb => {
                 if (cb.value === 'Otro') {
-                  return document.getElementById('otroColorText').value.trim();
+                  const otroText = document.getElementById('otroColorText').value.trim();
+                  return otroText || 'Otro';
                 }
                 return cb.value;
               });
 
-              // Recopilar estilos
+              // Recopilar estilos (incluyendo "Otro" con el texto personalizado)
               const selectedStyles = Array.from(document.querySelectorAll('.style-checkbox:checked')).map(cb => {
                 if (cb.value === 'Otro') {
-                  return document.getElementById('otroStyleText').value.trim();
+                  const otroText = document.getElementById('otroStyleText').value.trim();
+                  return otroText || 'Otro';
                 }
                 return cb.value;
               });
 
-              // Recopilar aditamentos
+              // Recopilar aditamentos (incluyendo "Otro" con el texto personalizado si existe)
+              // Si el usuario dijo "No", attachments quedará como array vacío []
               let attachments = [];
               if (wantsAttachments.value === 'Si') {
-                attachments = Array.from(document.querySelectorAll('.attachment-checkbox:checked')).map(cb => cb.value);
+                attachments = Array.from(document.querySelectorAll('.attachment-checkbox:checked')).map(cb => {
+                  if (cb.value === 'Otro') {
+                    const otroText = document.getElementById('otroAttachmentText')?.value.trim();
+                    return otroText || 'Otro';
+                  }
+                  return cb.value;
+                });
+              }
+              
+              // Buscar la foto seleccionada en allPhotos
+              const selectedPhoto = allPhotos.find(p => p.id === photoId);
+              if (!selectedPhoto) {
+                alert('Error: No se pudo encontrar la foto seleccionada');
+                return;
               }
 
               const submitButton = e.target;
@@ -1159,8 +1208,23 @@
                 }, 10000);
                 
                 const formData = {
-                  photo_id: photoId,
+                  action: 'form_submitted',
+                  timestamp: new Date().toISOString(),
                   form_type: 'doypack',
+                  user: {
+                    id: user.id,
+                    name: user.name,
+                    email: user.email
+                  },
+                  user_photo: {
+                    id: selectedPhoto.id,
+                    url: selectedPhoto.signedUrl || selectedPhoto.url,
+                    custom_name: selectedPhoto.custom_name,
+                    folder: selectedPhoto.folder,
+                    mimetype: selectedPhoto.mimetype,
+                    size: selectedPhoto.size,
+                    created_at: selectedPhoto.created_at
+                  },
                   market_sector: selectedMarket.value,
                   product_description: productDesc,
                   brand_colors: selectedColors,
@@ -1563,6 +1627,20 @@
           if (wiz) wiz.classList.add('completed');
         }
 
+        // Update progress lines
+        document.querySelectorAll('.wizard-line').forEach((line, index) => {
+          if (index < step - 1) {
+            line.classList.add('completed');
+          } else {
+            line.classList.remove('completed');
+          }
+        });
+
+        // Si es el paso 9 (resumen/confirmar), actualizar el resumen
+        if (step === 9 && typeof updateConfirmationSummary === 'function') {
+          setTimeout(() => updateConfirmationSummary(), 100);
+        }
+
         // Scroll to top
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
@@ -1829,6 +1907,7 @@
 
       // Cargar fotos del usuario
       async function loadPhotosDoypack() {
+        console.log('📸 Cargando fotos para doypack...');
         try {
           if (!token) {
             console.error('No token found. User may not be logged in.');
@@ -1844,8 +1923,10 @@
             return;
           }
           const data = await res.json();
+          console.log('📥 Respuesta de /api/uploads para doypack:', data);
           if (data.ok && Array.isArray(data.uploads)) {
             allPhotos = data.uploads;
+            console.log(`✅ ${data.uploads.length} fotos cargadas para doypack`);
             if (data.uploads.length === 0) {
               showPhotoLoadErrorDoypack('No hay fotos disponibles. Sube fotos en tu dashboard.');
             } else {
@@ -1872,10 +1953,17 @@
       }
 
       function populatePhotoSelectDoypack(photos) {
+        console.log('🎨 Poblando selector doypack con', photos.length, 'fotos');
         const trigger = document.getElementById('photoSelectTriggerDoypack');
-        const triggerText = trigger.querySelector('.custom-select-text');
+        const triggerText = trigger?.querySelector('.custom-select-text');
         const optionsContainer = document.getElementById('photoSelectOptionsDoypack');
         const hiddenInput = document.getElementById('photoSelectDoypack');
+        
+        if (!trigger || !triggerText || !optionsContainer || !hiddenInput) {
+          console.error('❌ No se encontraron los elementos del selector en populatePhotoSelectDoypack');
+          return;
+        }
+        
         // Limpiar estado visual
         trigger.classList.remove('active');
         document.getElementById('photoSelectDropdownDoypack').classList.remove('active');
@@ -1975,6 +2063,14 @@
         const trigger = document.getElementById('photoSelectTriggerDoypack');
         const dropdown = document.getElementById('photoSelectDropdownDoypack');
         const searchInput = document.getElementById('photoSearchInputDoypack');
+        
+        if (!trigger || !dropdown || !searchInput) {
+          console.error('❌ No se encontraron los elementos del selector de fotos en doypack');
+          return;
+        }
+        
+        console.log('✅ Inicializando selector de fotos doypack');
+        
         // Toggle dropdown
         trigger.addEventListener('click', (e) => {
           e.stopPropagation();

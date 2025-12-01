@@ -146,7 +146,7 @@ app.post('/api/login', async (req, res) => {
   if (!email || !password) return res.status(400).json({ error: 'email and password are required' });
 
   try {
-    const { data: user, error } = await supabase.from('users').select('*').eq('email', email).maybeSingle();
+    const { data: user, error } = await supabase.from('users').select('id, name, email, password_hash, is_admin, email_verified, credits, credits_last_reset').eq('email', email).maybeSingle();
     if (error) throw error;
     if (!user) return res.status(401).json({ error: 'Correo no registrado o contraseña incorrecta' });
 
@@ -255,7 +255,7 @@ app.post('/api/change-password', async (req, res) => {
   if (newPassword.length < 8) return res.status(400).json({ error: 'newPassword must be at least 8 characters' });
 
   try {
-    const { data: user, error: fetchErr } = await supabase.from('users').select('*').eq('email', email).maybeSingle();
+    const { data: user, error: fetchErr } = await supabase.from('users').select('id, name, email, password_hash').eq('email', email).maybeSingle();
     if (fetchErr) throw fetchErr;
     if (!user) return res.status(404).json({ error: 'user not found' });
 
@@ -263,7 +263,7 @@ app.post('/api/change-password', async (req, res) => {
     if (!ok) return res.status(401).json({ error: 'old password incorrect' });
 
     const newHash = bcrypt.hashSync(newPassword, 10);
-    const { data, error: upErr } = await supabase.from('users').update({ password_hash: newHash }).eq('id', user.id).select('*').single();
+    const { data, error: upErr } = await supabase.from('users').update({ password_hash: newHash }).eq('id', user.id).select('id, email, updated_at').single();
     if (upErr) throw upErr;
 
     const webhookUrl = getWebhookUrlFromReq(req);
@@ -426,7 +426,7 @@ app.post('/api/forgot-password', async (req, res) => {
 
   try {
     // Check if user exists
-    const { data: user, error: fetchErr } = await supabase.from('users').select('*').eq('email', email).maybeSingle();
+    const { data: user, error: fetchErr } = await supabase.from('users').select('id, name, email, email_verified').eq('email', email).maybeSingle();
     if (fetchErr) throw fetchErr;
     
     // Don't reveal if user exists or not (security best practice)
@@ -516,7 +516,7 @@ app.post('/api/reset-password', async (req, res) => {
     if (markErr) throw markErr;
 
     // Send webhook notification
-    const { data: user } = await supabase.from('users').select('*').eq('id', resetToken.user_id).single();
+    const { data: user } = await supabase.from('users').select('id, email, name').eq('id', resetToken.user_id).single();
     const webhookUrl = getWebhookUrlFromReq(req);
     const payload = {
       action: 'password-reset-completed',
@@ -674,6 +674,26 @@ app.post('/api/mobile-upload', upload.single('file'), async (req, res) => {
     
     const userId = decoded.userId;
     
+    // Verificar límite de 4 fotos por usuario (solo fotos subidas, no generadas por IA)
+    const { data: existingUploads, error: countErr } = await supabase
+      .from('uploads')
+      .select('id', { count: 'exact', head: false })
+      .eq('owner_id', userId)
+      .eq('bucket_name', 'uploads'); // Solo contar fotos subidas, no las generadas
+    
+    if (countErr) throw countErr;
+    
+    if (existingUploads && existingUploads.length >= 4) {
+      // Eliminar archivo temporal
+      if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+      return res.status(400).json({ 
+        error: 'Límite de fotos alcanzado',
+        message: 'Solo puedes tener un máximo de 4 fotos subidas. Elimina algunas fotos antes de subir nuevas. (Las imágenes generadas por IA no cuentan en este límite)',
+        current_count: existingUploads.length,
+        max_limit: 4
+      });
+    }
+    
     // Same upload logic as regular upload
     const safeName = sanitizeFilename(file.originalname);
     const unique = uuidv4();
@@ -746,6 +766,26 @@ app.post('/api/upload', authenticate, upload.single('file'), async (req, res) =>
   if (!file) return res.status(400).json({ error: 'file is required' });
 
   try {
+    // Verificar límite de 4 fotos por usuario (solo fotos subidas, no generadas por IA)
+    const { data: existingUploads, error: countErr } = await supabase
+      .from('uploads')
+      .select('id', { count: 'exact', head: false })
+      .eq('owner_id', req.userId)
+      .eq('bucket_name', 'uploads'); // Solo contar fotos subidas, no las generadas
+    
+    if (countErr) throw countErr;
+    
+    if (existingUploads && existingUploads.length >= 4) {
+      // Eliminar archivo temporal
+      if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+      return res.status(400).json({ 
+        error: 'Límite de fotos alcanzado',
+        message: 'Solo puedes tener un máximo de 4 fotos subidas. Elimina algunas fotos antes de subir nuevas. (Las imágenes generadas por IA no cuentan en este límite)',
+        current_count: existingUploads.length,
+        max_limit: 4
+      });
+    }
+    
     // upload to Supabase storage
     const safeName = sanitizeFilename(file.originalname);
     const unique = uuidv4();
@@ -819,30 +859,83 @@ app.post('/api/upload', authenticate, upload.single('file'), async (req, res) =>
   }
 });
 
-// List user uploads (protected)
+// Cache de signed URLs en memoria (expira cada 20 horas)
+const urlCache = new Map();
+const URL_CACHE_DURATION = 20 * 60 * 60 * 1000; // 20 horas en ms
+
+function getCachedUrl(key) {
+  const cached = urlCache.get(key);
+  if (cached && Date.now() < cached.expiresAt) {
+    return cached.url;
+  }
+  urlCache.delete(key);
+  return null;
+}
+
+function setCachedUrl(key, url) {
+  urlCache.set(key, {
+    url,
+    expiresAt: Date.now() + URL_CACHE_DURATION
+  });
+}
+
+// Limpiar caché cada hora
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, value] of urlCache.entries()) {
+    if (now >= value.expiresAt) {
+      urlCache.delete(key);
+    }
+  }
+}, 60 * 60 * 1000);
+
+// List user uploads (protected) - OPTIMIZADO PARA REDUCIR EGRESS
 app.get('/api/uploads', authenticate, async (req, res) => {
   try {
-    const { data, error } = await supabase.from('uploads').select('*').eq('owner_id', req.userId).order('created_at', { ascending: false });
+    // Solo seleccionar los campos necesarios (no todo con *)
+    const { data, error } = await supabase
+      .from('uploads')
+      .select('id, filename, custom_name, mimetype, size, folder, path, thumbnail_path, bucket_name, created_at')
+      .eq('owner_id', req.userId)
+      .order('created_at', { ascending: false });
+    
     if (error) throw error;
 
-    // generate signed URLs for each upload (both original and thumbnail)
+    // Generar signed URLs con caché para reducir llamadas a Supabase Storage
     const uploadsWithUrls = await Promise.all(data.map(async (upload) => {
-      // Determinar el bucket correcto (por defecto 'uploads')
       const bucketName = upload.bucket_name || 'uploads';
       
-      const { data: urlData } = await supabase.storage.from(bucketName).createSignedUrl(upload.path, 24 * 60 * 60);
+      // Intentar obtener del caché
+      let signedUrl = getCachedUrl(`${bucketName}:${upload.path}`);
       let thumbnailUrl = null;
       
-      // Get thumbnail URL if exists (thumbnails siempre están en 'uploads')
+      // Si no está en caché, generar nueva signed URL
+      if (!signedUrl) {
+        const { data: urlData } = await supabase.storage.from(bucketName).createSignedUrl(upload.path, 24 * 60 * 60);
+        signedUrl = urlData?.signedUrl || null;
+        if (signedUrl) setCachedUrl(`${bucketName}:${upload.path}`, signedUrl);
+      }
+      
+      // Thumbnail con caché
       if (upload.thumbnail_path) {
-        const { data: thumbData } = await supabase.storage.from('uploads').createSignedUrl(upload.thumbnail_path, 24 * 60 * 60);
-        thumbnailUrl = thumbData?.signedUrl || null;
+        thumbnailUrl = getCachedUrl(`uploads:${upload.thumbnail_path}`);
+        if (!thumbnailUrl) {
+          const { data: thumbData } = await supabase.storage.from('uploads').createSignedUrl(upload.thumbnail_path, 24 * 60 * 60);
+          thumbnailUrl = thumbData?.signedUrl || null;
+          if (thumbnailUrl) setCachedUrl(`uploads:${upload.thumbnail_path}`, thumbnailUrl);
+        }
       }
       
       return { 
-        ...upload, 
-        signedUrl: urlData?.signedUrl || null,
-        thumbnailUrl: thumbnailUrl 
+        id: upload.id,
+        filename: upload.filename,
+        custom_name: upload.custom_name,
+        mimetype: upload.mimetype,
+        size: upload.size,
+        folder: upload.folder,
+        created_at: upload.created_at,
+        signedUrl,
+        thumbnailUrl
       };
     }));
 

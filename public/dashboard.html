@@ -76,7 +76,8 @@
               <button id="createFolderBtn" class="btn-action btn-folder">📁 Nueva carpeta</button>
               <span id="cacheBadge" style="display: none; margin-left: 12px; padding: 6px 12px; background: var(--alico-gold-20); color: var(--alico-gold); border-radius: 6px; font-size: 12px; font-weight: 600;">📦 Cargado desde caché</span>
             </div>
-            <h2>Mis Fotos</h2>
+            <h2 style="display: inline-block;">Mis Fotos</h2>
+            <span id="photoCountBadge" style="display: inline-block; margin-left: 12px; padding: 8px 16px; background: #28a745; color: white; border-radius: 20px; font-size: 14px; font-weight: 600;">0/4 fotos</span>
             <div id="loadingMsg">Cargando...</div>
             <div id="gallery"></div>
         </div>
@@ -93,7 +94,8 @@
             <p style="margin: 0; font-size: 13px; color: #333; line-height: 1.6;">
               <strong>ℹ️ Formatos permitidos:</strong> JPG, JPEG, PNG<br>
               <strong>📦 Tamaño máximo:</strong> 5 MB por archivo<br>
-              <strong>📸 Múltiples archivos:</strong> Puedes seleccionar varias fotos a la vez
+              <strong>📸 Múltiples archivos:</strong> Puedes seleccionar varias fotos a la vez<br>
+              <strong>⚠️ Límite:</strong> Máximo 4 fotos subidas (las imágenes generadas por IA no cuentan)
             </p>
           </div>
           <label>Selecciona una o más imágenes
@@ -556,11 +558,24 @@
       }
 
       document.getElementById('uploadBtn').addEventListener('click', () => {
+        // Verificar límite de 4 fotos (solo fotos subidas, no generadas)
+        const uploadedPhotos = allUploads ? allUploads.filter(u => !u.bucket_name || u.bucket_name === 'uploads') : [];
+        if (uploadedPhotos.length >= 4) {
+          alert('❌ Has alcanzado el límite de 4 fotos subidas\n\nElimina algunas fotos antes de subir nuevas.\n\nNota: Las imágenes generadas por IA no cuentan en este límite.');
+          return;
+        }
         updateFolderSelect();
         uploadModal.style.display = 'flex';
       });
 
       document.getElementById('qrUploadBtn').addEventListener('click', async () => {
+        // Verificar límite de 4 fotos (solo fotos subidas, no generadas)
+        const uploadedPhotos = allUploads ? allUploads.filter(u => !u.bucket_name || u.bucket_name === 'uploads') : [];
+        if (uploadedPhotos.length >= 4) {
+          alert('❌ Has alcanzado el límite de 4 fotos subidas\n\nElimina algunas fotos antes de subir nuevas.\n\nNota: Las imágenes generadas por IA no cuentan en este límite.');
+          return;
+        }
+        
         const qrModal = document.getElementById('qrUploadModal');
         const qrCodeImage = document.getElementById('qrCodeImage');
         const qrCodeExpiry = document.getElementById('qrCodeExpiry');
@@ -879,6 +894,44 @@
 
       function renderGallery(uploads) {
         const gallery = document.getElementById('gallery');
+        
+        // Mostrar contador de fotos (límite de 4) - Solo contar fotos subidas, no generadas
+        const photoCountBadge = document.getElementById('photoCountBadge');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const qrUploadBtn = document.getElementById('qrUploadBtn');
+        
+        if (photoCountBadge) {
+          // Filtrar solo las fotos subidas (bucket_name = 'uploads' o sin bucket_name)
+          const uploadedPhotos = uploads.filter(u => !u.bucket_name || u.bucket_name === 'uploads');
+          const count = uploadedPhotos.length;
+          const maxLimit = 4;
+          photoCountBadge.textContent = `${count}/${maxLimit} fotos`;
+          photoCountBadge.style.backgroundColor = count >= maxLimit ? '#dc3545' : count >= 3 ? '#ffc107' : '#28a745';
+          
+          // Deshabilitar botones de subir si llegó al límite
+          const reachedLimit = count >= maxLimit;
+          const disabledStyle = {
+            disabled: reachedLimit,
+            opacity: reachedLimit ? '0.5' : '1',
+            cursor: reachedLimit ? 'not-allowed' : 'pointer',
+            title: reachedLimit ? 'Has alcanzado el límite de 4 fotos subidas. Elimina algunas antes de subir más. (Las imágenes generadas por IA no cuentan)' : ''
+          };
+          
+          if (uploadBtn) {
+            uploadBtn.disabled = disabledStyle.disabled;
+            uploadBtn.style.opacity = disabledStyle.opacity;
+            uploadBtn.style.cursor = disabledStyle.cursor;
+            uploadBtn.title = disabledStyle.title || 'Subir nueva foto';
+          }
+          
+          if (qrUploadBtn) {
+            qrUploadBtn.disabled = disabledStyle.disabled;
+            qrUploadBtn.style.opacity = disabledStyle.opacity;
+            qrUploadBtn.style.cursor = disabledStyle.cursor;
+            qrUploadBtn.title = disabledStyle.title || 'Subir desde celular';
+          }
+        }
+        
         if (uploads.length === 0) {
           gallery.innerHTML = '<p class="empty">No has subido ninguna foto aún.</p>';
           return;
@@ -1244,6 +1297,14 @@
             } else {
               errorCount++;
               console.error(`Error subiendo ${file.name}:`, data.error);
+              
+              // Si alcanzó el límite de fotos, mostrar mensaje específico y detener
+              if (res.status === 400 && data.error === 'Límite de fotos alcanzado') {
+                resEl.textContent = `❌ ${data.message}`;
+                resEl.style.color = '#dc3545';
+                submitBtn.disabled = false;
+                return; // Detener el bucle de subida
+              }
             }
           } catch (err) {
             errorCount++;
