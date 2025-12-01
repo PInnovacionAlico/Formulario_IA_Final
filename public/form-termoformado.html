@@ -704,9 +704,6 @@
         for (let i = 1; i < step; i++) {
           document.querySelector(`.wizard-step[data-step="${i}"]`).classList.add('completed');
         }
-        
-        // Scroll to top
-        window.scrollTo({ top: 0, behavior: 'smooth' });
       }
 
       function validateStep(step) {
@@ -911,6 +908,13 @@
           return;
         }
 
+        // Find selected photo details
+        const selectedPhoto = allPhotos.find(p => p.id === photoId);
+        if (!selectedPhoto) {
+          alert('No se encontró la foto seleccionada');
+          return;
+        }
+
         const submitButton = e.target;
         const originalButtonText = submitButton.textContent;
         
@@ -928,7 +932,16 @@
           }, 10000);
           
           const formData = {
-            photo_id: photoId,
+            user_photo: {
+              id: selectedPhoto.id,
+              url: selectedPhoto.signedUrl || selectedPhoto.url,
+              filename: selectedPhoto.filename,
+              custom_name: selectedPhoto.custom_name,
+              folder: selectedPhoto.folder,
+              mimetype: selectedPhoto.mimetype,
+              size: selectedPhoto.size,
+              created_at: selectedPhoto.created_at
+            },
             form_type: 'termoformado',
             product_id: selectedProduct.value,
             market_sector: selectedMarket.value,
@@ -1064,9 +1077,11 @@
           const data = await res.json();
           
           if (data.ok && data.uploads) {
-            allPhotos = data.uploads;
+            // Filtrar imágenes generadas por IA
+            const userPhotos = data.uploads.filter(photo => photo.folder !== 'AI Generated');
+            allPhotos = userPhotos;
             
-            populatePhotoSelect(data.uploads);
+            populatePhotoSelect(userPhotos);
           } else {
             document.getElementById('photoSelect').innerHTML = '<option value="">Error al cargar fotos</option>';
           }

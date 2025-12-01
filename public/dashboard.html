@@ -559,8 +559,8 @@
 
       document.getElementById('uploadBtn').addEventListener('click', () => {
         // Verificar límite de 4 fotos (solo fotos subidas, no generadas)
-        const uploadedPhotos = allUploads ? allUploads.filter(u => !u.bucket_name || u.bucket_name === 'uploads') : [];
-        if (uploadedPhotos.length >= 4) {
+        const count = window.currentUserPhotosCount || 0;
+        if (count >= 4) {
           alert('❌ Has alcanzado el límite de 4 fotos subidas\n\nElimina algunas fotos antes de subir nuevas.\n\nNota: Las imágenes generadas por IA no cuentan en este límite.');
           return;
         }
@@ -570,8 +570,8 @@
 
       document.getElementById('qrUploadBtn').addEventListener('click', async () => {
         // Verificar límite de 4 fotos (solo fotos subidas, no generadas)
-        const uploadedPhotos = allUploads ? allUploads.filter(u => !u.bucket_name || u.bucket_name === 'uploads') : [];
-        if (uploadedPhotos.length >= 4) {
+        const count = window.currentUserPhotosCount || 0;
+        if (count >= 4) {
           alert('❌ Has alcanzado el límite de 4 fotos subidas\n\nElimina algunas fotos antes de subir nuevas.\n\nNota: Las imágenes generadas por IA no cuentan en este límite.');
           return;
         }
@@ -707,10 +707,16 @@
                 // Store all uploads
                 allUploads = uploads;
                 
+                // Calculate user photos count from cached data (exclude AI Generated)
+                window.currentUserPhotosCount = uploads.filter(u => u.folder !== 'AI Generated').length;
+                
                 // extract unique folders
                 const folders = new Set();
                 uploads.forEach(u => {
-                  folders.add(u.folder || 'Sin carpeta');
+                  let folderName = u.folder || 'Sin carpeta';
+                  // Renombrar carpeta de IA
+                  if (folderName === 'AI Generated') folderName = 'Imágenes generadas por IA';
+                  folders.add(folderName);
                 });
                 allFolders = Array.from(folders).sort();
                 if (!allFolders.includes('Sin carpeta')) allFolders.unshift('Sin carpeta');
@@ -737,13 +743,19 @@
             localStorage.setItem(cacheKey, JSON.stringify(data.uploads));
             localStorage.setItem(cacheTimestampKey, Date.now().toString());
             
+            // Store user photos count (for limit validation)
+            window.currentUserPhotosCount = data.userPhotosCount || 0;
+            
             // Store all uploads
             allUploads = data.uploads;
             
             // extract unique folders
             const folders = new Set();
             data.uploads.forEach(u => {
-              folders.add(u.folder || 'Sin carpeta');
+              let folderName = u.folder || 'Sin carpeta';
+              // Renombrar carpeta de IA
+              if (folderName === 'AI Generated') folderName = 'Imágenes generadas por IA';
+              folders.add(folderName);
             });
             allFolders = Array.from(folders).sort();
             if (!allFolders.includes('Sin carpeta')) allFolders.unshift('Sin carpeta');
@@ -842,11 +854,19 @@
         deleteBtn.className = 'btn-delete-folder';
         deleteBtn.innerHTML = '🗑️';
         deleteBtn.title = 'Eliminar carpeta';
-        deleteBtn.style.cssText = 'background: #dc3545; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 16px; transition: all 0.3s; box-shadow: 0 2px 6px rgba(220, 53, 69, 0.4);';
-        deleteBtn.onclick = (e) => {
-          e.stopPropagation();
-          showDeleteFolderModal(folderName, []);
-        };
+        // No permitir borrar carpeta de IA
+        const isAIFolder = folderName === 'Imágenes generadas por IA';
+        if (isAIFolder) {
+          deleteBtn.style.cssText = 'background: #6c757d; border: none; padding: 6px 12px; border-radius: 6px; cursor: not-allowed; font-size: 16px; opacity: 0.5;';
+          deleteBtn.title = 'No puedes eliminar esta carpeta';
+          deleteBtn.disabled = true;
+        } else {
+          deleteBtn.style.cssText = 'background: #dc3545; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 16px; transition: all 0.3s; box-shadow: 0 2px 6px rgba(220, 53, 69, 0.4);';
+          deleteBtn.onclick = (e) => {
+            e.stopPropagation();
+            showDeleteFolderModal(folderName, []);
+          };
+        }
         deleteBtn.onmouseenter = (e) => {
           e.target.style.background = '#c82333';
           e.target.style.boxShadow = '0 4px 10px rgba(220, 53, 69, 0.6)';
@@ -901,9 +921,8 @@
         const qrUploadBtn = document.getElementById('qrUploadBtn');
         
         if (photoCountBadge) {
-          // Filtrar solo las fotos subidas (bucket_name = 'uploads' o sin bucket_name)
-          const uploadedPhotos = uploads.filter(u => !u.bucket_name || u.bucket_name === 'uploads');
-          const count = uploadedPhotos.length;
+          // Usar el conteo del servidor (ya filtrado)
+          const count = window.currentUserPhotosCount || 0;
           const maxLimit = 4;
           photoCountBadge.textContent = `${count}/${maxLimit} fotos`;
           photoCountBadge.style.backgroundColor = count >= maxLimit ? '#dc3545' : count >= 3 ? '#ffc107' : '#28a745';
@@ -940,7 +959,9 @@
         // group by folder
         const byFolder = {};
         uploads.forEach(u => {
-          const folder = u.folder || 'Sin carpeta';
+          let folder = u.folder || 'Sin carpeta';
+          // Renombrar carpeta de IA
+          if (folder === 'AI Generated') folder = 'Imágenes generadas por IA';
           if (!byFolder[folder]) byFolder[folder] = [];
           byFolder[folder].push(u);
         });
@@ -966,8 +987,8 @@
           photoCount.style.cssText = 'font-size: 14px; color: rgba(255,255,255,0.9);';
           photoCount.textContent = `${byFolder[folder].length} foto${byFolder[folder].length !== 1 ? 's' : ''}`;
           
-          // Delete folder button (only if not "Sin carpeta")
-          if (folder !== 'Sin carpeta') {
+          // Delete folder button (only if not "Sin carpeta" and not AI folder)
+          if (folder !== 'Sin carpeta' && folder !== 'Imágenes generadas por IA') {
             const deleteBtn = document.createElement('button');
             deleteBtn.className = 'btn-delete-folder';
             deleteBtn.innerHTML = '🗑️';
@@ -1126,6 +1147,9 @@
         select.innerHTML = '';
         
         allFolders.forEach(folder => {
+          // No permitir seleccionar carpeta de IA
+          if (folder === 'Imágenes generadas por IA') return;
+          
           const option = document.createElement('option');
           option.value = folder;
           option.textContent = folder;

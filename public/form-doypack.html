@@ -921,38 +921,44 @@
             <!-- Step 8: Seleccionar foto -->
             <div class="form-step" data-step="8">
               <div class="form-section">
-                <h3>📸 Paso 8: Selecciona la foto de tu producto o logo</h3>
+                <h3>📷 Paso 8: Selecciona una foto</h3>
                 
                 <div class="form-section-content">
-                  <p style="text-align: center; color: #666; margin-bottom: 24px;">
-                    Elige una foto que ya hayas subido anteriormente en el dashboard.
-                  </p>
-                  
-                  <!-- Custom Select Dropdown -->
-                  <div class="custom-select-container">
-                    <div class="custom-select-trigger" id="photoSelectTriggerDoypack">
-                      <span class="custom-select-text placeholder">-- Selecciona una foto --</span>
-                      <span class="custom-select-arrow">▼</span>
-                    </div>
-                    <div class="custom-select-dropdown" id="photoSelectDropdownDoypack">
-                      <div class="custom-select-search">
-                        <input type="text" id="photoSearchInputDoypack" placeholder="Buscar foto..." />
+                  <div class="photo-selector-container">
+                    <!-- Dropdown selector personalizado -->
+                    <label>Foto</label>
+                    <div class="custom-select-wrapper">
+                      <div class="custom-select-trigger" id="photoSelectTriggerDoypack">
+                        <span class="custom-select-text">Cargando fotos...</span>
+                        <span class="custom-select-arrow">▼</span>
                       </div>
-                      <div class="custom-select-options" id="photoSelectOptionsDoypack">
-                        <!-- Options will be populated by JavaScript -->
+                      <div class="custom-select-dropdown" id="photoSelectDropdownDoypack">
+                        <div class="custom-select-search">
+                          <input type="text" id="photoSearchInputDoypack" placeholder="🔍 Buscar foto...">
+                        </div>
+                        <div class="custom-select-options" id="photoSelectOptionsDoypack">
+                          <!-- Las opciones se cargarán dinámicamente -->
+                        </div>
                       </div>
                     </div>
-                    <input type="hidden" id="photoSelectDoypack" name="photo_id" required />
-                  </div>
-                  
-                  <!-- Photo Preview -->
-                  <div id="photoPreviewDoypack" class="photo-preview" style="display: none;">
-                    <h4>Vista previa:</h4>
-                    <div class="preview-image-container">
-                      <img id="previewImageDoypack" src="" alt="Preview" class="preview-image" />
-                      <div class="preview-zoom-hint">🔍 Click para ver tamaño completo</div>
+                    <input type="hidden" id="photoSelectDoypack" name="photo_id" required>
+                    
+                    <!-- Preview de la foto seleccionada -->
+                    <div id="photoPreviewDoypack" class="photo-preview-container" style="display: none;">
+                      <div class="preview-header">
+                        <span class="preview-title">🖼️ Vista previa</span>
+                        <span class="preview-hint">(Click para ampliar)</span>
+                      </div>
+                      <div class="preview-image-wrapper">
+                        <img 
+                          id="previewImageDoypack" 
+                          src="" 
+                          alt="Vista previa" 
+                          class="preview-image"
+                        />
+                      </div>
+                      <p id="previewInfoDoypack" class="preview-info"></p>
                     </div>
-                    <p id="previewInfoDoypack" class="preview-info"></p>
                   </div>
                 </div>
                 
@@ -1348,11 +1354,15 @@
     </div>
 
     <script>
+      console.log('🔵 Script principal de doypack cargado');
       const token = localStorage.getItem('token') || localStorage.getItem('authToken');
       const user = JSON.parse(localStorage.getItem('user') || localStorage.getItem('userInfo') || '{}');
       let allPhotos = [];
       let currentFullImageUrl = '';
       let allProducts = {};
+      
+      console.log('👤 Usuario:', user);
+      console.log('🔑 Token presente:', !!token);
       
       if (!token) {
         window.location.href = '/login.html';
@@ -1453,6 +1463,12 @@
         console.log('🔄 Iniciando carga de productos...');
         console.log('Token:', token ? 'Existe ✓' : 'No existe ✗');
         
+        const productsLoading = document.getElementById('productsLoading');
+        if (!productsLoading) {
+          console.warn('⚠️ productsLoading no encontrado (normal en doypack)');
+          return;
+        }
+        
         try {
           // Check cache first (5 minutes)
           const cacheKey = 'products_termoformado';
@@ -1468,7 +1484,7 @@
             const data = JSON.parse(cacheData);
             allProducts = data.groupedProducts;
             renderProducts(data.groupedProducts);
-            document.getElementById('productsLoading').style.display = 'none';
+            if (productsLoading) productsLoading.style.display = 'none';
             console.log('✅ Productos cargados desde caché:', Object.keys(data.groupedProducts).length, 'categorías');
             return;
           }
@@ -1486,7 +1502,7 @@
           if (data.ok && data.groupedProducts) {
             allProducts = data.groupedProducts;
             renderProducts(data.groupedProducts);
-            document.getElementById('productsLoading').style.display = 'none';
+            if (productsLoading) productsLoading.style.display = 'none';
             
             // Save to cache
             localStorage.setItem(cacheKey, JSON.stringify(data));
@@ -1497,22 +1513,28 @@
           }
         } catch (err) {
           console.error('❌ Error loading products:', err);
-          document.getElementById('productsLoading').innerHTML = `
-            <div style="color: #721c24; text-align: center; padding: 40px;">
-              <div style="font-size: 48px; margin-bottom: 16px;">❌</div>
-              <p><strong>Error al cargar productos</strong></p>
-              <p style="font-size: 14px; margin-top: 12px;">${err.message}</p>
-              <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px; background: #dc3545; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                Recargar página
-              </button>
-            </div>
-          `;
+          if (productsLoading) {
+            productsLoading.innerHTML = `
+              <div style="color: #721c24; text-align: center; padding: 40px;">
+                <div style="font-size: 48px; margin-bottom: 16px;">❌</div>
+                <p><strong>Error al cargar productos</strong></p>
+                <p style="font-size: 14px; margin-top: 12px;">${err.message}</p>
+                <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px; background: #dc3545; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                  Recargar página
+                </button>
+              </div>
+            `;
+          }
         }
       }
 
       // Render products grouped by category
       function renderProducts(groupedProducts) {
         const container = document.getElementById('productsContainer');
+        if (!container) {
+          console.warn('⚠️ productsContainer no encontrado (normal en doypack)');
+          return;
+        }
         container.innerHTML = '';
 
         Object.keys(groupedProducts).forEach(category => {
@@ -1640,9 +1662,6 @@
         if (step === 9 && typeof updateConfirmationSummary === 'function') {
           setTimeout(() => updateConfirmationSummary(), 100);
         }
-
-        // Scroll to top
-        window.scrollTo({ top: 0, behavior: 'smooth' });
       }
 
 
@@ -1734,15 +1753,9 @@
         });
       }
 
-      // Step 6 navigation
-      const step6PrevBtn = document.getElementById('step6Prev');
-      if (step6PrevBtn) {
-        step6PrevBtn.addEventListener('click', () => {
-          currentStep = 5;
-          showStep(currentStep);
-        });
-      }
+      // === NAVIGATION CODE REMOVED - Using step8/step9 navigation instead ===
 
+      /* CÓDIGO ANTIGUO REMOVIDO - step6Submit no existe en doypack
       document.getElementById('step6Submit').addEventListener('click', async (e) => {
         e.preventDefault();
         console.log('🚀 Enviando formulario...');
@@ -1887,7 +1900,8 @@
           submitButton.innerHTML = originalButtonText;
           submitButton.style.opacity = '1';
         }
-      });
+      }); */
+      // === FIN DEL CÓDIGO ANTIGUO COMENTADO ===
 
       // Initialize wizard
       showStep(1);
@@ -1907,77 +1921,42 @@
 
       // Cargar fotos del usuario
       async function loadPhotosDoypack() {
-        console.log('📸 Cargando fotos para doypack...');
         try {
-          if (!token) {
-            console.error('No token found. User may not be logged in.');
-            showPhotoLoadErrorDoypack('No se encontró el token de usuario. Por favor inicia sesión nuevamente.');
-            return;
-          }
           const res = await fetch('/api/uploads', {
             headers: { 'Authorization': 'Bearer ' + token }
           });
-          if (!res.ok) {
-            console.error('Error HTTP al cargar fotos:', res.status, res.statusText);
-            showPhotoLoadErrorDoypack('Error al cargar fotos (HTTP ' + res.status + ').');
-            return;
-          }
           const data = await res.json();
-          console.log('📥 Respuesta de /api/uploads para doypack:', data);
-          if (data.ok && Array.isArray(data.uploads)) {
-            allPhotos = data.uploads;
-            console.log(`✅ ${data.uploads.length} fotos cargadas para doypack`);
-            if (data.uploads.length === 0) {
-              showPhotoLoadErrorDoypack('No hay fotos disponibles. Sube fotos en tu dashboard.');
-            } else {
-              populatePhotoSelectDoypack(data.uploads);
-            }
+          
+          if (data.ok && data.uploads) {
+            // Filtrar imágenes generadas por IA
+            const userPhotos = data.uploads.filter(photo => photo.folder !== 'AI Generated');
+            allPhotos = userPhotos;
+            populatePhotoSelectDoypack(userPhotos);
           } else {
-            console.error('Respuesta inesperada de /api/uploads:', data);
-            showPhotoLoadErrorDoypack('No se pudieron cargar las fotos.');
+            const triggerText = document.getElementById('photoSelectTriggerDoypack')?.querySelector('.custom-select-text');
+            if (triggerText) triggerText.textContent = 'Error al cargar fotos';
           }
         } catch (err) {
           console.error('Error loading photos:', err);
-          showPhotoLoadErrorDoypack('Error de red al cargar fotos.');
+          const triggerText = document.getElementById('photoSelectTriggerDoypack')?.querySelector('.custom-select-text');
+          if (triggerText) triggerText.textContent = 'Error al cargar fotos';
         }
       }
 
-      function showPhotoLoadErrorDoypack(message) {
-        const trigger = document.getElementById('photoSelectTriggerDoypack');
-        const triggerText = trigger.querySelector('.custom-select-text');
-        const optionsContainer = document.getElementById('photoSelectOptionsDoypack');
-        triggerText.textContent = message;
-        triggerText.classList.add('placeholder');
-        optionsContainer.innerHTML = `<div class="custom-select-no-results">${message}</div>`;
-        document.getElementById('photoPreviewDoypack').style.display = 'none';
-      }
-
       function populatePhotoSelectDoypack(photos) {
-        console.log('🎨 Poblando selector doypack con', photos.length, 'fotos');
         const trigger = document.getElementById('photoSelectTriggerDoypack');
         const triggerText = trigger?.querySelector('.custom-select-text');
         const optionsContainer = document.getElementById('photoSelectOptionsDoypack');
         const hiddenInput = document.getElementById('photoSelectDoypack');
         
-        if (!trigger || !triggerText || !optionsContainer || !hiddenInput) {
-          console.error('❌ No se encontraron los elementos del selector en populatePhotoSelectDoypack');
-          return;
-        }
+        if (!trigger || !triggerText) return;
         
-        // Limpiar estado visual
-        trigger.classList.remove('active');
-        document.getElementById('photoSelectDropdownDoypack').classList.remove('active');
-
         if (photos.length === 0) {
           triggerText.textContent = 'No hay fotos disponibles';
           triggerText.classList.add('placeholder');
           optionsContainer.innerHTML = '<div class="custom-select-no-results">No hay fotos disponibles</div>';
           document.getElementById('photoPreviewDoypack').style.display = 'none';
-          // Ocultar dropdown si no hay fotos
-          document.getElementById('photoSelectDropdownDoypack').style.display = 'none';
           return;
-        } else {
-          document.getElementById('photoSelectDropdownDoypack').style.display = '';
         }
 
         // Agrupar por carpeta
@@ -1996,6 +1975,7 @@
           groupLabel.className = 'custom-select-group-label';
           groupLabel.textContent = `📁 ${folder}`;
           optionsContainer.appendChild(groupLabel);
+          
           // Opciones del grupo
           byFolder[folder].forEach(photo => {
             const option = document.createElement('div');
@@ -2006,6 +1986,7 @@
             option.dataset.fullUrl = photo.signedUrl;
             option.dataset.filename = photo.filename;
             option.dataset.folder = photo.folder;
+            
             option.innerHTML = `
               <img src="${photo.thumbnailUrl || photo.signedUrl}" 
                    alt="${photo.custom_name || photo.filename}" 
@@ -2016,10 +1997,12 @@
                 <div class="custom-select-option-folder">📁 ${photo.folder || 'Sin carpeta'}</div>
               </div>
             `;
+            
             option.addEventListener('click', () => selectPhotoDoypack(photo, option));
             optionsContainer.appendChild(option);
           });
         });
+
         // Resetear texto del trigger
         triggerText.textContent = '-- Selecciona una foto --';
         triggerText.classList.add('placeholder');
@@ -2030,19 +2013,24 @@
         const triggerText = trigger.querySelector('.custom-select-text');
         const dropdown = document.getElementById('photoSelectDropdownDoypack');
         const hiddenInput = document.getElementById('photoSelectDoypack');
+        
         // Actualizar valor
         hiddenInput.value = photo.id;
+        
         // Actualizar texto del trigger
         triggerText.textContent = photo.custom_name || photo.filename;
         triggerText.classList.remove('placeholder');
+        
         // Actualizar selección visual
-        document.querySelectorAll('#photoSelectOptionsDoypack .custom-select-option').forEach(opt => {
+        document.querySelectorAll('.custom-select-option').forEach(opt => {
           opt.classList.remove('selected');
         });
         optionElement.classList.add('selected');
+        
         // Cerrar dropdown
         trigger.classList.remove('active');
         dropdown.classList.remove('active');
+        
         // Mostrar preview
         showPhotoPreviewDoypack(photo);
       }
@@ -2051,10 +2039,12 @@
         const previewContainer = document.getElementById('photoPreviewDoypack');
         const previewImage = document.getElementById('previewImageDoypack');
         const previewInfo = document.getElementById('previewInfoDoypack');
+        
         previewImage.src = photo.signedUrl;
         previewImage.onclick = () => viewFormFullImage(photo.signedUrl, photo.custom_name || photo.filename);
         previewInfo.textContent = `📁 ${photo.folder || 'Sin carpeta'}`;
         previewContainer.style.display = 'block';
+        
         currentFullImageUrl = photo.signedUrl;
       }
 
@@ -2064,12 +2054,7 @@
         const dropdown = document.getElementById('photoSelectDropdownDoypack');
         const searchInput = document.getElementById('photoSearchInputDoypack');
         
-        if (!trigger || !dropdown || !searchInput) {
-          console.error('❌ No se encontraron los elementos del selector de fotos en doypack');
-          return;
-        }
-        
-        console.log('✅ Inicializando selector de fotos doypack');
+        if (!trigger || !dropdown || !searchInput) return;
         
         // Toggle dropdown
         trigger.addEventListener('click', (e) => {
@@ -2080,10 +2065,12 @@
             searchInput.focus();
           }
         });
-        // Prevenir que clicks dentro del dropdown lo cierren (pero permitir scroll)
+        
+        // Prevenir que clicks dentro del dropdown lo cierren
         dropdown.addEventListener('click', (e) => {
           e.stopPropagation();
         });
+        
         // Cerrar al hacer click fuera
         document.addEventListener('click', (e) => {
           if (!trigger.contains(e.target) && !dropdown.contains(e.target)) {
@@ -2091,15 +2078,17 @@
             dropdown.classList.remove('active');
           }
         });
+        
         // Búsqueda
         searchInput.addEventListener('input', (e) => {
           const searchTerm = e.target.value.toLowerCase();
-          const options = document.querySelectorAll('#photoSelectOptionsDoypack .custom-select-option');
-          const groupLabels = document.querySelectorAll('#photoSelectOptionsDoypack .custom-select-group-label');
+          const options = document.querySelectorAll('.custom-select-option');
+          
           let hasVisibleOptions = false;
           let currentGroupHasVisible = false;
           let currentGroupLabel = null;
-          document.querySelectorAll('#photoSelectOptionsDoypack .custom-select-group-label, #photoSelectOptionsDoypack .custom-select-option').forEach(el => {
+          
+          document.querySelectorAll('.custom-select-group-label, .custom-select-option').forEach(el => {
             if (el.classList.contains('custom-select-group-label')) {
               if (currentGroupLabel) {
                 currentGroupLabel.style.display = currentGroupHasVisible ? 'block' : 'none';
@@ -2107,7 +2096,7 @@
               currentGroupLabel = el;
               currentGroupHasVisible = false;
             } else {
-              const name = el.dataset.name.toLowerCase();
+              const name = el.dataset.name?.toLowerCase() || '';
               const folder = (el.dataset.folder || 'Sin carpeta').toLowerCase();
               const matches = name.includes(searchTerm) || folder.includes(searchTerm);
               el.style.display = matches ? 'flex' : 'none';
@@ -2117,10 +2106,12 @@
               }
             }
           });
+          
           if (currentGroupLabel) {
             currentGroupLabel.style.display = currentGroupHasVisible ? 'block' : 'none';
           }
-          const noResults = document.querySelector('#photoSelectOptionsDoypack .custom-select-no-results');
+          
+          const noResults = document.querySelector('.custom-select-no-results');
           if (!hasVisibleOptions && !noResults) {
             const msg = document.createElement('div');
             msg.className = 'custom-select-no-results';
@@ -2274,9 +2265,12 @@
       });
 
       // Inicializar dropdown personalizado de doypack
+      console.log('🟢 Intentando inicializar selector de fotos doypack...');
+      console.log('🔍 Buscando elemento photoSelectTriggerDoypack:', document.getElementById('photoSelectTriggerDoypack'));
       initCustomSelectDoypack();
-      // Cargar productos y fotos al iniciar
-      loadProducts();
+      // console.log('🟢 Cargando productos...'); // Doypack no usa productos
+      // loadProducts(); // Doypack no usa productos
+      console.log('🟢 Cargando fotos doypack...');
       loadPhotosDoypack();
 
       // === FUNCIÓN PARA CONSTRUIR EL JSON DEL FORMULARIO DOYPACK ===

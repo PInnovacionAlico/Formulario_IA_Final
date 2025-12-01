@@ -900,6 +900,9 @@ app.get('/api/uploads', authenticate, async (req, res) => {
       .order('created_at', { ascending: false });
     
     if (error) throw error;
+    
+    // Contar solo fotos subidas por el usuario (sin IA)
+    const userPhotosCount = data.filter(u => u.folder !== 'AI Generated').length;
 
     // Generar signed URLs con caché para reducir llamadas a Supabase Storage
     const uploadsWithUrls = await Promise.all(data.map(async (upload) => {
@@ -939,7 +942,7 @@ app.get('/api/uploads', authenticate, async (req, res) => {
       };
     }));
 
-    res.json({ ok: true, uploads: uploadsWithUrls });
+    res.json({ ok: true, uploads: uploadsWithUrls, userPhotosCount });
   } catch (err) {
     console.error('list uploads error', err.message || err);
     res.status(500).json({ error: err.message || String(err) });
@@ -1130,10 +1133,13 @@ app.get('/api/credits', authenticate, async (req, res) => {
 // ⚠️ IMPORTANT: URL expires in 5 minutes to minimize Supabase bandwidth usage
 // The webhook receiver MUST download the image immediately upon receiving this payload
 app.post('/api/submit-form', authenticate, async (req, res) => {
-  const { photo_id, form_type, product_id, market_sector, product_description, logo_display_preference, ...formData } = req.body || {};
+  const { user_photo, form_type, product_id, market_sector, product_description, logo_display_preference, ...formData } = req.body || {};
+  
+  // Extract photo_id from user_photo object
+  const photo_id = user_photo?.id;
   
   if (!photo_id) {
-    return res.status(400).json({ error: 'photo_id is required' });
+    return res.status(400).json({ error: 'user_photo with id is required' });
   }
 
   // Validate form_type if provided
@@ -1275,7 +1281,7 @@ app.post('/api/submit-form', authenticate, async (req, res) => {
       market_sector: market_sector || null,
       product_description: product_description || null,
       logo_display_preference: logo_display_preference || null,
-      form_data: formData // Additional form fields
+      ...formData // Expand all additional form fields at root level
     };
 
     // Send to Alico webhook
@@ -1419,7 +1425,9 @@ app.post('/api/submit-form', authenticate, async (req, res) => {
               path: generatedPath,
               folder: 'AI Generated',
               custom_name: `${form_type || 'Imagen'} - Generada por IA`,
-              bucket_name: 'generated'
+              bucket_name: 'generated',
+              mimetype: 'image/png',
+              size: imageBuffer.length
             });
           }
         } catch (downloadError) {
@@ -1535,25 +1543,37 @@ app.get('/api/form-submissions', authenticate, async (req, res) => {
     const submissionsWithPhotos = await Promise.all(data.map(async (sub) => {
       let generatedImageUrl = null;
       
-      // Si hay response_data, buscar la imagen generada en uploads
+      // Si hay response_data, intentar obtener la URL directamente o buscar la imagen generada
       if (sub.response_data) {
-        const { data: generatedImage } = await supabase
-          .from('uploads')
-          .select('*')
-          .eq('owner_id', req.userId)
-          .eq('folder', 'AI Generated')
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        
-        if (generatedImage) {
-          // Generar URL firmada del bucket correcto
-          const bucketName = generatedImage.bucket_name || 'uploads';
-          const { data: urlData } = await supabase.storage
-            .from(bucketName)
-            .createSignedUrl(generatedImage.path, 24 * 60 * 60);
+        // Si response_data ya es una URL, usarla
+        if (typeof sub.response_data === 'string' && sub.response_data.startsWith('http')) {
+          generatedImageUrl = sub.response_data;
+        } else {
+          // Buscar imagen generada cerca de la fecha del submission
+          const submissionTime = new Date(sub.created_at);
+          const timeWindowStart = new Date(submissionTime.getTime() - 60000); // 1 minuto antes
+          const timeWindowEnd = new Date(submissionTime.getTime() + 120000); // 2 minutos después
           
-          generatedImageUrl = urlData?.signedUrl || null;
+          const { data: generatedImage } = await supabase
+            .from('uploads')
+            .select('*')
+            .eq('owner_id', req.userId)
+            .eq('folder', 'AI Generated')
+            .gte('created_at', timeWindowStart.toISOString())
+            .lte('created_at', timeWindowEnd.toISOString())
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          
+          if (generatedImage) {
+            // Generar URL firmada del bucket correcto
+            const bucketName = generatedImage.bucket_name || 'generated';
+            const { data: urlData } = await supabase.storage
+              .from(bucketName)
+              .createSignedUrl(generatedImage.path, 24 * 60 * 60);
+            
+            generatedImageUrl = urlData?.signedUrl || null;
+          }
         }
       }
       
@@ -2180,7 +2200,7 @@ app.get('/api/admin/dashboard-stats', authenticateAdmin, async (req, res) => {
       return acc;
     }, {});
 
-    // Recent submissions (last 10)
+    // Recent submissions (last 7)
     const { data: recentSubmissions, error: recentError } = await supabase
       .from('form_submissions')
       .select(`
@@ -2191,7 +2211,7 @@ app.get('/api/admin/dashboard-stats', authenticateAdmin, async (req, res) => {
         users(name, email)
       `)
       .order('created_at', { ascending: false })
-      .limit(10);
+      .limit(7);
     
     if (recentError) throw recentError;
 

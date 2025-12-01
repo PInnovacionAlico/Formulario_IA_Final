@@ -370,6 +370,15 @@
           <!-- Users Management -->
           <div class="admin-section">
             <h2>👥 Gestión de Usuarios</h2>
+            <div style="margin-bottom: 20px;">
+              <input 
+                type="text" 
+                id="userEmailFilter" 
+                placeholder="🔍 Filtrar por correo electrónico..." 
+                style="width: 100%; max-width: 400px; padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; transition: all 0.3s;"
+                oninput="filterUsersByEmailDebounced(this.value)"
+              />
+            </div>
             <div style="overflow-x: auto;">
               <table class="admin-table">
                 <thead>
@@ -395,11 +404,23 @@
                 </tbody>
               </table>
             </div>
+            <div id="usersPagination" style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 20px;">
+              <!-- Pagination controls will be inserted here -->
+            </div>
           </div>
 
           <!-- All Submissions -->
           <div class="admin-section">
             <h2>📋 Todos los Formularios</h2>
+            <div style="margin-bottom: 20px;">
+              <input 
+                type="text" 
+                id="submissionUserIdFilter" 
+                placeholder="🔍 Filtrar por ID de usuario..." 
+                style="width: 100%; max-width: 400px; padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; transition: all 0.3s;"
+                oninput="filterSubmissionsByUserIdDebounced(this.value)"
+              />
+            </div>
             <div style="overflow-x: auto;">
               <table class="admin-table">
                 <thead>
@@ -423,6 +444,9 @@
                   </tr>
                 </tbody>
               </table>
+            </div>
+            <div id="submissionsPagination" style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 20px;">
+              <!-- Pagination controls will be inserted here -->
             </div>
           </div>
         </div>
@@ -646,16 +670,39 @@
         }
       }
 
+      // Pagination state
+      let currentUsersPage = 1;
+      let currentSubmissionsPage = 1;
+      let allUsersData = [];
+      let filteredUsersData = [];
+      let allSubmissionsData = [];
+      let filteredSubmissionsData = [];
+      const ITEMS_PER_PAGE = 7;
+
       // Render users table
       function renderUsersTable(users) {
+        allUsersData = users;
+        filteredUsersData = users;
+        currentUsersPage = 1;
+        document.getElementById('userEmailFilter').value = '';
+        renderUsersTablePaginated();
+      }
+
+      function renderUsersTablePaginated() {
         const tbody = document.getElementById('usersTable');
+        const users = filteredUsersData;
         
         if (!users || users.length === 0) {
           tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 20px; color: #999;">No hay usuarios</td></tr>';
+          document.getElementById('usersPagination').innerHTML = '';
           return;
         }
 
-        tbody.innerHTML = users.map(user => {
+        const startIndex = (currentUsersPage - 1) * ITEMS_PER_PAGE;
+        const endIndex = startIndex + ITEMS_PER_PAGE;
+        const paginatedUsers = users.slice(startIndex, endIndex);
+
+        tbody.innerHTML = paginatedUsers.map(user => {
           const statusBadge = user.banned 
             ? `<span class="badge danger" title="Baneado el ${new Date(user.banned_at).toLocaleDateString('es-ES')}${user.banned_by_name ? ' por ' + user.banned_by_name : ''}">🚫 Baneado</span>`
             : `<span class="badge success">✓ Activo</span>`;
@@ -674,8 +721,9 @@
             ? '<span class="badge admin">🛡️ Admin</span>' 
             : '-';
 
-          // Disable actions for super admin
+          // Disable actions for super admin (except for own account)
           const isSuperAdmin = user.is_super_admin;
+          const isOwnAccount = user.id === userInfo.id;
           const adminToggleButton = isSuperAdmin 
             ? '' 
             : !user.is_admin 
@@ -708,7 +756,7 @@
               <td>${adminBadge}</td>
               <td>${statusBadge}</td>
               <td>
-                <button class="btn-small primary" onclick="editUserCredits('${user.id}', ${user.credits})" ${user.banned || isSuperAdmin ? 'disabled' : ''}>Editar Créditos</button>
+                <button class="btn-small primary" onclick="editUserCredits('${user.id}', ${user.credits})" ${user.banned || (isSuperAdmin && !isOwnAccount) ? 'disabled' : ''}>Editar Créditos</button>
                 ${adminToggleButton}
                 ${banButton}
                 ${exportButton}
@@ -717,6 +765,11 @@
             </tr>
           `;
         }).join('');
+
+        createPaginationControls('usersPagination', filteredUsersData.length, currentUsersPage, (page) => {
+          currentUsersPage = page;
+          renderUsersTablePaginated();
+        });
       }
 
       // Load all submissions
@@ -741,14 +794,28 @@
 
       // Render all submissions table
       function renderAllSubmissionsTable(submissions) {
+        allSubmissionsData = submissions;
+        filteredSubmissionsData = submissions;
+        currentSubmissionsPage = 1;
+        document.getElementById('submissionUserIdFilter').value = '';
+        renderSubmissionsTablePaginated();
+      }
+
+      function renderSubmissionsTablePaginated() {
         const tbody = document.getElementById('allSubmissionsTable');
+        const submissions = filteredSubmissionsData;
         
         if (!submissions || submissions.length === 0) {
           tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 20px; color: #999;">No hay formularios enviados</td></tr>';
+          document.getElementById('submissionsPagination').innerHTML = '';
           return;
         }
 
-        tbody.innerHTML = submissions.slice(0, 50).map(sub => {
+        const startIndex = (currentSubmissionsPage - 1) * ITEMS_PER_PAGE;
+        const endIndex = startIndex + ITEMS_PER_PAGE;
+        const paginatedSubmissions = submissions.slice(startIndex, endIndex);
+
+        tbody.innerHTML = paginatedSubmissions.map(sub => {
           const shortSubmissionId = sub.id.substring(0, 8) + '...';
           const shortUserId = sub.user_id ? sub.user_id.substring(0, 8) + '...' : 'N/A';
           
@@ -780,9 +847,153 @@
         `;
         }).join('');
 
-        if (submissions.length > 50) {
-          tbody.innerHTML += `<tr><td colspan="9" style="text-align: center; padding: 12px; color: #999; font-style: italic;">Mostrando 50 de ${submissions.length} formularios</td></tr>`;
+        createPaginationControls('submissionsPagination', filteredSubmissionsData.length, currentSubmissionsPage, (page) => {
+          currentSubmissionsPage = page;
+          renderSubmissionsTablePaginated();
+        });
+      }
+
+      // Filter users by email
+      let filterUsersDebounceTimer;
+      function filterUsersByEmailDebounced(searchValue) {
+        clearTimeout(filterUsersDebounceTimer);
+        filterUsersDebounceTimer = setTimeout(() => {
+          filterUsersByEmail(searchValue);
+        }, 300);
+      }
+
+      function filterUsersByEmail(searchValue) {
+        const searchTerm = searchValue.trim().toLowerCase();
+        
+        if (!searchTerm) {
+          filteredUsersData = allUsersData;
+        } else {
+          filteredUsersData = allUsersData.filter(user => 
+            user.email.toLowerCase().includes(searchTerm)
+          );
         }
+        
+        currentUsersPage = 1;
+        renderUsersTablePaginated();
+      }
+
+      // Filter submissions by user ID
+      let filterSubmissionsDebounceTimer;
+      function filterSubmissionsByUserIdDebounced(searchValue) {
+        clearTimeout(filterSubmissionsDebounceTimer);
+        filterSubmissionsDebounceTimer = setTimeout(() => {
+          filterSubmissionsByUserId(searchValue);
+        }, 300);
+      }
+
+      function filterSubmissionsByUserId(searchValue) {
+        const searchTerm = searchValue.trim().toLowerCase();
+        
+        if (!searchTerm) {
+          filteredSubmissionsData = allSubmissionsData;
+        } else {
+          filteredSubmissionsData = allSubmissionsData.filter(sub => 
+            sub.user_id && sub.user_id.toLowerCase().includes(searchTerm)
+          );
+        }
+        
+        currentSubmissionsPage = 1;
+        renderSubmissionsTablePaginated();
+      }
+
+      // Create pagination controls
+      function createPaginationControls(containerId, totalItems, currentPage, onPageChange) {
+        const container = document.getElementById(containerId);
+        const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+
+        if (totalPages <= 1) {
+          container.innerHTML = '';
+          return;
+        }
+
+        let html = `
+          <button 
+            class="btn-small" 
+            style="padding: 8px 12px; background: linear-gradient(135deg, var(--alico-blue) 0%, var(--alico-blue-70) 100%); color: white;" 
+            ${currentPage === 1 ? 'disabled' : ''} 
+            onclick="changePage${containerId}(${currentPage - 1})"
+          >
+            ← Anterior
+          </button>
+        `;
+
+        // Calculate page range to show (max 10 pages at a time)
+        const maxPagesToShow = 10;
+        let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+        let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+
+        if (endPage - startPage < maxPagesToShow - 1) {
+          startPage = Math.max(1, endPage - maxPagesToShow + 1);
+        }
+
+        // Add first page and ellipsis if needed
+        if (startPage > 1) {
+          html += `
+            <button 
+              class="btn-small" 
+              style="padding: 8px 14px; ${1 === currentPage ? 'background: linear-gradient(135deg, var(--alico-blue) 0%, var(--alico-blue-70) 100%); color: white; font-weight: bold;' : 'background: white; color: var(--alico-blue); border: 1px solid var(--alico-blue);'}" 
+              onclick="changePage${containerId}(1)"
+            >
+              1
+            </button>
+          `;
+          if (startPage > 2) {
+            html += `<span style="padding: 8px; color: #999;">...</span>`;
+          }
+        }
+
+        // Add page numbers
+        for (let i = startPage; i <= endPage; i++) {
+          const isActive = i === currentPage;
+          html += `
+            <button 
+              class="btn-small" 
+              style="padding: 8px 14px; ${isActive ? 'background: linear-gradient(135deg, var(--alico-blue) 0%, var(--alico-blue-70) 100%); color: white; font-weight: bold;' : 'background: white; color: var(--alico-blue); border: 1px solid var(--alico-blue);'}" 
+              onclick="changePage${containerId}(${i})"
+            >
+              ${i}
+            </button>
+          `;
+        }
+
+        // Add last page and ellipsis if needed
+        if (endPage < totalPages) {
+          if (endPage < totalPages - 1) {
+            html += `<span style="padding: 8px; color: #999;">...</span>`;
+          }
+          html += `
+            <button 
+              class="btn-small" 
+              style="padding: 8px 14px; ${totalPages === currentPage ? 'background: linear-gradient(135deg, var(--alico-blue) 0%, var(--alico-blue-70) 100%); color: white; font-weight: bold;' : 'background: white; color: var(--alico-blue); border: 1px solid var(--alico-blue);'}" 
+              onclick="changePage${containerId}(${totalPages})"
+            >
+              ${totalPages}
+            </button>
+          `;
+        }
+
+        html += `
+          <button 
+            class="btn-small" 
+            style="padding: 8px 12px; background: linear-gradient(135deg, var(--alico-blue) 0%, var(--alico-blue-70) 100%); color: white;" 
+            ${currentPage === totalPages ? 'disabled' : ''} 
+            onclick="changePage${containerId}(${currentPage + 1})"
+          >
+            Siguiente →
+          </button>
+        `;
+
+        html += `<span style="margin-left: 15px; color: #666; font-size: 14px;">Página ${currentPage} de ${totalPages} (${totalItems} items)</span>`;
+
+        container.innerHTML = html;
+
+        // Create global change page function for this container
+        window[`changePage${containerId}`] = onPageChange;
       }
 
       // Edit user credits
