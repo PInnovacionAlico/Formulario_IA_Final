@@ -1257,6 +1257,9 @@ app.post('/api/submit-form', authenticate, async (req, res) => {
       }
     }
 
+    // Variable to store AI image ID
+    let aiImageId = null;
+    
     // Prepare webhook payload
     const webhookPayload = {
       action: 'form_submitted',
@@ -1419,7 +1422,7 @@ app.post('/api/submit-form', authenticate, async (req, res) => {
             generatedImageUrl = publicUrlData.publicUrl;
             
             // Registrar en la tabla uploads para mantener referencia
-            await supabase.from('uploads').insert({
+            const { data: aiUploadData, error: aiUploadError } = await supabase.from('uploads').insert({
               owner_id: req.userId,
               filename: generatedFileName,
               path: generatedPath,
@@ -1428,7 +1431,12 @@ app.post('/api/submit-form', authenticate, async (req, res) => {
               bucket_name: 'generated',
               mimetype: 'image/png',
               size: imageBuffer.length
-            });
+            }).select('id').single();
+            
+            // Store the AI image ID for linking with submission
+            if (!aiUploadError && aiUploadData) {
+              aiImageId = aiUploadData.id;
+            }
           }
         } catch (downloadError) {
           console.error('Error downloading/uploading generated image:', downloadError.message);
@@ -1440,6 +1448,7 @@ app.post('/api/submit-form', authenticate, async (req, res) => {
       await supabase.from('form_submissions').insert([{
         user_id: req.userId,
         photo_id: photo_id,
+        ai_image_id: aiImageId || null,
         form_type: form_type || null,
         product_id: product_id || null,
         market_sector: market_sector || null,
@@ -1502,9 +1511,12 @@ app.post('/api/submit-form', authenticate, async (req, res) => {
     
     // Save failed submission to database
     try {
+      // Use the extracted photo_id variable, not req.body.photo_id
+      const failedPhotoId = photo_id || req.body?.user_photo?.id || req.body?.photo_id || null;
+      
       await supabase.from('form_submissions').insert([{
         user_id: req.userId,
-        photo_id: req.body.photo_id || null,
+        photo_id: failedPhotoId,
         form_type: req.body.form_type || null,
         product_id: req.body.product_id || null,
         market_sector: req.body.market_sector || null,
@@ -1531,7 +1543,7 @@ app.get('/api/form-submissions', authenticate, async (req, res) => {
       .from('form_submissions')
       .select(`
         *,
-        uploads(filename, custom_name, folder),
+        user_photo:uploads!photo_id(filename, custom_name, folder),
         products(name, category)
       `)
       .eq('user_id', req.userId)
@@ -1543,13 +1555,30 @@ app.get('/api/form-submissions', authenticate, async (req, res) => {
     const submissionsWithPhotos = await Promise.all(data.map(async (sub) => {
       let generatedImageUrl = null;
       
-      // Si hay response_data, intentar obtener la URL directamente o buscar la imagen generada
-      if (sub.response_data) {
+      // Primero intentar con ai_image_id (nuevo método - más preciso)
+      if (sub.ai_image_id) {
+        const { data: aiImage } = await supabase
+          .from('uploads')
+          .select('path, bucket_name')
+          .eq('id', sub.ai_image_id)
+          .eq('bucket_name', 'generated')
+          .maybeSingle();
+        
+        if (aiImage) {
+          const { data: urlData } = await supabase.storage
+            .from('generated')
+            .createSignedUrl(aiImage.path, 24 * 60 * 60);
+          
+          generatedImageUrl = urlData?.signedUrl || null;
+        }
+      } 
+      // Fallback a métodos antiguos para envíos legacy
+      else if (sub.response_data) {
         // Si response_data ya es una URL, usarla
         if (typeof sub.response_data === 'string' && sub.response_data.startsWith('http')) {
           generatedImageUrl = sub.response_data;
         } else {
-          // Buscar imagen generada cerca de la fecha del submission
+          // Buscar imagen generada cerca de la fecha del submission (legacy)
           const submissionTime = new Date(sub.created_at);
           const timeWindowStart = new Date(submissionTime.getTime() - 60000); // 1 minuto antes
           const timeWindowEnd = new Date(submissionTime.getTime() + 120000); // 2 minutos después
@@ -1579,7 +1608,7 @@ app.get('/api/form-submissions', authenticate, async (req, res) => {
       
       return {
         ...sub,
-        photo_filename: sub.uploads?.custom_name || sub.uploads?.filename || 'Foto eliminada',
+        photo_filename: sub.user_photo?.custom_name || sub.user_photo?.filename || 'Foto eliminada',
         product_name: sub.products?.name || null,
         product_category: sub.products?.category || null,
         generated_image_url: generatedImageUrl
@@ -1602,7 +1631,7 @@ app.get('/api/form-submissions/:id', authenticate, async (req, res) => {
       .from('form_submissions')
       .select(`
         *,
-        uploads(filename, custom_name, folder),
+        user_photo:uploads!photo_id(filename, custom_name, folder),
         products(name, category)
       `)
       .eq('id', id)
@@ -1615,7 +1644,7 @@ app.get('/api/form-submissions/:id', authenticate, async (req, res) => {
     // Add photo filename and product info
     const submission = {
       ...data,
-      photo_filename: data.uploads?.custom_name || data.uploads?.filename || 'Foto eliminada',
+      photo_filename: data.user_photo?.custom_name || data.user_photo?.filename || 'Foto eliminada',
       product_name: data.products?.name || null,
       product_category: data.products?.category || null
     };
@@ -2345,7 +2374,7 @@ app.get('/api/admin/submissions', authenticateAdmin, async (req, res) => {
       .select(`
         *,
         users(name, email),
-        uploads(filename, custom_name),
+        user_photo:uploads!photo_id(filename, custom_name),
         products(name, category)
       `)
       .order('created_at', { ascending: false });
@@ -2354,17 +2383,34 @@ app.get('/api/admin/submissions', authenticateAdmin, async (req, res) => {
 
     // Enrich submissions with AI image data
     const submissionsWithInfo = await Promise.all(submissions.map(async (sub) => {
-      // Find AI-generated image for this user and form submission
+      // Find AI-generated image using ai_image_id if available
       let aiImageUrl = null;
       
-      if (sub.user_id && sub.created_at) {
+      if (sub.ai_image_id) {
+        // Direct lookup using ai_image_id (new method - more accurate)
+        const { data: aiImage, error: aiError } = await supabase
+          .from('uploads')
+          .select('path, bucket_name')
+          .eq('id', sub.ai_image_id)
+          .eq('bucket_name', 'generated')
+          .single();
+        
+        if (!aiError && aiImage) {
+          const { data: publicUrl } = supabase.storage
+            .from('generated')
+            .getPublicUrl(aiImage.path);
+          
+          aiImageUrl = publicUrl?.publicUrl || null;
+        }
+      } else if (sub.user_id && sub.created_at) {
+        // Fallback to time-based lookup for old submissions (legacy method)
         const { data: aiImages, error: aiError } = await supabase
           .from('uploads')
-          .select('filename, path, bucket_name')
+          .select('path, bucket_name')
           .eq('owner_id', sub.user_id)
           .eq('bucket_name', 'generated')
           .gte('created_at', new Date(new Date(sub.created_at).getTime() - 60000).toISOString()) // 1 min before
-          .lte('created_at', new Date(new Date(sub.created_at).getTime() + 300000).toISOString()) // 5 min after
+          .lte('created_at', new Date(new Date(sub.created_at).getTime() + 120000).toISOString()) // 2 min after
           .order('created_at', { ascending: false })
           .limit(1);
         
@@ -2382,7 +2428,7 @@ app.get('/api/admin/submissions', authenticateAdmin, async (req, res) => {
         ...sub,
         user_name: sub.users?.name || 'Desconocido',
         user_email: sub.users?.email || 'N/A',
-        photo_filename: sub.uploads?.custom_name || sub.uploads?.filename || 'Foto eliminada',
+        photo_filename: sub.user_photo?.custom_name || sub.user_photo?.filename || 'Foto eliminada',
         product_name: sub.products?.name || null,
         product_category: sub.products?.category || null,
         ai_image_url: aiImageUrl

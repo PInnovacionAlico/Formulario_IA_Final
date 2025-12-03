@@ -563,6 +563,7 @@
                     <th>Estado</th>
                     <th>Webhook</th>
                     <th>Error</th>
+                    <th>Imagen IA</th>
                     <th>Acciones</th>
                   </tr>
                 </thead>
@@ -571,6 +572,9 @@
                 </tbody>
               </table>
             </div>
+            
+            <!-- Pagination Controls -->
+            <div id="paginationControls"></div>
           </div>
 
           <div id="emptyState" style="display: none;">
@@ -693,6 +697,11 @@
       // Store all submissions for filtering
       let allSubmissions = [];
       let currentFilter = 'all';
+      
+      // Pagination state
+      let filteredSubmissions = [];
+      let currentPage = 1;
+      const itemsPerPage = 7;
 
       // Load submission history
       async function loadHistory() {
@@ -727,11 +736,15 @@
         }
       }
 
-      function renderHistory(submissions) {
+      function renderHistoryPaginated() {
         const tbody = document.getElementById('historyTableBody');
         tbody.innerHTML = '';
+        
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        const paginatedSubmissions = filteredSubmissions.slice(startIndex, endIndex);
 
-        submissions.forEach(sub => {
+        paginatedSubmissions.forEach(sub => {
           const row = document.createElement('tr');
           
           const date = new Date(sub.completed_at);
@@ -766,20 +779,12 @@
           const formTypeClass = sub.form_type ? `form-${sub.form_type}` : 'form-unknown';
           const formTypeBadge = `<span class="form-type-badge ${formTypeClass}">${formTypeIcon} ${formTypeName.charAt(0).toUpperCase() + formTypeName.slice(1)}</span>`;
 
-          // Botón para ver imagen generada
-          let actionButtons = `
-            <button class="btn-view-photo" onclick="viewDetails('${sub.id}')">
-              📋 Ver detalles
-            </button>
-          `;
-          
-          if (sub.generated_image_url) {
-            actionButtons += `
-              <button class="btn-view-generated" onclick="viewGeneratedImage('${sub.id}', '${sub.generated_image_url}')" title="Ver imagen generada por IA">
-                🎨 Ver IA
-              </button>
-            `;
-          }
+          // Previsualización de imagen IA o placeholder
+          const aiImageCell = sub.generated_image_url
+            ? `<a href="javascript:void(0)" onclick="viewGeneratedImage('${sub.id}', '${sub.generated_image_url}')" title="Ver imagen generada por IA">
+                <img src="${sub.generated_image_url}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 6px; border: 1px solid #ddd; cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'" />
+               </a>`
+            : '<span style="color: #999; font-size: 12px;">-</span>';
 
           row.innerHTML = `
             <td>${formattedDate}</td>
@@ -787,13 +792,113 @@
             <td>${statusBadge}</td>
             <td>${webhookBadge}</td>
             <td>${errorCell}</td>
+            <td style="text-align: center;">${aiImageCell}</td>
             <td class="action-buttons">
-              ${actionButtons}
+              <button class="btn-view-photo" onclick="viewDetails('${sub.id}')">
+                📋 Ver detalles
+              </button>
             </td>
           `;
 
           tbody.appendChild(row);
         });
+        
+        // Render pagination controls
+        renderPaginationControls();
+      }
+      
+      function renderPaginationControls() {
+        const paginationContainer = document.getElementById('paginationControls');
+        if (!paginationContainer) return;
+        
+        const totalPages = Math.ceil(filteredSubmissions.length / itemsPerPage);
+        
+        if (totalPages <= 1) {
+          paginationContainer.innerHTML = '';
+          return;
+        }
+        
+        let paginationHTML = '<div style="display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 20px; flex-wrap: wrap;">';
+        
+        // Previous button
+        paginationHTML += `
+          <button 
+            onclick="changePage(${currentPage - 1})" 
+            ${currentPage === 1 ? 'disabled' : ''}
+            style="padding: 8px 12px; border: 1px solid #ddd; background: white; border-radius: 6px; cursor: pointer; font-size: 14px; transition: all 0.2s;"
+            onmouseover="if(!this.disabled) this.style.background='var(--alico-gold-10)'"
+            onmouseout="this.style.background='white'">
+            ← Anterior
+          </button>
+        `;
+        
+        // Page numbers with smart range
+        const maxVisiblePages = 7;
+        let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+        let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+        
+        if (endPage - startPage < maxVisiblePages - 1) {
+          startPage = Math.max(1, endPage - maxVisiblePages + 1);
+        }
+        
+        // First page
+        if (startPage > 1) {
+          paginationHTML += `
+            <button onclick="changePage(1)" style="padding: 8px 12px; border: 1px solid #ddd; background: white; border-radius: 6px; cursor: pointer; font-size: 14px; transition: all 0.2s;" onmouseover="this.style.background='var(--alico-gold-10)'" onmouseout="this.style.background='white'">1</button>
+          `;
+          if (startPage > 2) {
+            paginationHTML += '<span style="padding: 8px;">...</span>';
+          }
+        }
+        
+        // Page numbers
+        for (let i = startPage; i <= endPage; i++) {
+          const isActive = i === currentPage;
+          paginationHTML += `
+            <button 
+              onclick="changePage(${i})" 
+              style="padding: 8px 12px; border: 1px solid ${isActive ? 'var(--alico-gold)' : '#ddd'}; background: ${isActive ? 'var(--alico-gold)' : 'white'}; color: ${isActive ? 'white' : '#333'}; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: ${isActive ? '600' : '400'}; transition: all 0.2s;"
+              ${isActive ? '' : "onmouseover=\"this.style.background='var(--alico-gold-10)'\" onmouseout=\"this.style.background='white'\""}
+              ${isActive ? 'disabled' : ''}>
+              ${i}
+            </button>
+          `;
+        }
+        
+        // Last page
+        if (endPage < totalPages) {
+          if (endPage < totalPages - 1) {
+            paginationHTML += '<span style="padding: 8px;">...</span>';
+          }
+          paginationHTML += `
+            <button onclick="changePage(${totalPages})" style="padding: 8px 12px; border: 1px solid #ddd; background: white; border-radius: 6px; cursor: pointer; font-size: 14px; transition: all 0.2s;" onmouseover="this.style.background='var(--alico-gold-10)'" onmouseout="this.style.background='white'">${totalPages}</button>
+          `;
+        }
+        
+        // Next button
+        paginationHTML += `
+          <button 
+            onclick="changePage(${currentPage + 1})" 
+            ${currentPage === totalPages ? 'disabled' : ''}
+            style="padding: 8px 12px; border: 1px solid #ddd; background: white; border-radius: 6px; cursor: pointer; font-size: 14px; transition: all 0.2s;"
+            onmouseover="if(!this.disabled) this.style.background='var(--alico-gold-10)'"
+            onmouseout="this.style.background='white'">
+            Siguiente →
+          </button>
+        `;
+        
+        paginationHTML += '</div>';
+        paginationContainer.innerHTML = paginationHTML;
+      }
+      
+      function changePage(page) {
+        const totalPages = Math.ceil(filteredSubmissions.length / itemsPerPage);
+        if (page < 1 || page > totalPages) return;
+        currentPage = page;
+        renderHistoryPaginated();
+        
+        // Scroll to top of table
+        document.querySelector('.history-table').scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
 
       function updateStats(submissions) {
@@ -900,40 +1005,70 @@
           : '';
 
         content.innerHTML = `
-          <div style="display: flex; flex-direction: column; gap: 16px;">
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <strong>ID:</strong> 
-              <span id="submissionId" style="font-family: monospace; font-size: 13px; color: #666;">${sub.id}</span>
-              <button 
-                onclick="copyToClipboard('${sub.id}')" 
-                style="background: linear-gradient(135deg, var(--alico-gold) 0%, var(--alico-gold-80) 100%); 
-                       color: white; 
-                       border: none; 
-                       padding: 6px 10px; 
-                       border-radius: 6px; 
-                       cursor: pointer; 
-                       font-size: 12px; 
-                       font-weight: 600;
-                       transition: all 0.3s;
-                       display: flex;
-                       align-items: center;
-                       gap: 4px;"
-                onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(219, 149, 0, 0.4)';"
-                onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';"
-                title="Copiar ID al portapapeles">
-                📋 Copiar
-              </button>
+          <div style="display: flex; flex-direction: column; gap: 20px;">
+            <!-- Header Section -->
+            <div style="background: linear-gradient(135deg, var(--alico-blue-10) 0%, var(--alico-gold-10) 100%); padding: 16px; border-radius: 8px; border-left: 4px solid var(--alico-gold);">
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                <strong style="font-size: 13px; color: #666;">ID del Envío:</strong> 
+                <span style="font-family: monospace; font-size: 12px; color: #333; background: white; padding: 4px 8px; border-radius: 4px;">${sub.id.substring(0, 8)}...</span>
+                <button 
+                  onclick="copyToClipboard('${sub.id}')" 
+                  style="background: var(--alico-gold); color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600; transition: all 0.2s;"
+                  onmouseover="this.style.transform='scale(1.05)'"
+                  onmouseout="this.style.transform='scale(1)'"
+                  title="Copiar ID completo">
+                  📋 Copiar
+                </button>
+              </div>
+              <div style="font-size: 14px; color: #555;"><strong>📅 Fecha:</strong> ${formattedDate}</div>
             </div>
-            <div><strong>Fecha:</strong> ${formattedDate}</div>
-            <div><strong>Formulario:</strong> ${formTypeDisplay}</div>
-            ${productInfo}
-            <div><strong>Foto:</strong> ${sub.photo_filename || 'N/A'}</div>
-            <div><strong>Estado:</strong> ${sub.success ? '✅ Exitoso' : '❌ Fallido'}</div>
-            <div><strong>Webhook enviado:</strong> ${sub.webhook_sent ? '✅ Sí' : '❌ No'}</div>
-            ${sub.webhook_response_status ? `<div><strong>Código respuesta webhook:</strong> ${sub.webhook_response_status}</div>` : ''}
-            ${sub.error_message ? `<div><strong>Error:</strong> <span style="color: #721c24;">${sub.error_message}</span></div>` : ''}
+
+            <!-- Main Info Section -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+              <div style="background: #f8f9fa; padding: 12px; border-radius: 6px;">
+                <div style="font-size: 12px; color: #666; margin-bottom: 4px;">Tipo de Formulario</div>
+                <div style="font-size: 15px; font-weight: 600;">${formTypeDisplay}</div>
+              </div>
+              ${productInfo ? `<div style="background: #f8f9fa; padding: 12px; border-radius: 6px;">
+                <div style="font-size: 12px; color: #666; margin-bottom: 4px;">Producto</div>
+                <div style="font-size: 15px; font-weight: 600;">${sub.product_name}</div>
+                <div style="font-size: 12px; color: #999;">${sub.product_category}</div>
+              </div>` : ''}
+              <div style="background: #f8f9fa; padding: 12px; border-radius: 6px;">
+                <div style="font-size: 12px; color: #666; margin-bottom: 4px;">Foto Utilizada</div>
+                <div style="font-size: 14px;">${sub.photo_filename || 'N/A'}</div>
+              </div>
+            </div>
+
+            <!-- Status Section -->
+            <div style="background: ${sub.success ? '#d4edda' : '#f8d7da'}; padding: 14px; border-radius: 8px; border-left: 4px solid ${sub.success ? '#28a745' : '#dc3545'};">
+              <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                <div>
+                  <span style="font-size: 12px; color: #555;">Estado:</span>
+                  <strong style="font-size: 15px; margin-left: 8px;">${sub.success ? '✅ Exitoso' : '❌ Fallido'}</strong>
+                </div>
+                <div>
+                  <span style="font-size: 12px; color: #555;">Webhook:</span>
+                  <strong style="font-size: 15px; margin-left: 8px;">${sub.webhook_sent ? '✅ Enviado' : '❌ No enviado'}</strong>
+                </div>
+                ${sub.webhook_response_status ? `<div>
+                  <span style="font-size: 12px; color: #555;">Código HTTP:</span>
+                  <strong style="font-size: 15px; margin-left: 8px;">${sub.webhook_response_status}</strong>
+                </div>` : ''}
+              </div>
+              ${sub.error_message ? `<div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(0,0,0,0.1);">
+                <strong style="font-size: 12px; color: #721c24;">Error:</strong>
+                <div style="color: #721c24; font-size: 13px; margin-top: 4px;">${sub.error_message}</div>
+              </div>` : ''}
+            </div>
+
             ${generatedImageSection}
-            ${sub.form_data && Object.keys(sub.form_data).length > 0 ? `<div><strong>Datos del formulario:</strong> <pre style="background: #f5f5f5; padding: 12px; border-radius: 6px; overflow-x: auto;">${JSON.stringify(sub.form_data, null, 2)}</pre></div>` : ''}
+            
+            ${sub.form_data && Object.keys(sub.form_data).length > 0 ? `
+            <details style="background: #f8f9fa; padding: 14px; border-radius: 8px; cursor: pointer;">
+              <summary style="font-weight: 600; font-size: 14px; user-select: none;">📊 Datos del Formulario</summary>
+              <pre style="background: white; padding: 12px; border-radius: 6px; overflow-x: auto; margin-top: 12px; font-size: 12px; border: 1px solid #e0e0e0;">${JSON.stringify(sub.form_data, null, 2)}</pre>
+            </details>` : ''}
           </div>
         `;
 
@@ -993,7 +1128,7 @@
         if (allSubmissions.length === 0) return;
 
         const now = new Date();
-        let filteredSubmissions = allSubmissions;
+        filteredSubmissions = allSubmissions;
 
         if (filter !== 'all') {
           filteredSubmissions = allSubmissions.filter(sub => {
@@ -1016,7 +1151,8 @@
           });
         }
 
-        renderHistory(filteredSubmissions);
+        currentPage = 1;
+        renderHistoryPaginated();
         updateStats(filteredSubmissions);
       }
 
