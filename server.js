@@ -1393,17 +1393,40 @@ app.post('/api/submit-form', authenticate, async (req, res) => {
           
           const imageBuffer = Buffer.from(imageResponse.data);
           
+          // Optimizar imagen antes de guardar para reducir tamaño
+          let optimizedBuffer;
+          try {
+            optimizedBuffer = await sharp(imageBuffer)
+              .resize(1200, null, { // Máximo 1200px de ancho, mantener aspect ratio
+                withoutEnlargement: true,
+                fit: 'inside'
+              })
+              .jpeg({ quality: 85 }) // Convertir a JPEG con calidad 85%
+              .toBuffer();
+            
+            const originalSize = (imageBuffer.length / 1024 / 1024).toFixed(2);
+            const optimizedSize = (optimizedBuffer.length / 1024 / 1024).toFixed(2);
+            const reduction = ((1 - optimizedBuffer.length / imageBuffer.length) * 100).toFixed(1);
+            console.log(`📸 Imagen IA optimizada:`);
+            console.log(`   Original: ${originalSize} MB`);
+            console.log(`   Optimizada: ${optimizedSize} MB`);
+            console.log(`   Reducción: ${reduction}%`);
+          } catch (optimizeError) {
+            console.warn('⚠️ No se pudo optimizar imagen IA, usando original:', optimizeError.message);
+            optimizedBuffer = imageBuffer;
+          }
+          
           // Generar nombre único para la imagen generada
           const timestamp = Date.now();
-          const generatedFileName = `${form_type || 'form'}_${timestamp}.png`;
+          const generatedFileName = `${form_type || 'form'}_${timestamp}.jpg`; // Cambiar a .jpg
           const generatedPath = `${req.userId}/${generatedFileName}`;
           
-          // Subir la imagen generada al bucket "generated" (minúscula)
+          // Subir la imagen optimizada al bucket "generated" (minúscula)
           const { data: uploadData, error: uploadError } = await supabase
             .storage
             .from('generated')
-            .upload(generatedPath, imageBuffer, {
-              contentType: 'image/png',
+            .upload(generatedPath, optimizedBuffer, {
+              contentType: 'image/jpeg', // Cambiar a JPEG
               cacheControl: '3600',
               upsert: false
             });
@@ -1429,8 +1452,8 @@ app.post('/api/submit-form', authenticate, async (req, res) => {
               folder: 'AI Generated',
               custom_name: `${form_type || 'Imagen'} - Generada por IA`,
               bucket_name: 'generated',
-              mimetype: 'image/png',
-              size: imageBuffer.length
+              mimetype: 'image/jpeg',
+              size: optimizedBuffer.length
             }).select('id').single();
             
             // Store the AI image ID for linking with submission
