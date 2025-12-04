@@ -1863,6 +1863,122 @@
           }
         });
       }
+
+      // Sistema de polling para detectar imágenes generadas
+      let hideOverlay = null;
+      let pollingInterval = null;
+      let pollingStartTime = null;
+
+      async function checkForNewImage() {
+        try {
+          const token = localStorage.getItem('token');
+          if (!token) return;
+
+          const response = await fetch('/api/uploads', {
+            headers: { 'Authorization': 'Bearer ' + token }
+          });
+
+          if (!response.ok) return;
+
+          const data = await response.json();
+          
+          // Buscar imágenes AI generadas recientemente (últimos 90 segundos)
+          const now = new Date();
+          const recentAIImages = data.uploads?.filter(upload => {
+            if (upload.folder !== 'AI Generated') return false;
+            
+            const createdAt = new Date(upload.created_at);
+            const ageInSeconds = (now - createdAt) / 1000;
+            
+            // Imagen creada después de iniciar el polling (con 10s de margen por si acaso)
+            const createdAfterPolling = pollingStartTime ? createdAt >= new Date(pollingStartTime - 10000) : false;
+            
+            console.log(`🔍 Imagen AI: ${upload.filename}, edad: ${ageInSeconds.toFixed(1)}s, creada después polling: ${createdAfterPolling}`);
+            
+            return createdAfterPolling;
+          }) || [];
+
+          // Si detectamos una imagen AI nueva
+          if (recentAIImages.length > 0) {
+            console.log('✅ Nueva imagen AI detectada!', recentAIImages[0]);
+            
+            // Detener polling
+            if (pollingInterval) {
+              clearInterval(pollingInterval);
+              pollingInterval = null;
+            }
+
+            // Ocultar overlay
+            if (hideOverlay) {
+              hideOverlay();
+              hideOverlay = null;
+            }
+
+            // Actualizar galería
+            loadAllPhotos();
+
+            // Mostrar notificación de éxito
+            showNotification('🎉 ¡Tu diseño está listo! Ya puedes verlo en tu galería.', NotificationType.SUCCESS, 6000);
+
+            // Limpiar parámetro de URL
+            const url = new URL(window.location);
+            url.searchParams.delete('waiting');
+            window.history.replaceState({}, '', url);
+          }
+        } catch (error) {
+          console.error('Error checking for new image:', error);
+        }
+      }
+
+      function startImagePolling() {
+        console.log('🔄 Iniciando polling de imágenes...');
+        
+        // Polling cada 3 segundos
+        pollingInterval = setInterval(checkForNewImage, 3000);
+
+        // Timeout después de 60 segundos
+        setTimeout(() => {
+          if (pollingInterval) {
+            clearInterval(pollingInterval);
+            pollingInterval = null;
+
+            if (hideOverlay) {
+              hideOverlay();
+              hideOverlay = null;
+            }
+
+            showNotification(
+              'La generación está tomando más tiempo del esperado. Por favor, recarga la página en unos momentos.',
+              NotificationType.WARNING,
+              8000
+            );
+
+            // Limpiar parámetro de URL
+            const url = new URL(window.location);
+            url.searchParams.delete('waiting');
+            window.history.replaceState({}, '', url);
+          }
+        }, 60000); // 60 segundos
+      }
+
+      // Detectar parámetro ?waiting=true al cargar la página
+      (async function initDashboard() {
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        if (urlParams.get('waiting') === 'true') {
+          console.log('🎨 Iniciando modo de espera de generación...');
+          
+          // Guardar timestamp de inicio del polling
+          pollingStartTime = Date.now();
+          console.log('⏰ Polling start time:', new Date(pollingStartTime).toISOString());
+
+          // Mostrar overlay de generación
+          hideOverlay = showGeneratingOverlay();
+
+          // Iniciar polling
+          startImagePolling();
+        }
+      })();
     </script>
   </body>
 </html>

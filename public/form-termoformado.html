@@ -992,25 +992,8 @@
           if (response.ok && result.ok) {
             console.log('✅ Formulario enviado exitosamente:', result);
             
-            // Update credits display
-            loadCredits();
-            
-            let message = '✅ ¡Formulario enviado correctamente!\n';
-            message += '💳 Se ha descontado 1 crédito\n\n';
-            
-            if (result.webhook_sent) {
-              message += '🎯 Webhook enviado a Alico exitosamente';
-            } else {
-              message += '⚠️ Advertencia: El webhook no pudo ser enviado\n';
-              message += `Error: ${result.webhook_error || 'Desconocido'}`;
-            }
-            
-            alert(message);
-            
-            // Redirect to dashboard after success
-            setTimeout(() => {
-              window.location.href = '/dashboard.html';
-            }, 2000);
+            // Redirigir inmediatamente al dashboard con parámetro waiting
+            window.location.href = '/dashboard.html?waiting=true';
           } else if (!result.ok && result.credit_refunded) {
             // La generación falló pero el crédito fue reembolsado
             console.log('⚠️ Generación falló, crédito reembolsado');

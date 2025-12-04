@@ -1294,13 +1294,43 @@ app.post('/api/submit-form', authenticate, async (req, res) => {
     let errorMessage = null;
     let generatedImageUrl = null;
     
-    try {
-      const webhookResponse = await axios.post(webhookUrl, webhookPayload, {
-        headers: { 'Content-Type': 'application/json' },
-        timeout: 60000, // 60 segundos timeout (45s generación + 15s margen)
-        maxContentLength: 50 * 1024 * 1024, // 50MB max response
-        maxBodyLength: 50 * 1024 * 1024
-      });
+    // Guardar submission inicial sin esperar el webhook
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes from now
+    const { data: pendingSubmission } = await supabase.from('form_submissions').insert([{
+      user_id: req.userId,
+      photo_id: photo_id,
+      form_type: form_type || null,
+      product_id: product_id || null,
+      market_sector: market_sector || null,
+      product_description: product_description || null,
+      logo_display_preference: logo_display_preference || null,
+      success: false, // Se actualizará cuando complete el webhook
+      webhook_sent: false,
+      webhook_url: webhookUrl,
+      form_data: formData,
+      completed_at: null // Se actualizará cuando complete
+    }]).select('id').single();
+    
+    const submissionId = pendingSubmission?.id;
+    
+    // Responder inmediatamente al usuario sin esperar el webhook
+    res.json({ 
+      ok: true, 
+      message: 'Form submitted successfully. Image generation in progress.',
+      submission_id: submissionId,
+      webhook_sent: false,
+      status: 'processing'
+    });
+    
+    // Procesar webhook en background (no bloquea la respuesta)
+    (async () => {
+      try {
+        const webhookResponse = await axios.post(webhookUrl, webhookPayload, {
+          headers: { 'Content-Type': 'application/json' },
+          timeout: 60000, // 60 segundos timeout (45s generación + 15s margen)
+          maxContentLength: 50 * 1024 * 1024, // 50MB max response
+          maxBodyLength: 50 * 1024 * 1024
+        });
       
       console.log('Webhook sent successfully:', webhookResponse.status);
       console.log('Webhook response data:', webhookResponse.data);
@@ -1340,31 +1370,20 @@ app.post('/api/submit-form', authenticate, async (req, res) => {
           console.log('✅ Credit refunded. New balance:', refundData.credits);
         }
         
-        // Guardar en base de datos como fallo
-        await supabase.from('form_submissions').insert([{
-          user_id: req.userId,
-          photo_id: photo_id,
-          form_type: form_type || null,
-          product_id: product_id || null,
-          market_sector: market_sector || null,
-          product_description: product_description || null,
-          logo_display_preference: logo_display_preference || null,
-          success: false,
-          error_message: 'La generación de la imagen falló en el servidor de IA',
-          webhook_sent: true,
-          webhook_url: webhookUrl,
-          webhook_response_status: webhookResponse.status,
-          form_data: formData,
-          completed_at: new Date().toISOString()
-        }]);
+        // Actualizar submission como fallo
+        if (submissionId) {
+          await supabase.from('form_submissions')
+            .update({
+              success: false,
+              error_message: 'La generación de la imagen falló en el servidor de IA',
+              webhook_sent: true,
+              webhook_response_status: webhookResponse.status,
+              completed_at: new Date().toISOString()
+            })
+            .eq('id', submissionId);
+        }
         
-        return res.status(500).json({
-          ok: false,
-          error: 'La generación de la imagen falló',
-          message: 'La IA no pudo generar la imagen. Tu crédito ha sido reembolsado.',
-          credit_refunded: true,
-          new_credits: refundData?.credits
-        });
+        return; // No podemos enviar respuesta, ya se envió
       }
       
       // Verificar si el webhook devolvió una URL de imagen
@@ -1466,69 +1485,40 @@ app.post('/api/submit-form', authenticate, async (req, res) => {
         }
       }
       
-      // Save successful submission to database
-      const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes from now
-      await supabase.from('form_submissions').insert([{
-        user_id: req.userId,
-        photo_id: photo_id,
-        ai_image_id: aiImageId || null,
-        form_type: form_type || null,
-        product_id: product_id || null,
-        market_sector: market_sector || null,
-        product_description: product_description || null,
-        logo_display_preference: logo_display_preference || null,
-        success: true,
-        webhook_sent: true,
-        webhook_url: webhookUrl,
-        webhook_response_status: webhookResponse.status,
-        temp_image_url: urlData.signedUrl,
-        temp_url_expires_at: expiresAt.toISOString(),
-        form_data: formData,
-        response_data: generatedImageUrl || imageUrl || null,
-        completed_at: new Date().toISOString()
-      }]);
+      // Actualizar submission como exitoso
+      if (submissionId) {
+        await supabase.from('form_submissions')
+          .update({
+            ai_image_id: aiImageId || null,
+            success: true,
+            webhook_sent: true,
+            webhook_response_status: webhookResponse.status,
+            response_data: generatedImageUrl || imageUrl || null,
+            completed_at: new Date().toISOString()
+          })
+          .eq('id', submissionId);
+      }
       
-      res.json({ 
-        ok: true, 
-        message: 'Form submitted successfully',
-        webhook_sent: true,
-        webhook_status: webhookResponse.status,
-        public_url: urlData.signedUrl,
-        generated_image_url: generatedImageUrl || imageUrl || null
-      });
+      console.log('✅ Webhook processing completed successfully');
     } catch (webhookErr) {
       console.error('Webhook error:', webhookErr.message);
       errorMessage = webhookErr.message;
       
-      // Save failed webhook submission to database
-      const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
-      await supabase.from('form_submissions').insert([{
-        user_id: req.userId,
-        photo_id: photo_id,
-        form_type: form_type || null,
-        product_id: product_id || null,
-        market_sector: market_sector || null,
-        product_description: product_description || null,
-        logo_display_preference: logo_display_preference || null,
-        success: true, // Form was processed successfully
-        error_message: `Webhook failed: ${webhookErr.message}`,
-        webhook_sent: false,
-        webhook_url: webhookUrl,
-        temp_image_url: urlData.signedUrl,
-        temp_url_expires_at: expiresAt.toISOString(),
-        form_data: formData,
-        completed_at: new Date().toISOString()
-      }]);
+      // Actualizar submission como fallido
+      if (submissionId) {
+        await supabase.from('form_submissions')
+          .update({
+            success: false,
+            error_message: `Webhook failed: ${webhookErr.message}`,
+            webhook_sent: false,
+            completed_at: new Date().toISOString()
+          })
+          .eq('id', submissionId);
+      }
       
-      // Still return success but indicate webhook failed
-      res.json({ 
-        ok: true, 
-        message: 'Form submitted but webhook failed',
-        webhook_sent: false,
-        webhook_error: webhookErr.message,
-        public_url: urlData.signedUrl
-      });
+      console.log('❌ Webhook processing failed');
     }
+    })(); // Fin del procesamiento asíncrono en background
   } catch (err) {
     console.error('submit-form error', err.message || err);
     

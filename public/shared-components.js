@@ -329,8 +329,150 @@ if (document.readyState === 'loading') {
   initializeSharedStyles();
 }
 
+/**
+ * Muestra un overlay de generación de imagen con mensajes rotativos
+ * @returns {function} - Función para ocultar el overlay
+ */
+function showGeneratingOverlay() {
+  const existingOverlay = document.getElementById('generatingOverlay');
+  if (existingOverlay) {
+    existingOverlay.remove();
+  }
+
+  const messages = [
+    '🎨 Generando tu diseño personalizado...',
+    '✨ La IA está analizando tus preferencias...',
+    '🔮 Perfeccionando colores y tipografía...',
+    '🎯 Ajustando detalles del empaque...',
+    '🚀 Aplicando los últimos toques...',
+    '🌟 Casi listo, preparando tu imagen...'
+  ];
+
+  let currentMessageIndex = 0;
+  let progress = 20;
+
+  const overlay = document.createElement('div');
+  overlay.id = 'generatingOverlay';
+  overlay.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10005;
+    animation: fadeIn 0.3s ease-out;
+  `;
+
+  overlay.innerHTML = `
+    <div style="
+      background: white;
+      padding: 50px;
+      border-radius: 20px;
+      box-shadow: 0 10px 50px rgba(0,0,0,0.5);
+      text-align: center;
+      max-width: 500px;
+      width: 90%;
+      animation: scaleIn 0.3s ease-out;
+    ">
+      <div style="
+        width: 80px;
+        height: 80px;
+        border: 6px solid #f3f3f3;
+        border-top: 6px solid var(--alico-gold);
+        border-radius: 50%;
+        margin: 0 auto 30px;
+        animation: spin 1s linear infinite;
+      "></div>
+      
+      <h2 style="
+        font-size: 24px;
+        font-weight: 700;
+        color: #1a1a2e;
+        margin-bottom: 20px;
+      ">
+        Generando tu diseño
+      </h2>
+      
+      <p id="rotatingMessage" style="
+        font-size: 16px;
+        color: #666;
+        line-height: 1.6;
+        min-height: 50px;
+        transition: opacity 0.3s ease;
+      ">
+        ${messages[0]}
+      </p>
+      
+      <div style="
+        width: 100%;
+        height: 6px;
+        background: #f0f0f0;
+        border-radius: 10px;
+        margin-top: 30px;
+        overflow: hidden;
+      ">
+        <div id="generatingProgressBar" style="
+          width: 20%;
+          height: 100%;
+          background: linear-gradient(90deg, var(--alico-gold), var(--alico-gold-80));
+          border-radius: 10px;
+          transition: width 1s ease;
+        "></div>
+      </div>
+      
+      <p style="
+        font-size: 13px;
+        color: #999;
+        margin-top: 20px;
+      ">
+        Esto puede tomar entre 20-40 segundos
+      </p>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  // Rotar mensajes cada 6 segundos
+  const messageInterval = setInterval(() => {
+    currentMessageIndex = (currentMessageIndex + 1) % messages.length;
+    const messageEl = document.getElementById('rotatingMessage');
+    if (messageEl) {
+      messageEl.style.opacity = '0';
+      setTimeout(() => {
+        messageEl.textContent = messages[currentMessageIndex];
+        messageEl.style.opacity = '1';
+      }, 300);
+    }
+  }, 6000);
+
+  // Avanzar barra de progreso gradualmente
+  const progressInterval = setInterval(() => {
+    const progressBar = document.getElementById('generatingProgressBar');
+    if (progressBar && progress < 95) {
+      progress += 5;
+      progressBar.style.width = progress + '%';
+    }
+  }, 2000);
+
+  // Retornar función para ocultar el overlay
+  return function hideGeneratingOverlay() {
+    clearInterval(messageInterval);
+    clearInterval(progressInterval);
+    const overlayElement = document.getElementById('generatingOverlay');
+    if (overlayElement) {
+      overlayElement.style.animation = 'fadeOut 0.3s ease-out';
+      setTimeout(() => overlayElement.remove(), 300);
+    }
+  };
+}
+
 // Exportar funciones para uso global
 window.showNotification = showNotification;
 window.showConfirmDialog = showConfirmDialog;
 window.showLoader = showLoader;
+window.showGeneratingOverlay = showGeneratingOverlay;
 window.NotificationType = NotificationType;
