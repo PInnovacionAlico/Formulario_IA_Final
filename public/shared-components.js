@@ -61,7 +61,7 @@ function showNotification(message, type = NotificationType.SUCCESS, duration = 4
     padding: 16px 24px;
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    z-index: 10001;
+    z-index: 2147483647;
     font-weight: 600;
     font-size: 14px;
     display: flex;
@@ -605,10 +605,9 @@ function startTutorial() {
           left: 0 !important;
           width: 100% !important;
           height: 100% !important;
-          background: rgba(0, 0, 0, 0.75) !important;
-          z-index: 2147483646 !important;
+          background: rgba(0, 0, 0, 0.85) !important;
+          z-index: 1 !important;
           pointer-events: none !important;
-          transform: translateZ(0) !important;
         `;
         mobileMenu.appendChild(sidebarOverlay);
       }
@@ -616,12 +615,11 @@ function startTutorial() {
     
     // Hacer elemento visible sobre el overlay con !important para sobrescribir CSS
     element.style.setProperty('position', 'relative', 'important');
-    element.style.setProperty('z-index', '2147483647', 'important');
     element.style.setProperty('pointer-events', 'none', 'important');
-    element.style.setProperty('transform', 'translateZ(1px)', 'important');
     
-    // Agregar borde dorado brillante y background claro para sidebar
+    // Agregar borde dorado brillante y background claro solo para sidebar
     if (isInSidebar) {
+      element.style.setProperty('z-index', '10', 'important');
       element.style.setProperty('background', 'white', 'important');
       element.style.setProperty('background-image', 'none', 'important');
       element.style.setProperty('color', '#1a1a2e', 'important');
@@ -631,6 +629,10 @@ function startTutorial() {
         child.style.setProperty('color', '#1a1a2e', 'important');
         child.style.setProperty('fill', '#1a1a2e', 'important');
       });
+    } else {
+      // Elementos fuera del sidebar necesitan z-index altísimo
+      element.style.setProperty('z-index', '2147483647', 'important');
+      element.style.setProperty('transform', 'translateZ(1px)', 'important');
     }
     element.style.setProperty('box-shadow', '0 0 0 4px rgba(219, 149, 0, 0.9), 0 0 30px 10px rgba(219, 149, 0, 0.5)', 'important');
     element.style.setProperty('outline', '3px solid var(--alico-gold)', 'important');
@@ -890,11 +892,16 @@ function startTutorial() {
     // Remover overlay
     if (tutorialOverlay) {
       tutorialOverlay.style.animation = 'fadeOut 0.3s ease-out';
-      setTimeout(() => tutorialOverlay.remove(), 300);
-    }
-
-    if (completed) {
-      showNotification('🎉 ¡Tutorial completado! Ya puedes comenzar a usar tu dashboard.', NotificationType.SUCCESS, 5000);
+      setTimeout(() => {
+        tutorialOverlay.remove();
+        // Recargar página para restaurar todos los estilos
+        if (completed) {
+          showNotification('🎉 ¡Tutorial completado! Ya puedes comenzar a usar tu dashboard.', NotificationType.SUCCESS, 2000);
+        }
+        setTimeout(() => {
+          location.reload();
+        }, completed ? 2000 : 300);
+      }, 300);
     }
   }
 

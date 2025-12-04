@@ -223,7 +223,6 @@
               <button id="uploadBtn" class="btn-action btn-upload">📷 Subir foto</button>
               <button id="qrUploadBtn" class="btn-action" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">📱 Subir desde celular</button>
               <button id="createFolderBtn" class="btn-action btn-folder">📁 Nueva carpeta</button>
-              <span id="cacheBadge" style="display: none; margin-left: 12px; padding: 6px 12px; background: var(--alico-gold-20); color: var(--alico-gold); border-radius: 6px; font-size: 12px; font-weight: 600;">📦 Cargado desde caché</span>
             </div>
             <h2 style="display: inline-block;">Mis Fotos</h2>
             <span id="photoCountBadge" style="display: inline-block; margin-left: 12px; padding: 8px 16px; background: #28a745; color: white; border-radius: 20px; font-size: 14px; font-weight: 600;">0/4 fotos</span>
@@ -932,13 +931,6 @@
                 const uploads = JSON.parse(cachedData);
                 document.getElementById('loadingMsg').style.display = 'none';
                 
-                // Show cache badge
-                const cacheBadge = document.getElementById('cacheBadge');
-                if (cacheBadge) {
-                  cacheBadge.style.display = 'inline-block';
-                  setTimeout(() => { cacheBadge.style.display = 'none'; }, 3000);
-                }
-                
                 // Store all uploads
                 allUploads = uploads;
                 
@@ -1486,14 +1478,14 @@
           const data = await res.json();
           if (data.ok) {
             selectFolderModal.style.display = 'none';
-            showNotification('✅ Foto movida exitosamente a "' + selectedFolder + '"');
+            showNotification('📸 Foto movida exitosamente a "' + selectedFolder + '"', NotificationType.SUCCESS);
             invalidateCache();
             loadUploads(true);
           } else {
-            showNotification('❌ Error: ' + (data.error || 'No se pudo mover la foto'), true);
+            showNotification('Error: ' + (data.error || 'No se pudo mover la foto'), NotificationType.ERROR);
           }
         } catch (err) {
-          showNotification('❌ Error: ' + err, true);
+          showNotification('Error: ' + err, NotificationType.ERROR);
         } finally {
           confirmBtn.disabled = false;
           confirmBtn.textContent = 'Confirmar';
@@ -1507,65 +1499,6 @@
       });
 
       // Show notification function
-      function showNotification(message, isError = false) {
-        const existingNotification = document.getElementById('folderChangeNotification');
-        if (existingNotification) {
-          existingNotification.remove();
-        }
-
-        const notification = document.createElement('div');
-        notification.id = 'folderChangeNotification';
-        notification.textContent = message;
-        notification.style.cssText = `
-          position: fixed;
-          top: 20px;
-          right: 20px;
-          background: ${isError ? 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)' : 'linear-gradient(135deg, #28a745 0%, #20c997 100%)'};
-          color: white;
-          padding: 16px 24px;
-          border-radius: 8px;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-          z-index: 10001;
-          font-weight: 600;
-          font-size: 14px;
-          animation: slideInRight 0.3s ease-out;
-        `;
-
-        document.body.appendChild(notification);
-
-        // Remove after 4 seconds
-        setTimeout(() => {
-          notification.style.animation = 'slideOutRight 0.3s ease-out';
-          setTimeout(() => notification.remove(), 300);
-        }, 4000);
-      }
-
-      // Add notification animations
-      const notificationStyles = document.createElement('style');
-      notificationStyles.textContent = `
-        @keyframes slideInRight {
-          from {
-            transform: translateX(400px);
-            opacity: 0;
-          }
-          to {
-            transform: translateX(0);
-            opacity: 1;
-          }
-        }
-        @keyframes slideOutRight {
-          from {
-            transform: translateX(0);
-            opacity: 1;
-          }
-          to {
-            transform: translateX(400px);
-            opacity: 0;
-          }
-        }
-      `;
-      document.head.appendChild(notificationStyles);
-
       // Preview de archivos seleccionados
       document.getElementById('fileInputUpload').addEventListener('change', (e) => {
         const files = e.target.files;
