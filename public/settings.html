@@ -11,6 +11,7 @@
     <meta name="apple-mobile-web-app-title" content="Transforma tu empaque" />
     <link rel="manifest" href="/favicon/site.webmanifest" />
     <link rel="stylesheet" href="/style.css" />
+    <script src="/shared-components.js"></script>
   </head>
   <body>
     <div class="dashboard-container">
@@ -317,7 +318,7 @@
         const userId = user?.id || document.getElementById('userIdDisplay').textContent;
         
         if (!userId || userId === 'No disponible' || userId === 'Cargando...') {
-          alert('❌ ID de usuario no disponible');
+          showNotification('ID de usuario no disponible', NotificationType.WARNING);
           return;
         }
         
@@ -422,13 +423,13 @@
 
         // Validate new passwords match
         if (newPassword !== confirmPassword) {
-          alert('❌ Las contraseñas nuevas no coinciden');
+          showNotification('Las contraseñas nuevas no coinciden', NotificationType.ERROR);
           return;
         }
 
         // Validate password length
         if (newPassword.length < 8) {
-          alert('❌ La nueva contraseña debe tener al menos 8 caracteres');
+          showNotification('La nueva contraseña debe tener al menos 8 caracteres', NotificationType.WARNING);
           return;
         }
 
@@ -448,14 +449,14 @@
           const result = await response.json();
 
           if (response.ok && result.ok) {
-            showNotification('✅ Contraseña cambiada exitosamente');
+            showNotification('Contraseña cambiada exitosamente', NotificationType.SUCCESS);
             document.getElementById('changePasswordForm').reset();
           } else {
-            alert('❌ Error: ' + (result.error || 'No se pudo cambiar la contraseña'));
+            showNotification('Error: ' + (result.error || 'No se pudo cambiar la contraseña'), NotificationType.ERROR);
           }
         } catch (error) {
           console.error('Error changing password:', error);
-          alert('❌ Error al cambiar la contraseña: ' + error.message);
+          showNotification('Error al cambiar la contraseña: ' + error.message, NotificationType.ERROR);
         }
       });
 

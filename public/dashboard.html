@@ -11,6 +11,7 @@
     <meta name="apple-mobile-web-app-title" content="Transforma tu empaque" />
     <link rel="manifest" href="/favicon/site.webmanifest" />
     <link rel="stylesheet" href="/style.css" />
+    <script src="/shared-components.js"></script>
     <style>
       /* Modal de imagen completa */
       .image-preview-modal {
@@ -405,8 +406,9 @@
       mobileMenuClose.addEventListener('click', closeMobileMenu);
       mobileMenuOverlay.addEventListener('click', closeMobileMenu);
 
-      document.getElementById('mobileLogoutBtn').addEventListener('click', () => {
-        if (confirm('¿Estás seguro que deseas cerrar sesión?')) {
+      document.getElementById('mobileLogoutBtn').addEventListener('click', async () => {
+        const confirmed = await showConfirmDialog('¿Estás seguro que deseas cerrar sesión?', 'Cerrar sesión', 'Cancelar');
+        if (confirmed) {
           localStorage.removeItem('token');
           localStorage.removeItem('authToken');
           localStorage.removeItem('user');
@@ -451,8 +453,9 @@
 
       loadCredits();
 
-      document.getElementById('logoutBtn').addEventListener('click', () => {
-        if (confirm('¿Estás seguro que deseas cerrar sesión?')) {
+      document.getElementById('logoutBtn').addEventListener('click', async () => {
+        const confirmed = await showConfirmDialog('¿Estás seguro que deseas cerrar sesión?', 'Cerrar sesión', 'Cancelar');
+        if (confirmed) {
           localStorage.removeItem('token');
           localStorage.removeItem('authToken');
           localStorage.removeItem('user');
@@ -768,7 +771,7 @@
         // Verificar límite de 4 fotos (solo fotos subidas, no generadas)
         const count = window.currentUserPhotosCount || 0;
         if (count >= 4) {
-          alert('❌ Has alcanzado el límite de 4 fotos subidas\n\nElimina algunas fotos antes de subir nuevas.\n\nNota: Las imágenes generadas por IA no cuentan en este límite.');
+          showNotification('Has alcanzado el límite de 4 fotos subidas. Elimina algunas fotos antes de subir nuevas. Las imágenes generadas por IA no cuentan en este límite.', NotificationType.WARNING, 6000);
           return;
         }
         updateFolderSelect();
@@ -779,7 +782,7 @@
         // Verificar límite de 4 fotos (solo fotos subidas, no generadas)
         const count = window.currentUserPhotosCount || 0;
         if (count >= 4) {
-          alert('❌ Has alcanzado el límite de 4 fotos subidas\n\nElimina algunas fotos antes de subir nuevas.\n\nNota: Las imágenes generadas por IA no cuentan en este límite.');
+          showNotification('Has alcanzado el límite de 4 fotos subidas. Elimina algunas fotos antes de subir nuevas. Las imágenes generadas por IA no cuentan en este límite.', NotificationType.WARNING, 6000);
           return;
         }
         
@@ -1314,12 +1317,13 @@
                   button.textContent = 'Cambiar nombre';
                   button.classList.remove('editing');
                   invalidateCache(); // Clear cache after update
-                  alert('Nombre actualizado!');
+                  showNotification('Nombre actualizado exitosamente', NotificationType.SUCCESS);
+                  loadImages();
                 } else {
-                  alert('Error: ' + (data.error || ''));
+                  showNotification('Error al actualizar nombre: ' + (data.error || 'Error desconocido'), NotificationType.ERROR);
                 }
               } catch (err) {
-                alert('Error: ' + err);
+                showNotification('Error al actualizar nombre: ' + err, NotificationType.ERROR);
               }
             }
           });
@@ -1327,23 +1331,27 @@
 
         document.querySelectorAll('.btn-delete').forEach(btn => {
           btn.addEventListener('click', async (e) => {
-            if (!confirm('¿Seguro que quieres eliminar esta foto?')) return;
+            const confirmed = await showConfirmDialog('¿Seguro que quieres eliminar esta foto?', 'Eliminar', 'Cancelar');
+            if (!confirmed) return;
             const id = e.target.dataset.id;
+            const hideLoader = showLoader('Eliminando imagen...');
             try {
               const res = await fetch(`/api/uploads/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': 'Bearer ' + token }
               });
               const data = await res.json();
+              hideLoader();
               if (data.ok) {
-                alert('¡La imagen ha sido eliminada con éxito!');
+                showNotification('Imagen eliminada exitosamente', NotificationType.SUCCESS);
                 invalidateCache();
                 loadUploads(true); // refresh with force
               } else {
-                alert('Error: ' + (data.error || ''));
+                showNotification('Error al eliminar imagen: ' + (data.error || 'Error desconocido'), NotificationType.ERROR);
               }
             } catch (err) {
-              alert('Error: ' + err);
+              hideLoader();
+              showNotification('Error al eliminar imagen: ' + err, NotificationType.ERROR);
             }
           });
         });
@@ -1732,7 +1740,7 @@
           document.body.removeChild(a);
         } catch (error) {
           console.error('Error al descargar imagen:', error);
-          alert('Error al descargar la imagen. Por favor, intenta nuevamente.');
+          showNotification('Error al descargar la imagen. Por favor, intenta nuevamente.', NotificationType.ERROR);
         }
       }
 

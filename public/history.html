@@ -11,6 +11,7 @@
     <meta name="apple-mobile-web-app-title" content="Transforma tu empaque" />
     <link rel="manifest" href="/favicon/site.webmanifest" />
     <link rel="stylesheet" href="/style.css" />
+    <script src="/shared-components.js"></script>
     <style>
       .history-table {
         width: 100%;
@@ -637,8 +638,9 @@
       mobileMenuClose.addEventListener('click', closeMobileMenu);
       mobileMenuOverlay.addEventListener('click', closeMobileMenu);
 
-      document.getElementById('mobileLogoutBtn').addEventListener('click', () => {
-        if (confirm('¿Estás seguro que deseas cerrar sesión?')) {
+      document.getElementById('mobileLogoutBtn').addEventListener('click', async () => {
+        const confirmed = await showConfirmDialog('¿Estás seguro que deseas cerrar sesión?', 'Cerrar sesión', 'Cancelar');
+        if (confirmed) {
           localStorage.removeItem('token');
           localStorage.removeItem('authToken');
           localStorage.removeItem('user');
@@ -684,8 +686,9 @@
 
       loadCredits();
 
-      document.getElementById('logoutBtn').addEventListener('click', () => {
-        if (confirm('¿Estás seguro que deseas cerrar sesión?')) {
+      document.getElementById('logoutBtn').addEventListener('click', async () => {
+        const confirmed = await showConfirmDialog('¿Estás seguro que deseas cerrar sesión?', 'Cerrar sesión', 'Cancelar');
+        if (confirmed) {
           localStorage.removeItem('token');
           localStorage.removeItem('authToken');
           localStorage.removeItem('user');

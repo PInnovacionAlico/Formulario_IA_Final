@@ -11,6 +11,7 @@
     <meta name="apple-mobile-web-app-title" content="Transforma tu empaque" />
     <link rel="manifest" href="/favicon/site.webmanifest" />
     <link rel="stylesheet" href="/style.css" />
+    <script src="/shared-components.js"></script>
     <style>
       .admin-stats-grid {
         display: grid;
@@ -1004,7 +1005,7 @@
         
         const credits = parseInt(newCredits);
         if (isNaN(credits) || credits < 0) {
-          alert('Por favor ingresa un número válido de créditos');
+          showNotification('Por favor ingresa un número válido de créditos', NotificationType.WARNING);
           return;
         }
 
@@ -1024,10 +1025,10 @@
             throw new Error(data.error || 'Error al actualizar créditos');
           }
 
-          alert('Créditos actualizados correctamente');
+          showNotification('Créditos actualizados correctamente', NotificationType.SUCCESS);
           loadUsers();
         } catch (err) {
-          alert('Error al actualizar créditos: ' + err.message);
+          showNotification('Error al actualizar créditos: ' + err.message, NotificationType.ERROR);
         }
       }
 
@@ -1055,10 +1056,10 @@
             throw new Error(data.error || 'Error al actualizar estado de admin');
           }
 
-          alert('Estado de administrador actualizado correctamente');
+          showNotification('Estado de administrador actualizado correctamente', NotificationType.SUCCESS);
           loadUsers();
         } catch (err) {
-          alert('Error al actualizar estado: ' + err.message);
+          showNotification('Error al actualizar estado: ' + err.message, NotificationType.ERROR);
         }
       }
 
@@ -1237,7 +1238,7 @@
       // Copy user ID to clipboard
       function copyUserId(userId) {
         navigator.clipboard.writeText(userId).then(() => {
-          alert('✅ ID de usuario copiado al portapapeles');
+          showNotification('ID de usuario copiado al portapapeles', NotificationType.SUCCESS);
         }).catch(err => {
           // Fallback for older browsers
           const textArea = document.createElement('textarea');
@@ -1246,14 +1247,14 @@
           textArea.select();
           document.execCommand('copy');
           document.body.removeChild(textArea);
-          alert('✅ ID de usuario copiado al portapapeles');
+          showNotification('ID de usuario copiado al portapapeles', NotificationType.SUCCESS);
         });
       }
 
       // Copy submission ID to clipboard
       function copySubmissionId(submissionId) {
         navigator.clipboard.writeText(submissionId).then(() => {
-          alert('✅ ID de envío copiado al portapapeles');
+          showNotification('ID de envío copiado al portapapeles', NotificationType.SUCCESS);
         }).catch(err => {
           // Fallback for older browsers
           const textArea = document.createElement('textarea');
@@ -1262,7 +1263,7 @@
           textArea.select();
           document.execCommand('copy');
           document.body.removeChild(textArea);
-          alert('✅ ID de envío copiado al portapapeles');
+          showNotification('ID de envío copiado al portapapeles', NotificationType.SUCCESS);
         });
       }
 
@@ -1276,10 +1277,11 @@
         // Second confirmation (extra safety)
         const confirmation = prompt(`Para confirmar, escribe el nombre del usuario: "${userName}"`);
         if (confirmation !== userName) {
-          alert('❌ Nombre incorrecto. Eliminación cancelada.');
+          showNotification('Nombre incorrecto. Eliminación cancelada.', NotificationType.WARNING);
           return;
         }
 
+        const hideLoader = showLoader('Eliminando usuario...');
         try {
           const response = await fetch(`/api/admin/users/${userId}`, {
             method: 'DELETE',
@@ -1289,15 +1291,17 @@
           });
 
           const data = await response.json();
+          hideLoader();
           
           if (!data.ok) {
             throw new Error(data.error || 'Error al eliminar usuario');
           }
 
-          alert(`✅ Usuario ${userName} eliminado exitosamente.\n\nEliminado:\n• ${data.deleted.formSubmissions} formularios\n• ${data.deleted.uploads} registros de imágenes\n• ${data.deleted.mobileTokens} tokens móviles`);
+          showNotification(`Usuario ${userName} eliminado exitosamente. Eliminado: ${data.deleted.formSubmissions} formularios, ${data.deleted.uploads} imágenes, ${data.deleted.mobileTokens} tokens móviles`, NotificationType.SUCCESS, 7000);
           loadUsers(); // Reload users table
         } catch (err) {
-          alert('❌ Error al eliminar usuario: ' + err.message);
+          hideLoader();
+          showNotification('Error al eliminar usuario: ' + err.message, NotificationType.ERROR);
         }
       }
 
