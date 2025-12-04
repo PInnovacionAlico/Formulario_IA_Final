@@ -470,9 +470,483 @@ function showGeneratingOverlay() {
   };
 }
 
+/**
+ * Sistema de Tutorial Interactivo
+ * Tutorial paso a paso con spotlight en elementos del dashboard
+ */
+function startTutorial() {
+  // Definir pasos del tutorial
+  const tutorialSteps = [
+    {
+      title: '👋 ¡Bienvenido!',
+      description: 'Te mostraremos las funciones principales de tu dashboard en pocos pasos. Puedes salir en cualquier momento.',
+      selector: null, // Sin spotlight, solo mensaje central
+      action: 'closeSidebar'
+    },
+    {
+      title: '💳 Tus Créditos',
+      description: 'Aquí ves tus créditos disponibles. Cada mes recibes 3 créditos nuevos para generar diseños con IA.',
+      selector: '.mobile-menu-credits',
+      action: 'openSidebar'
+    },
+    {
+      title: '📸 Subir Fotos',
+      description: 'Haz clic aquí para subir fotos de tus productos desde tu computadora. Puedes subir hasta 4 fotos.',
+      selector: '.action-buttons button:first-child',
+      action: 'closeSidebar'
+    },
+    {
+      title: '📱 Subir desde Celular',
+      description: 'Genera un código QR para subir fotos directamente desde tu teléfono móvil.',
+      selector: '.action-buttons button:nth-child(2)',
+      action: null
+    },
+    {
+      title: '📁 Organizar en Carpetas',
+      description: 'Crea carpetas para mantener organizadas las fotos de diferentes productos.',
+      selector: '.action-buttons button:nth-child(3)',
+      action: 'closeSidebar'
+    },
+    {
+      title: '🎨 Generar Diseños con IA',
+      description: '¡Esta es la función principal! Aquí creas diseños profesionales de empaques usando Inteligencia Artificial.',
+      selector: '.mobile-menu-buttons button[onclick*="forms.html"]',
+      action: 'openSidebar'
+    },
+    {
+      title: '📊 Historial de Diseños',
+      description: 'Revisa todos tus diseños anteriores y descarga los que necesites.',
+      selector: '.mobile-menu-buttons button[onclick*="history.html"]',
+      action: 'openSidebar'
+    },
+    {
+      title: '🎉 ¡Todo Listo!',
+      description: 'Ya conoces las funciones principales. ¡Comienza subiendo fotos de tus productos y genera tu primer diseño!',
+      selector: null,
+      action: 'closeSidebar'
+    }
+  ];
+
+  let currentStep = 0;
+  let tutorialOverlay = null;
+  let currentHighlightedElement = null;
+
+  // Función para abrir/cerrar sidebar
+  function toggleSidebar(open) {
+    const mobileMenu = document.getElementById('mobileMenu');
+    const mobileMenuOverlay = document.getElementById('mobileMenuOverlay');
+    
+    if (mobileMenu && mobileMenuOverlay) {
+      if (open) {
+        mobileMenu.classList.add('active');
+        mobileMenuOverlay.classList.add('active');
+        // Durante el tutorial, usar z-index alto para sidebar y bloquear interacción
+        mobileMenu.style.setProperty('z-index', '2147483646', 'important');
+        mobileMenu.style.setProperty('pointer-events', 'none', 'important');
+        mobileMenu.style.setProperty('transform', 'translateZ(0)', 'important');
+        // Ocultar el overlay oscuro del sidebar (no lo necesitamos, usamos el del tutorial)
+        mobileMenuOverlay.style.display = 'none';
+      } else {
+        mobileMenu.classList.remove('active');
+        mobileMenuOverlay.classList.remove('active');
+        // Restaurar estilos originales
+        mobileMenu.style.removeProperty('z-index');
+        mobileMenu.style.removeProperty('pointer-events');
+        mobileMenu.style.removeProperty('transform');
+        mobileMenuOverlay.style.display = '';
+      }
+    }
+  }
+
+  // Función para resaltar elemento
+  function highlightElement(selector, isSidebarOpen) {
+    // Limpiar highlight anterior
+    if (currentHighlightedElement) {
+      currentHighlightedElement.style.position = '';
+      currentHighlightedElement.style.removeProperty('position');
+      currentHighlightedElement.style.removeProperty('z-index');
+      currentHighlightedElement.style.removeProperty('pointer-events');
+      currentHighlightedElement.style.removeProperty('box-shadow');
+      currentHighlightedElement.style.removeProperty('outline');
+      currentHighlightedElement.style.removeProperty('border-radius');
+      currentHighlightedElement.style.removeProperty('transform');
+      currentHighlightedElement.style.removeProperty('background');
+      currentHighlightedElement.style.removeProperty('background-image');
+      currentHighlightedElement.style.removeProperty('color');
+      // Limpiar estilos de hijos
+      const allChildren = currentHighlightedElement.querySelectorAll('*');
+      allChildren.forEach(child => {
+        child.style.removeProperty('color');
+        child.style.removeProperty('fill');
+      });
+    }
+
+    // Remover overlay oscuro del sidebar anterior
+    const oldSidebarOverlay = document.getElementById('tutorialSidebarOverlay');
+    if (oldSidebarOverlay) oldSidebarOverlay.remove();
+
+    if (!selector) return;
+
+    const element = document.querySelector(selector);
+    if (!element) return;
+
+    // Usar el parámetro para saber si estamos en sidebar
+    const isInSidebar = isSidebarOpen;
+    
+    // Si está en el sidebar, crear overlay oscuro sobre él
+    if (isInSidebar) {
+      const mobileMenu = document.getElementById('mobileMenu');
+      if (mobileMenu) {
+        const sidebarOverlay = document.createElement('div');
+        sidebarOverlay.id = 'tutorialSidebarOverlay';
+        sidebarOverlay.style.cssText = `
+          position: absolute !important;
+          top: 0 !important;
+          left: 0 !important;
+          width: 100% !important;
+          height: 100% !important;
+          background: rgba(0, 0, 0, 0.75) !important;
+          z-index: 2147483646 !important;
+          pointer-events: none !important;
+          transform: translateZ(0) !important;
+        `;
+        mobileMenu.appendChild(sidebarOverlay);
+      }
+    }
+    
+    // Hacer elemento visible sobre el overlay con !important para sobrescribir CSS
+    element.style.setProperty('position', 'relative', 'important');
+    element.style.setProperty('z-index', '2147483647', 'important');
+    element.style.setProperty('pointer-events', 'none', 'important');
+    element.style.setProperty('transform', 'translateZ(1px)', 'important');
+    
+    // Agregar borde dorado brillante y background claro para sidebar
+    if (isInSidebar) {
+      element.style.setProperty('background', 'white', 'important');
+      element.style.setProperty('background-image', 'none', 'important');
+      element.style.setProperty('color', '#1a1a2e', 'important');
+      // Asegurar que los iconos/SVG dentro también sean visibles
+      const allChildren = element.querySelectorAll('*');
+      allChildren.forEach(child => {
+        child.style.setProperty('color', '#1a1a2e', 'important');
+        child.style.setProperty('fill', '#1a1a2e', 'important');
+      });
+    }
+    element.style.setProperty('box-shadow', '0 0 0 4px rgba(219, 149, 0, 0.9), 0 0 30px 10px rgba(219, 149, 0, 0.5)', 'important');
+    element.style.setProperty('outline', '3px solid var(--alico-gold)', 'important');
+    element.style.setProperty('border-radius', '8px', 'important');
+    
+    currentHighlightedElement = element;
+
+    // Scroll suave al elemento si está fuera de vista
+    setTimeout(() => {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
+  }
+
+  // Función para mostrar paso actual
+  function showStep(stepIndex) {
+    const step = tutorialSteps[stepIndex];
+    
+    // Ejecutar acción del paso (abrir/cerrar sidebar)
+    let needsDelay = false;
+    if (step.action === 'openSidebar') {
+      toggleSidebar(true);
+      needsDelay = true;
+    } else if (step.action === 'closeSidebar') {
+      toggleSidebar(false);
+      needsDelay = true;
+    }
+
+    // Esperar un poco si hay animación de sidebar
+    setTimeout(() => {
+      highlightElement(step.selector, step.action === 'openSidebar');
+      updateTooltip(step, stepIndex);
+    }, needsDelay ? 300 : 0);
+  }
+
+  // Función para actualizar tooltip
+  function updateTooltip(step, stepIndex) {
+    const tooltip = document.getElementById('tutorialTooltip');
+    const isFirstStep = stepIndex === 0;
+    const isLastStep = stepIndex === tutorialSteps.length - 1;
+
+    tooltip.innerHTML = `
+      <button id="tutorialClose" style="
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        width: 32px;
+        height: 32px;
+        border: none;
+        background: #f0f0f0;
+        color: #666;
+        font-size: 24px;
+        border-radius: 50%;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
+        z-index: 10;
+      ">×</button>
+      <div style="margin-bottom: 20px;">
+        <div style="font-size: 24px; font-weight: 700; color: #1a1a2e; margin-bottom: 12px;">
+          ${step.title}
+        </div>
+        <div style="font-size: 15px; color: #555; line-height: 1.6;">
+          ${step.description}
+        </div>
+        <div style="font-size: 13px; color: #999; margin-top: 12px;">
+          Paso ${stepIndex + 1} de ${tutorialSteps.length}
+        </div>
+      </div>
+      <div style="display: flex; gap: 12px; justify-content: space-between;">
+        <button id="tutorialPrev" style="
+          padding: 10px 20px;
+          border: none;
+          background: rgba(255, 255, 255, 0.2);
+          color: white;
+          border-radius: 8px;
+          cursor: pointer;
+          font-weight: 600;
+          font-size: 14px;
+          transition: all 0.2s;
+          border: 1px solid rgba(255, 255, 255, 0.3);
+          ${isFirstStep ? 'visibility: hidden;' : ''}
+        ">← Anterior</button>
+        <button id="tutorialNext" style="
+          padding: 10px 20px;
+          border: none;
+          background: linear-gradient(135deg, var(--alico-gold) 0%, var(--alico-gold-80) 100%);
+          color: white;
+          border-radius: 8px;
+          cursor: pointer;
+          font-weight: 600;
+          font-size: 14px;
+          transition: all 0.2s;
+        ">${isLastStep ? '✓ Finalizar' : 'Siguiente →'}</button>
+      </div>
+    `;
+
+    // Posicionar tooltip
+    positionTooltip(step.selector);
+
+    // Event listeners
+    const closeBtn = document.getElementById('tutorialClose');
+    const prevBtn = document.getElementById('tutorialPrev');
+    const nextBtn = document.getElementById('tutorialNext');
+
+    if (closeBtn) {
+      closeBtn.onclick = () => endTutorial(false);
+      closeBtn.onmouseover = () => {
+        closeBtn.style.background = '#e0e0e0';
+        closeBtn.style.transform = 'scale(1.1)';
+      };
+      closeBtn.onmouseout = () => {
+        closeBtn.style.background = '#f0f0f0';
+        closeBtn.style.transform = 'scale(1)';
+      };
+    }
+
+    if (prevBtn) {
+      prevBtn.onclick = () => {
+        if (currentStep > 0) {
+          currentStep--;
+          showStep(currentStep);
+        }
+      };
+    }
+
+    if (nextBtn) {
+      nextBtn.onclick = () => {
+        if (currentStep < tutorialSteps.length - 1) {
+          currentStep++;
+          showStep(currentStep);
+        } else {
+          endTutorial(true);
+        }
+      };
+    }
+  }
+
+  // Función para posicionar tooltip
+  function positionTooltip(selector) {
+    const tooltip = document.getElementById('tutorialTooltip');
+    
+    if (!selector) {
+      // Centrar tooltip si no hay elemento resaltado
+      tooltip.style.position = 'fixed';
+      tooltip.style.top = '50%';
+      tooltip.style.left = '50%';
+      tooltip.style.transform = 'translate(-50%, -50%)';
+      tooltip.style.maxWidth = '450px';
+      tooltip.style.width = 'calc(100% - 40px)';
+      tooltip.style.bottom = 'auto';
+      return;
+    }
+
+    const element = document.querySelector(selector);
+    if (!element) {
+      // Si no encuentra el elemento, centrar el tooltip
+      tooltip.style.position = 'fixed';
+      tooltip.style.top = '50%';
+      tooltip.style.left = '50%';
+      tooltip.style.transform = 'translate(-50%, -50%)';
+      tooltip.style.maxWidth = '450px';
+      tooltip.style.width = 'calc(100% - 40px)';
+      tooltip.style.bottom = 'auto';
+      return;
+    }
+
+    const rect = element.getBoundingClientRect();
+    const isInSidebar = element.closest('.mobile-menu') || element.closest('#mobileMenu');
+    
+    // En móvil o si está en sidebar, centrar abajo
+    if (window.innerWidth < 768 || isInSidebar) {
+      tooltip.style.position = 'fixed';
+      tooltip.style.left = '50%';
+      tooltip.style.transform = 'translateX(-50%)';
+      tooltip.style.maxWidth = '450px';
+      tooltip.style.width = 'calc(100% - 40px)';
+      tooltip.style.bottom = '20px';
+      tooltip.style.top = 'auto';
+      return;
+    }
+
+    // Desktop: posicionar cerca del elemento
+    const tooltipWidth = 400;
+    const gap = 20;
+
+    let top = rect.bottom + gap;
+    let left = rect.left;
+
+    // Si no cabe abajo, poner arriba
+    if (top + 200 > window.innerHeight) {
+      top = rect.top - 200 - gap;
+    }
+
+    // Ajustar horizontalmente si se sale de la pantalla
+    if (left + tooltipWidth > window.innerWidth) {
+      left = window.innerWidth - tooltipWidth - 20;
+    }
+    if (left < 20) {
+      left = 20;
+    }
+
+    tooltip.style.position = 'fixed';
+    tooltip.style.top = Math.max(20, top) + 'px';
+    tooltip.style.left = left + 'px';
+    tooltip.style.maxWidth = tooltipWidth + 'px';
+    tooltip.style.width = 'auto';
+    tooltip.style.transform = 'none';
+    tooltip.style.bottom = 'auto';
+  }
+
+  // Función para finalizar tutorial
+  function endTutorial(completed) {
+    // Guardar en localStorage
+    if (completed) {
+      localStorage.setItem('tutorialCompleted', 'true');
+    }
+
+    // Limpiar highlight
+    if (currentHighlightedElement) {
+      currentHighlightedElement.style.position = '';
+      currentHighlightedElement.style.removeProperty('position');
+      currentHighlightedElement.style.removeProperty('z-index');
+      currentHighlightedElement.style.removeProperty('pointer-events');
+      currentHighlightedElement.style.removeProperty('box-shadow');
+      currentHighlightedElement.style.removeProperty('outline');
+      currentHighlightedElement.style.removeProperty('border-radius');
+      currentHighlightedElement.style.removeProperty('transform');
+      currentHighlightedElement.style.removeProperty('background');
+      currentHighlightedElement.style.removeProperty('background-image');
+      currentHighlightedElement.style.removeProperty('color');
+      // Limpiar estilos de hijos
+      const allChildren = currentHighlightedElement.querySelectorAll('*');
+      allChildren.forEach(child => {
+        child.style.removeProperty('color');
+        child.style.removeProperty('fill');
+      });
+    }
+    
+    // Remover overlay oscuro del sidebar
+    const sidebarOverlay = document.getElementById('tutorialSidebarOverlay');
+    if (sidebarOverlay) sidebarOverlay.remove();
+
+    // Cerrar sidebar si está abierto
+    toggleSidebar(false);
+
+    // Restaurar estilos del sidebar
+    const mobileMenu = document.getElementById('mobileMenu');
+    if (mobileMenu) {
+      mobileMenu.style.removeProperty('z-index');
+      mobileMenu.style.removeProperty('pointer-events');
+      mobileMenu.style.removeProperty('transform');
+    }
+
+    // Remover overlay
+    if (tutorialOverlay) {
+      tutorialOverlay.style.animation = 'fadeOut 0.3s ease-out';
+      setTimeout(() => tutorialOverlay.remove(), 300);
+    }
+
+    if (completed) {
+      showNotification('🎉 ¡Tutorial completado! Ya puedes comenzar a usar tu dashboard.', NotificationType.SUCCESS, 5000);
+    }
+  }
+
+  // Crear overlay oscuro
+  tutorialOverlay = document.createElement('div');
+  tutorialOverlay.id = 'tutorialOverlay';
+  tutorialOverlay.style.cssText = `
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: rgba(0, 0, 0, 0.75) !important;
+    z-index: 2147483646 !important;
+    pointer-events: none !important;
+    animation: fadeIn 0.3s ease-out;
+    transform: translateZ(0) !important;
+  `;
+
+  // Crear tooltip
+  const tooltip = document.createElement('div');
+  tooltip.id = 'tutorialTooltip';
+  tooltip.style.cssText = `
+    position: fixed !important;
+    background: white !important;
+    padding: 50px 30px 30px 30px !important;
+    border-radius: 16px !important;
+    box-shadow: 0 10px 50px rgba(0,0,0,0.5) !important;
+    z-index: 2147483647 !important;
+    pointer-events: auto !important;
+    animation: scaleIn 0.3s ease-out;
+    transform: translateZ(0) !important;
+  `;
+
+  tutorialOverlay.appendChild(tooltip);
+  document.body.appendChild(tutorialOverlay);
+
+  // Iniciar tutorial
+  showStep(0);
+
+  // Reposicionar tooltip al redimensionar ventana
+  window.addEventListener('resize', () => {
+    if (currentStep < tutorialSteps.length) {
+      positionTooltip(tutorialSteps[currentStep].selector);
+    }
+  });
+}
+
 // Exportar funciones para uso global
 window.showNotification = showNotification;
 window.showConfirmDialog = showConfirmDialog;
 window.showLoader = showLoader;
 window.showGeneratingOverlay = showGeneratingOverlay;
+window.startTutorial = startTutorial;
 window.NotificationType = NotificationType;

@@ -144,7 +144,27 @@
   <body>
     <div class="dashboard-container">
       <header class="dashboard-header">
-        <h1>Mi Dashboard</h1>
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <h1>Mi Dashboard</h1>
+          <button id="tutorialButton" onclick="startTutorial()" style="
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--alico-gold) 0%, #d4a017 100%);
+            color: white;
+            border: none;
+            font-size: 20px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(219, 149, 0, 0.3);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          " title="Ver tutorial" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+            ?
+          </button>
+        </div>
         <div class="user-info">
           <span id="userName"></span>
           <div id="creditsDisplay" style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; background: linear-gradient(135deg, var(--alico-gold-20) 0%, var(--alico-gold-30) 100%); border-radius: 8px; margin-right: 12px; border: 2px solid var(--alico-gold);">
@@ -1977,6 +1997,15 @@
 
           // Iniciar polling
           startImagePolling();
+        }
+
+        // Detectar primera visita y mostrar tutorial
+        if (!localStorage.getItem('tutorialCompleted')) {
+          console.log('👋 Primera visita detectada, iniciando tutorial...');
+          // Esperar 1 segundo para que el dashboard cargue completamente
+          setTimeout(() => {
+            startTutorial();
+          }, 1000);
         }
       })();
     </script>
