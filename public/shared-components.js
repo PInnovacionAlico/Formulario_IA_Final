@@ -605,7 +605,7 @@ function startTutorial() {
           left: 0 !important;
           width: 100% !important;
           height: 100% !important;
-          background: rgba(0, 0, 0, 0.85) !important;
+          background: rgba(0, 0, 0, 0.50) !important;
           z-index: 1 !important;
           pointer-events: none !important;
         `;
@@ -620,23 +620,25 @@ function startTutorial() {
     // Agregar borde dorado brillante y background claro solo para sidebar
     if (isInSidebar) {
       element.style.setProperty('z-index', '10', 'important');
-      element.style.setProperty('background', 'white', 'important');
-      element.style.setProperty('background-image', 'none', 'important');
-      element.style.setProperty('color', '#1a1a2e', 'important');
+      element.style.setProperty('background', '#ffffff', 'important');
+      element.style.setProperty('background-image', 'linear-gradient(135deg, #ffffff 0%, #ffffff 100%)', 'important');
+      element.style.setProperty('color', '#000000', 'important');
+      element.style.setProperty('filter', 'brightness(1.5) contrast(1.2)', 'important');
+      element.style.setProperty('box-shadow', '0 0 0 6px rgba(219, 149, 0, 1), 0 0 50px 20px rgba(255, 215, 0, 1), inset 0 0 30px rgba(255, 255, 255, 0.8)', 'important');
       // Asegurar que los iconos/SVG dentro también sean visibles
       const allChildren = element.querySelectorAll('*');
       allChildren.forEach(child => {
-        child.style.setProperty('color', '#1a1a2e', 'important');
-        child.style.setProperty('fill', '#1a1a2e', 'important');
+        child.style.setProperty('color', '#000000', 'important');
+        child.style.setProperty('fill', '#000000', 'important');
       });
     } else {
       // Elementos fuera del sidebar necesitan z-index altísimo
       element.style.setProperty('z-index', '2147483647', 'important');
       element.style.setProperty('transform', 'translateZ(1px)', 'important');
+      element.style.setProperty('box-shadow', '0 0 0 5px rgba(219, 149, 0, 1), 0 0 40px 15px rgba(219, 149, 0, 0.8), inset 0 0 20px rgba(255, 255, 255, 0.3)', 'important');
     }
-    element.style.setProperty('box-shadow', '0 0 0 4px rgba(219, 149, 0, 0.9), 0 0 30px 10px rgba(219, 149, 0, 0.5)', 'important');
-    element.style.setProperty('outline', '3px solid var(--alico-gold)', 'important');
-    element.style.setProperty('border-radius', '8px', 'important');
+    element.style.setProperty('outline', '4px solid var(--alico-gold)', 'important');
+    element.style.setProperty('border-radius', '12px', 'important');
     
     currentHighlightedElement = element;
 
@@ -914,7 +916,7 @@ function startTutorial() {
     left: 0 !important;
     width: 100% !important;
     height: 100% !important;
-    background: rgba(0, 0, 0, 0.75) !important;
+    background: rgba(0, 0, 0, 0.50) !important;
     z-index: 2147483646 !important;
     pointer-events: none !important;
     animation: fadeIn 0.3s ease-out;

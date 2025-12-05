@@ -1335,7 +1335,7 @@
                   button.classList.remove('editing');
                   invalidateCache(); // Clear cache after update
                   showNotification('Nombre actualizado exitosamente', NotificationType.SUCCESS);
-                  loadImages();
+                  loadUploads(true); // Recargar la galería
                 } else {
                   showNotification('Error al actualizar nombre: ' + (data.error || 'Error desconocido'), NotificationType.ERROR);
                 }
@@ -1872,11 +1872,6 @@
 
             // Mostrar notificación de éxito
             showNotification('🎉 ¡Tu diseño está listo! Ya puedes verlo en tu galería.', NotificationType.SUCCESS, 6000);
-
-            // Limpiar parámetro de URL
-            const url = new URL(window.location);
-            url.searchParams.delete('waiting');
-            window.history.replaceState({}, '', url);
           }
         } catch (error) {
           console.error('Error checking for new image:', error);
@@ -1885,6 +1880,11 @@
 
       function startImagePolling() {
         console.log('🔄 Iniciando polling de imágenes...');
+        
+        // Limpiar parámetro de URL inmediatamente para evitar que se active de nuevo al recargar
+        const url = new URL(window.location);
+        url.searchParams.delete('waiting');
+        window.history.replaceState({}, '', url);
         
         // Polling cada 3 segundos
         pollingInterval = setInterval(checkForNewImage, 3000);
@@ -1905,11 +1905,6 @@
               NotificationType.WARNING,
               8000
             );
-
-            // Limpiar parámetro de URL
-            const url = new URL(window.location);
-            url.searchParams.delete('waiting');
-            window.history.replaceState({}, '', url);
           }
         }, 60000); // 60 segundos
       }

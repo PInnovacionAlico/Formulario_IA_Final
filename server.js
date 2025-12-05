@@ -263,11 +263,11 @@ app.post('/api/change-password', async (req, res) => {
     if (!ok) return res.status(401).json({ error: 'old password incorrect' });
 
     const newHash = bcrypt.hashSync(newPassword, 10);
-    const { data, error: upErr } = await supabase.from('users').update({ password_hash: newHash }).eq('id', user.id).select('id, email, updated_at').single();
+    const { data, error: upErr } = await supabase.from('users').update({ password_hash: newHash }).eq('id', user.id).select('id, email').single();
     if (upErr) throw upErr;
 
     const webhookUrl = getWebhookUrlFromReq(req);
-    const payload = { action: 'change-password', data: { id: data.id, email: data.email, updated_at: data.updated_at || new Date().toISOString() } };
+    const payload = { action: 'change-password', data: { id: data.id, email: data.email, updated_at: new Date().toISOString() } };
     if (webhookUrl) {
       try {
         await postToWebhook(webhookUrl, payload, { 'Content-Type': 'application/json' });

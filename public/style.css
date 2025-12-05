@@ -804,6 +804,8 @@ button[type="submit"]:hover {
   max-width: 500px;
   width: 90%;
   position: relative;
+  max-height: 90vh;
+  overflow-y: auto;
 }
 
 .modal-image {
