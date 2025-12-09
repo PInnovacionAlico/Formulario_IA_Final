@@ -248,7 +248,7 @@ async function postToWebhook(webhookUrl, payload, headers = {}) {
 }
 
 // Login endpoint: validate credentials and return JWT
-app.post('/api/login', authLimiter, async (req, res) => {
+app.post('/api/login', async (req, res) => {
   const { email, password } = req.body || {};
   if (!email || !password) return res.status(400).json({ error: 'email and password are required' });
 
@@ -287,7 +287,7 @@ app.post('/api/login', authLimiter, async (req, res) => {
   }
 });
 
-app.post('/api/register', authLimiter, async (req, res) => {
+app.post('/api/register', async (req, res) => {
   const { name, email, password, acceptedTerms } = req.body || {};
   if (!name || !email || !password) return res.status(400).json({ error: 'name, email and password are required' });
 
@@ -355,7 +355,7 @@ app.post('/api/register', authLimiter, async (req, res) => {
   }
 });
 
-app.post('/api/change-password', authLimiter, async (req, res) => {
+app.post('/api/change-password', async (req, res) => {
   const { email, oldPassword, newPassword } = req.body || {};
   if (!email || !oldPassword || !newPassword) return res.status(400).json({ error: 'email, oldPassword and newPassword are required' });
 
@@ -452,7 +452,7 @@ app.get('/api/verify-email', async (req, res) => {
 });
 
 // Resend verification email
-app.post('/api/resend-verification', authLimiter, async (req, res) => {
+app.post('/api/resend-verification', async (req, res) => {
   const { email } = req.body || {};
   
   if (!email) {
@@ -527,7 +527,7 @@ app.post('/api/resend-verification', authLimiter, async (req, res) => {
 });
 
 // Forgot password: generates reset token and sends to webhook
-app.post('/api/forgot-password', authLimiter, async (req, res) => {
+app.post('/api/forgot-password', async (req, res) => {
   const { email } = req.body || {};
   if (!email) return res.status(400).json({ error: 'email is required' });
 
@@ -586,7 +586,7 @@ app.post('/api/forgot-password', authLimiter, async (req, res) => {
 });
 
 // Reset password: validates token and updates password
-app.post('/api/reset-password', authLimiter, async (req, res) => {
+app.post('/api/reset-password', async (req, res) => {
   const { token, newPassword } = req.body || {};
   if (!token || !newPassword) return res.status(400).json({ error: 'token and newPassword are required' });
 
