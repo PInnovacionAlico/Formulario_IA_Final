@@ -19,15 +19,20 @@ const app = express();
 const upload = multer({ dest: path.join(__dirname, 'uploads') });
 
 // Security headers con helmet
+// CSP más permisivo para permitir inline scripts necesarios para la funcionalidad
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdnjs.cloudflare.com"],
+      scriptSrcAttr: ["'unsafe-inline'"], // Permite onclick y event handlers inline
       imgSrc: ["'self'", "data:", "https:", "blob:"],
       connectSrc: ["'self'", process.env.SUPABASE_URL || "*"],
       fontSrc: ["'self'", "data:"],
+      formAction: ["'self'"],
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"],
     },
   },
   crossOriginEmbedderPolicy: false,
@@ -274,7 +279,7 @@ app.post('/api/login', authLimiter, async (req, res) => {
       });
     }
 
-    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
     res.json({ ok: true, token, user: { id: user.id, name: user.name, email: user.email, is_admin: user.is_admin || false, is_super_admin: user.is_super_admin || false } });
   } catch (err) {
     console.error('login error', err.message || err);
