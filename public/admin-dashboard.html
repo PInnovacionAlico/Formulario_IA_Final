@@ -217,7 +217,27 @@
 
       @media (max-width: 768px) {
         .admin-stats-grid {
-          grid-template-columns: 1fr;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 12px;
+        }
+
+        .stat-card {
+          padding: 16px;
+        }
+
+        .stat-card h3 {
+          font-size: 11px;
+          margin: 0 0 6px 0;
+        }
+
+        .stat-card .stat-value {
+          font-size: 28px;
+          margin: 6px 0;
+        }
+
+        .stat-card .stat-label {
+          font-size: 11px;
+          line-height: 1.3;
         }
 
         .admin-table {
