@@ -78,15 +78,52 @@ app.use('/api/', generalLimiter);
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-// Validate environment variables
-if (!supabaseUrl || !supabaseKey) {
+// Validate critical environment variables
+const requiredEnvVars = {
+  'SUPABASE_URL': supabaseUrl,
+  'SUPABASE_SERVICE_ROLE_KEY': supabaseKey,
+  'JWT_SECRET': process.env.JWT_SECRET
+};
+
+const missingVars = Object.entries(requiredEnvVars)
+  .filter(([_, value]) => !value)
+  .map(([key]) => key);
+
+if (missingVars.length > 0) {
   console.error('❌ Missing required environment variables!');
-  console.error('SUPABASE_URL:', supabaseUrl ? '✓ Set' : '✗ Missing');
-  console.error('SUPABASE_SERVICE_ROLE_KEY:', supabaseKey ? '✓ Set' : '✗ Missing');
+  Object.entries(requiredEnvVars).forEach(([key, value]) => {
+    console.error(`${key}:`, value ? '✓ Set' : '✗ Missing');
+  });
+  console.error('\n⚠️  Please configure the missing variables in your .env file');
   process.exit(1);
 }
 
+// Validate webhooks are configured (warn only, don't exit)
+const webhookVars = {
+  'WEBHOOK_REGISTRO_USUARIO': process.env.WEBHOOK_REGISTRO_USUARIO,
+  'PASSWORD_RESET_WEBHOOK_URL': process.env.PASSWORD_RESET_WEBHOOK_URL,
+  'WEBHOOK_AI_FORM': process.env.WEBHOOK_AI_FORM,
+  'WEBHOOK_API_KEY': process.env.WEBHOOK_API_KEY
+};
+
+const missingWebhooks = Object.entries(webhookVars)
+  .filter(([_, value]) => !value)
+  .map(([key]) => key);
+
+if (missingWebhooks.length > 0 && process.env.DISABLE_WEBHOOK !== 'true') {
+  console.warn('⚠️  Warning: Some webhook configuration is missing:');
+  missingWebhooks.forEach(key => console.warn(`  - ${key}`));
+  console.warn('Set DISABLE_WEBHOOK=true in .env to suppress this warning\n');
+}
+
 const supabase = createClient(supabaseUrl, supabaseKey);
+
+console.log('✅ Environment variables validated successfully');
+console.log('📊 Configuration:');
+console.log(`  - Port: ${process.env.PORT || 3000}`);
+console.log(`  - Environment: ${process.env.NODE_ENV || 'development'}`);
+console.log(`  - Webhooks: ${process.env.DISABLE_WEBHOOK === 'true' ? 'Disabled' : 'Enabled'}`);
+console.log(`  - CORS: ${process.env.ALLOWED_ORIGINS || '*'}\n`);
 
 // helper: sanitize filename to avoid bad chars and path traversal
 function sanitizeFilename(name) {
@@ -184,13 +221,24 @@ function getWebhookUrlFromReq(req) {
 function getPasswordResetWebhookUrl(req) {
   // Allow global disable via env var for easy testing/rollback
   if (process.env.DISABLE_WEBHOOK && process.env.DISABLE_WEBHOOK.toLowerCase() === 'true') return null;
-  // Use specific password reset webhook (hardcoded URL for production)
-  return req.headers['x-webhook-url'] || 'https://apps.alico-sa.com/webhook/reset-password-ai-form';
+  // Use specific password reset webhook from env
+  return req.headers['x-webhook-url'] || process.env.PASSWORD_RESET_WEBHOOK_URL;
 }
 
 async function postToWebhook(webhookUrl, payload, headers = {}) {
   if (!webhookUrl) throw new Error('No webhook URL configured');
-  const res = await axios.post(webhookUrl, payload, { headers });
+  
+  // Agregar x-api-key header si está configurado
+  const webhookHeaders = {
+    'Content-Type': 'application/json',
+    ...headers
+  };
+  
+  if (process.env.WEBHOOK_API_KEY) {
+    webhookHeaders['x-api-key'] = process.env.WEBHOOK_API_KEY;
+  }
+  
+  const res = await axios.post(webhookUrl, payload, { headers: webhookHeaders });
   return res.data;
 }
 
@@ -274,7 +322,7 @@ app.post('/api/register', authLimiter, async (req, res) => {
     const verificationLink = `${baseUrl}/verify-email.html?token=${verificationToken}`;
 
     // Send to webhook for email notification
-    const webhookUrl = 'https://apps.alico-sa.com/webhook/registro-usuario-formulario-ia';
+    const webhookUrl = process.env.WEBHOOK_REGISTRO_USUARIO;
     const payload = { 
       action: 'register', 
       data: { 
@@ -446,7 +494,7 @@ app.post('/api/resend-verification', authLimiter, async (req, res) => {
     const verificationLink = `${baseUrl}/verify-email.html?token=${verificationToken}`;
 
     // Send to webhook for email notification
-    const webhookUrl = 'https://apps.alico-sa.com/webhook/registro-usuario-formulario-ia';
+    const webhookUrl = process.env.WEBHOOK_REGISTRO_USUARIO;
     const payload = { 
       action: 'resend-verification', 
       data: { 
@@ -1362,7 +1410,7 @@ app.post('/api/submit-form', authenticate, async (req, res) => {
     };
 
     // Send to Alico webhook
-    const webhookUrl = 'https://apps.alico-sa.com/webhook/ai-form';
+    const webhookUrl = process.env.WEBHOOK_AI_FORM;
     let webhookSent = false;
     let webhookStatus = null;
     let errorMessage = null;
