@@ -57,7 +57,7 @@ const authLimiter = rateLimit({
   message: { error: 'Demasiados intentos. Por favor, intenta de nuevo en 15 minutos.' },
   standardHeaders: true,
   legacyHeaders: false,
-  skipSuccessfulRequests: false,
+  skipSuccessfulRequests: true, // Solo cuenta intentos fallidos
 });
 
 const generalLimiter = rateLimit({
@@ -1452,8 +1452,12 @@ app.post('/api/submit-form', authenticate, async (req, res) => {
     // Procesar webhook en background (no bloquea la respuesta)
     (async () => {
       try {
+        // Usar postToWebhook para incluir x-api-key header
         const webhookResponse = await axios.post(webhookUrl, webhookPayload, {
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(process.env.WEBHOOK_API_KEY && { 'x-api-key': process.env.WEBHOOK_API_KEY })
+          },
           timeout: 60000, // 60 segundos timeout (45s generación + 15s margen)
           maxContentLength: 50 * 1024 * 1024, // 50MB max response
           maxBodyLength: 50 * 1024 * 1024
