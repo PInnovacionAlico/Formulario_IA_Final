@@ -11,14 +11,68 @@ const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 const jwt = require('jsonwebtoken');
 const sharp = require('sharp');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const { fileTypeFromBuffer } = require('file-type');
 
 const app = express();
 const upload = multer({ dest: path.join(__dirname, 'uploads') });
 
-app.use(cors());
+// Security headers con helmet
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"],
+      imgSrc: ["'self'", "data:", "https:", "blob:"],
+      connectSrc: ["'self'", process.env.SUPABASE_URL || "*"],
+      fontSrc: ["'self'", "data:"],
+    },
+  },
+  crossOriginEmbedderPolicy: false,
+}));
+
+// CORS configurado con origen específico
+const allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : ['*'];
+app.use(cors({
+  origin: allowedOrigins[0] === '*' ? true : allowedOrigins,
+  credentials: true,
+  optionsSuccessStatus: 200
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Rate limiters
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 5, // 5 intentos
+  message: { error: 'Demasiados intentos. Por favor, intenta de nuevo en 15 minutos.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: false,
+});
+
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 100, // 100 requests
+  message: { error: 'Demasiadas solicitudes. Por favor, intenta de nuevo más tarde.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const uploadLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hora
+  max: 20, // 20 uploads por hora
+  message: { error: 'Límite de subidas alcanzado. Intenta de nuevo en una hora.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Aplicar rate limiter general a todas las rutas API
+app.use('/api/', generalLimiter);
 
 // Supabase client (use service role key on server only)
 const supabaseUrl = process.env.SUPABASE_URL;
@@ -141,12 +195,12 @@ async function postToWebhook(webhookUrl, payload, headers = {}) {
 }
 
 // Login endpoint: validate credentials and return JWT
-app.post('/api/login', async (req, res) => {
+app.post('/api/login', authLimiter, async (req, res) => {
   const { email, password } = req.body || {};
   if (!email || !password) return res.status(400).json({ error: 'email and password are required' });
 
   try {
-    const { data: user, error } = await supabase.from('users').select('id, name, email, password_hash, is_admin, email_verified, credits, credits_last_reset').eq('email', email).maybeSingle();
+    const { data: user, error } = await supabase.from('users').select('id, name, email, password_hash, is_admin, email_verified, credits, credits_last_reset, banned, banned_reason').eq('email', email).maybeSingle();
     if (error) throw error;
     if (!user) return res.status(401).json({ error: 'Correo no registrado o contraseña incorrecta' });
 
@@ -172,7 +226,7 @@ app.post('/api/login', async (req, res) => {
       });
     }
 
-    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
     res.json({ ok: true, token, user: { id: user.id, name: user.name, email: user.email, is_admin: user.is_admin || false, is_super_admin: user.is_super_admin || false } });
   } catch (err) {
     console.error('login error', err.message || err);
@@ -180,7 +234,7 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-app.post('/api/register', async (req, res) => {
+app.post('/api/register', authLimiter, async (req, res) => {
   const { name, email, password, acceptedTerms } = req.body || {};
   if (!name || !email || !password) return res.status(400).json({ error: 'name, email and password are required' });
 
@@ -248,7 +302,7 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
-app.post('/api/change-password', async (req, res) => {
+app.post('/api/change-password', authLimiter, async (req, res) => {
   const { email, oldPassword, newPassword } = req.body || {};
   if (!email || !oldPassword || !newPassword) return res.status(400).json({ error: 'email, oldPassword and newPassword are required' });
 
@@ -345,7 +399,7 @@ app.get('/api/verify-email', async (req, res) => {
 });
 
 // Resend verification email
-app.post('/api/resend-verification', async (req, res) => {
+app.post('/api/resend-verification', authLimiter, async (req, res) => {
   const { email } = req.body || {};
   
   if (!email) {
@@ -420,7 +474,7 @@ app.post('/api/resend-verification', async (req, res) => {
 });
 
 // Forgot password: generates reset token and sends to webhook
-app.post('/api/forgot-password', async (req, res) => {
+app.post('/api/forgot-password', authLimiter, async (req, res) => {
   const { email } = req.body || {};
   if (!email) return res.status(400).json({ error: 'email is required' });
 
@@ -479,7 +533,7 @@ app.post('/api/forgot-password', async (req, res) => {
 });
 
 // Reset password: validates token and updates password
-app.post('/api/reset-password', async (req, res) => {
+app.post('/api/reset-password', authLimiter, async (req, res) => {
   const { token, newPassword } = req.body || {};
   if (!token || !newPassword) return res.status(400).json({ error: 'token and newPassword are required' });
 
@@ -761,11 +815,34 @@ app.post('/api/mobile-upload', upload.single('file'), async (req, res) => {
 });
 
 // Upload endpoint: accepts single file field 'file' (protected)
-app.post('/api/upload', authenticate, upload.single('file'), async (req, res) => {
+app.post('/api/upload', authenticate, uploadLimiter, upload.single('file'), async (req, res) => {
   const file = req.file;
   if (!file) return res.status(400).json({ error: 'file is required' });
 
   try {
+    // Validar tipo de archivo por MIME type
+    const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+    if (!allowedMimeTypes.includes(file.mimetype)) {
+      if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+      return res.status(400).json({ error: 'Tipo de archivo no permitido. Solo se permiten imágenes JPG, JPEG y PNG.' });
+    }
+
+    // Validar tamaño máximo (5MB)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+      return res.status(400).json({ error: 'Archivo demasiado grande. Tamaño máximo: 5MB.' });
+    }
+
+    // Leer archivo y validar firma del archivo (magic numbers)
+    const fileBuffer = fs.readFileSync(file.path);
+    const detectedType = await fileTypeFromBuffer(fileBuffer);
+    
+    if (!detectedType || !allowedMimeTypes.includes(detectedType.mime)) {
+      if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+      return res.status(400).json({ error: 'Archivo corrupto o tipo inválido. Solo se permiten imágenes JPG, JPEG y PNG reales.' });
+    }
+
     // Verificar límite de 4 fotos por usuario (solo fotos subidas, no generadas por IA)
     const { data: existingUploads, error: countErr } = await supabase
       .from('uploads')
@@ -792,9 +869,6 @@ app.post('/api/upload', authenticate, upload.single('file'), async (req, res) =>
     const prefix = String(req.userId); // use authenticated userId
     const pathInBucket = `uploads/${prefix}/${unique}-${safeName}`;
     const thumbnailPath = `uploads/${prefix}/thumb-${unique}-${safeName}`;
-    
-    // Read and optimize original image
-    const fileBuffer = fs.readFileSync(file.path);
 
     // Upload original image
     const { data: uploadData, error: uploadErr } = await supabase.storage.from('uploads').upload(pathInBucket, fileBuffer, {

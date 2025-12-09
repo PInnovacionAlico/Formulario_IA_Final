@@ -12,6 +12,38 @@ const NotificationType = {
 };
 
 /**
+ * Función de sanitización para prevenir XSS
+ * Escapa caracteres HTML peligrosos en strings
+ * @param {string} text - Texto a sanitizar
+ * @returns {string} - Texto sanitizado
+ */
+function escapeHtml(text) {
+  if (typeof text !== 'string') return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+/**
+ * Sanitiza atributos para uso seguro en HTML
+ * @param {string} text - Texto a sanitizar
+ * @returns {string} - Texto sanitizado
+ */
+function sanitizeAttribute(text) {
+  if (typeof text !== 'string') return '';
+  return text.replace(/['"<>&]/g, (char) => {
+    const entities = {
+      '"': '&quot;',
+      "'": '&#39;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '&': '&amp;'
+    };
+    return entities[char] || char;
+  });
+}
+
+/**
  * Muestra una notificación toast en la esquina superior derecha
  * @param {string} message - Mensaje a mostrar
  * @param {string} type - Tipo de notificación (success, error, warning, info)
@@ -959,3 +991,5 @@ window.showLoader = showLoader;
 window.showGeneratingOverlay = showGeneratingOverlay;
 window.startTutorial = startTutorial;
 window.NotificationType = NotificationType;
+window.escapeHtml = escapeHtml;
+window.sanitizeAttribute = sanitizeAttribute;

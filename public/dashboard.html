@@ -1259,28 +1259,38 @@
             const card = document.createElement('div');
             card.className = 'photo-card';
             const imgSrc = upload.thumbnailUrl || upload.signedUrl;
+            const safeName = sanitizeAttribute(upload.custom_name || upload.filename);
+            const safeUrl = sanitizeAttribute(upload.signedUrl);
+            
             card.innerHTML = `
               <img 
                 src="${imgSrc}" 
-                data-full="${upload.signedUrl}"
-                alt="${upload.custom_name || upload.filename}" 
+                data-full="${safeUrl}"
+                alt="${safeName}" 
                 loading="lazy"
                 class="photo-thumbnail"
-                onclick="viewFullImage('${upload.signedUrl}', '${upload.custom_name || upload.filename}')"
                 style="cursor: pointer;"
               />
               <div class="photo-info">
                 <div class="photo-title-row">
-                  <input class="photo-name" data-id="${upload.id}" value="${upload.custom_name || upload.filename}" placeholder="Nombre" disabled />
+                  <input class="photo-name" data-id="${upload.id}" value="${safeName}" placeholder="Nombre" disabled />
                   <button class="btn-folder-icon" data-id="${upload.id}" title="Cambiar carpeta">📁</button>
                 </div>
                 <div class="photo-actions">
                   <button class="btn-update" data-id="${upload.id}">Cambiar nombre</button>
-                  <button onclick="downloadImage('${upload.signedUrl}', '${upload.custom_name || upload.filename}')" class="btn-download" title="Descargar imagen">📥 Descargar</button>
+                  <button class="btn-download" data-url="${safeUrl}" data-name="${safeName}" title="Descargar imagen">📥 Descargar</button>
                   <button class="btn-delete" data-id="${upload.id}">Eliminar</button>
                 </div>
               </div>
             `;
+            
+            // Agregar event listeners de forma segura
+            const img = card.querySelector('.photo-thumbnail');
+            img.addEventListener('click', () => viewFullImage(upload.signedUrl, upload.custom_name || upload.filename));
+            
+            const downloadBtn = card.querySelector('.btn-download');
+            downloadBtn.addEventListener('click', () => downloadImage(upload.signedUrl, upload.custom_name || upload.filename));
+            
             itemsDiv.appendChild(card);
           });
 
