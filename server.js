@@ -1423,7 +1423,7 @@ app.post('/api/submit-form', authenticate, async (req, res) => {
     
     // Guardar submission inicial sin esperar el webhook
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes from now
-    const { data: pendingSubmission } = await supabase.from('form_submissions').insert([{
+    const { data: pendingSubmission, error: insertError } = await supabase.from('form_submissions').insert([{
       user_id: req.userId,
       photo_id: photo_id,
       form_type: form_type || null,
@@ -1435,10 +1435,16 @@ app.post('/api/submit-form', authenticate, async (req, res) => {
       webhook_sent: false,
       webhook_url: webhookUrl,
       form_data: formData,
-      completed_at: null // Se actualizará cuando complete
+      completed_at: new Date().toISOString() // Fecha de inicio del proceso
     }]).select('id').single();
     
+    if (insertError) {
+      console.error('❌ Error guardando submission inicial:', insertError);
+      throw new Error(`Failed to save submission: ${insertError.message}`);
+    }
+    
     const submissionId = pendingSubmission?.id;
+    console.log('✅ Submission guardado con ID:', submissionId);
     
     // Responder inmediatamente al usuario sin esperar el webhook
     res.json({ 
@@ -1452,6 +1458,9 @@ app.post('/api/submit-form', authenticate, async (req, res) => {
     // Procesar webhook en background (no bloquea la respuesta)
     (async () => {
       try {
+        console.log('🚀 Iniciando llamada al webhook de IA para submission ID:', submissionId);
+        console.log('📤 Webhook URL:', webhookUrl);
+        
         // Usar postToWebhook para incluir x-api-key header
         const webhookResponse = await axios.post(webhookUrl, webhookPayload, {
           headers: {
@@ -1463,10 +1472,10 @@ app.post('/api/submit-form', authenticate, async (req, res) => {
           maxBodyLength: 50 * 1024 * 1024
         });
       
-      console.log('Webhook sent successfully:', webhookResponse.status);
-      console.log('Webhook response data:', webhookResponse.data);
-      console.log('Webhook response type:', typeof webhookResponse.data);
-      console.log('Webhook response keys:', webhookResponse.data ? Object.keys(webhookResponse.data) : 'none');
+      console.log('✅ Webhook sent successfully:', webhookResponse.status);
+      console.log('📥 Webhook response data:', webhookResponse.data);
+      console.log('🔍 Webhook response type:', typeof webhookResponse.data);
+      console.log('🔑 Webhook response keys:', webhookResponse.data ? Object.keys(webhookResponse.data) : 'none');
       webhookSent = true;
       webhookStatus = webhookResponse.status;
       
@@ -1531,8 +1540,32 @@ app.post('/api/submit-form', authenticate, async (req, res) => {
       console.log('🔍 Detected image URL:', imageUrl);
       console.log('🔍 Full response data:', JSON.stringify(webhookResponse.data, null, 2));
       
+      // PRIMERO: Actualizar submission como exitoso (crítico - debe hacerse siempre)
+      if (submissionId) {
+        console.log('💾 Actualizando submission exitoso INMEDIATAMENTE, ID:', submissionId);
+        const { error: updateError } = await supabase.from('form_submissions')
+          .update({
+            ai_image_id: null, // Se actualizará después si se descarga la imagen
+            success: true,
+            webhook_sent: true,
+            webhook_response_status: webhookResponse.status,
+            response_data: imageUrl || null, // URL directa del webhook
+            completed_at: new Date().toISOString()
+          })
+          .eq('id', submissionId);
+        
+        if (updateError) {
+          console.error('❌ Error actualizando submission:', updateError);
+        } else {
+          console.log('✅ Submission actualizado correctamente en DB');
+        }
+      } else {
+        console.error('⚠️ No se pudo actualizar: submissionId es null/undefined');
+      }
+      
+      // SEGUNDO: Intentar descargar y guardar la imagen (opcional - no crítico)
       if (imageUrl) {
-        console.log('✅ Generated image URL received:', imageUrl);
+        console.log('📥 Intentando descargar imagen generada:', imageUrl);
         
         try {
           // Descargar la imagen generada
@@ -1609,35 +1642,35 @@ app.post('/api/submit-form', authenticate, async (req, res) => {
             // Store the AI image ID for linking with submission
             if (!aiUploadError && aiUploadData) {
               aiImageId = aiUploadData.id;
+              console.log('✅ Imagen guardada en DB con ID:', aiImageId);
+              
+              // Actualizar el submission con el ai_image_id
+              if (submissionId) {
+                console.log('💾 Actualizando submission con ai_image_id:', aiImageId);
+                await supabase.from('form_submissions')
+                  .update({
+                    ai_image_id: aiImageId,
+                    response_data: generatedImageUrl // URL pública de Supabase
+                  })
+                  .eq('id', submissionId);
+              }
             }
           }
         } catch (downloadError) {
-          console.error('Error downloading/uploading generated image:', downloadError.message);
+          console.error('⚠️ Error downloading/uploading generated image:', downloadError.message);
+          console.log('ℹ️ Submission ya guardado con URL directa del webhook');
         }
-      }
-      
-      // Actualizar submission como exitoso
-      if (submissionId) {
-        await supabase.from('form_submissions')
-          .update({
-            ai_image_id: aiImageId || null,
-            success: true,
-            webhook_sent: true,
-            webhook_response_status: webhookResponse.status,
-            response_data: generatedImageUrl || imageUrl || null,
-            completed_at: new Date().toISOString()
-          })
-          .eq('id', submissionId);
       }
       
       console.log('✅ Webhook processing completed successfully');
     } catch (webhookErr) {
-      console.error('Webhook error:', webhookErr.message);
+      console.error('❌ Webhook error:', webhookErr.message);
       errorMessage = webhookErr.message;
       
       // Actualizar submission como fallido
       if (submissionId) {
-        await supabase.from('form_submissions')
+        console.log('💾 Actualizando submission como fallido, ID:', submissionId);
+        const { error: updateError } = await supabase.from('form_submissions')
           .update({
             success: false,
             error_message: `Webhook failed: ${webhookErr.message}`,
@@ -1645,6 +1678,14 @@ app.post('/api/submit-form', authenticate, async (req, res) => {
             completed_at: new Date().toISOString()
           })
           .eq('id', submissionId);
+        
+        if (updateError) {
+          console.error('❌ Error actualizando submission fallido:', updateError);
+        } else {
+          console.log('✅ Submission fallido registrado correctamente');
+        }
+      } else {
+        console.error('⚠️ No se pudo actualizar: submissionId es null/undefined');
       }
       
       console.log('❌ Webhook processing failed');
