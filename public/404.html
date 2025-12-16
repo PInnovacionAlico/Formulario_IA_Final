@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 - Página no encontrada</title>
+    <link rel="icon" type="image/png" href="/favicon/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="/favicon/favicon.svg" />
+    <link rel="shortcut icon" href="/favicon/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicon/apple-touch-icon.png" />
+    <link rel="manifest" href="/favicon/site.webmanifest" />
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Alico color variables */
+        :root {
+            --alico-gold: #DB9500;
+            --alico-gold-80: #E2AA33;
+            --alico-gold-70: #E6B54D;
+            --alico-gold-20: #F8EACC;
+            --alico-gold-10: #FBF4E5;
+            --alico-blue: #000F9F;
+            --alico-blue-80: #333FB2;
+            --alico-blue-70: #4D58BC;
+        }
+        
+        .error-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: linear-gradient(135deg, var(--alico-blue) 0%, var(--alico-blue-70) 100%);
+        }
+
+        .error-content {
+            background: white;
+            border-radius: 20px;
+            padding: 60px 40px;
+            text-align: center;
+            max-width: 600px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .error-code {
+            font-size: 120px;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--alico-blue) 0%, var(--alico-gold) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1;
+            margin-bottom: 20px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.05);
+            }
+        }
+
+        .error-title {
+            font-size: 32px;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 15px;
+        }
+
+        .error-message {
+            font-size: 18px;
+            color: #718096;
+            margin-bottom: 40px;
+            line-height: 1.6;
+        }
+
+        .error-actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .error-btn {
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .error-btn-primary {
+            background: linear-gradient(135deg, var(--alico-blue) 0%, var(--alico-blue-70) 100%);
+            color: white;
+        }
+
+        .error-btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 15, 159, 0.4);
+        }
+
+        .error-btn-secondary {
+            background: #f7fafc;
+            color: #4a5568;
+            border: 2px solid #e2e8f0;
+        }
+
+        .error-btn-secondary:hover {
+            background: #edf2f7;
+            border-color: #cbd5e0;
+        }
+
+        .error-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0px);
+            }
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        .suggestions {
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 2px solid #e2e8f0;
+        }
+
+        .suggestions h3 {
+            font-size: 18px;
+            color: #4a5568;
+            margin-bottom: 15px;
+        }
+
+        .suggestions-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            text-align: left;
+        }
+
+        .suggestion-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 15px;
+            background: #f7fafc;
+            border-radius: 8px;
+            color: #4a5568;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+
+        .suggestion-item:hover {
+            background: #edf2f7;
+            transform: translateX(5px);
+        }
+
+        .suggestion-icon {
+            font-size: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .error-content {
+                padding: 40px 30px;
+            }
+
+            .error-code {
+                font-size: 80px;
+            }
+
+            .error-title {
+                font-size: 24px;
+            }
+
+            .error-message {
+                font-size: 16px;
+            }
+
+            .error-actions {
+                flex-direction: column;
+            }
+
+            .error-btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <div class="error-content">
+            <div class="error-icon">🔍</div>
+            <div class="error-code">404</div>
+            <h1 class="error-title">Página no encontrada</h1>
+            <p class="error-message">
+                Lo sentimos, la página que buscas no existe o ha sido movida. 
+                Verifica la URL o vuelve al inicio para continuar navegando.
+            </p>
+
+            <div class="error-actions">
+                <a href="/" class="error-btn error-btn-primary">
+                    <span>🏠</span>
+                    Volver al inicio
+                </a>
+                <a href="javascript:history.back()" class="error-btn error-btn-secondary">
+                    <span>←</span>
+                    Página anterior
+                </a>
+            </div>
+
+            <div class="suggestions">
+                <h3>Páginas que podrían interesarte:</h3>
+                <div class="suggestions-list">
+                    <a href="/login.html" class="suggestion-item">
+                        <span class="suggestion-icon">🔐</span>
+                        <span>Iniciar sesión</span>
+                    </a>
+                    <a href="/register.html" class="suggestion-item">
+                        <span class="suggestion-icon">📝</span>
+                        <span>Crear cuenta</span>
+                    </a>
+                    <a href="/forms.html" class="suggestion-item">
+                        <span class="suggestion-icon">📋</span>
+                        <span>Formularios</span>
+                    </a>
+                    <a href="/dashboard.html" class="suggestion-item">
+                        <span class="suggestion-icon">📊</span>
+                        <span>Panel de control</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Log 404 error for analytics (opcional)
+        console.log('404 Error - URL:', window.location.href);
+        
+        // Auto-redirect después de 10 segundos (opcional, comentado)
+        // setTimeout(() => {
+        //     window.location.href = '/';
+        // }, 10000);
+    </script>
+</body>
+</html>

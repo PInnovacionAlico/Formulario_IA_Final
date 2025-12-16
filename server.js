@@ -2925,5 +2925,19 @@ app.delete('/api/admin/users/:id', authenticateAdmin, async (req, res) => {
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
+// 404 handler - debe estar al final, después de todas las demás rutas
+app.use((req, res) => {
+  // Si es una petición API, devolver JSON
+  if (req.path.startsWith('/api/')) {
+    return res.status(404).json({ 
+      error: 'Endpoint no encontrado',
+      path: req.path 
+    });
+  }
+  
+  // Para todas las demás rutas, servir la página 404.html
+  res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));
+});
+
 const port = process.env.PORT || 3000;
 app.listen(port, () => console.log(`Server running on http://localhost:${port}`));
